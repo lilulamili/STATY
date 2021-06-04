@@ -16,7 +16,6 @@ scipy
 statsmodels
 seaborn
 sklearn
-skopt
 streamlit
 tqdm
 wordcloud
