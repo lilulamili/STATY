@@ -41,7 +41,7 @@ def app():
             df = pd.read_csv("\\default data\\WHR_2021.csv", sep = ";|,|\t",engine='python')
            
     else:        
-        df = pd.read_csv("\\default data\\WHR_2021.csv", sep = ";|,|\t",engine='python')
+        df = pd.read_csv("default data/WHR_2021.csv", sep = ";|,|\t",engine='python')
         
     st.sidebar.markdown("")
 
