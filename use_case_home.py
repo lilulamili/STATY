@@ -251,7 +251,7 @@ def app():
     
     st.markdown("")
     st.markdown("")
-    st.write("STATY and the related tools and data are provided for educational purposes only. Note, the project is still under development, and some features may still not work properly!")
+    st.write("Disclaimer: STATY and the related tools and data are provided for educational purposes only. Note, the project is still under development, and some features may still not work properly!")
     
     
 
