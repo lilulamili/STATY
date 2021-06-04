@@ -514,7 +514,7 @@ def app():
 
             # read geojson ne_110m_admin_0_countries.geojson: 110m resolution geojson from http://geojson.xyz/ based on Natural Earth Data            
             
-            geojson_file =("/default data/ne_110m_admin_0_countries.geojson")
+            geojson_file =("default data/ne_110m_admin_0_countries.geojson")
             geojson_handle = open(geojson_file, )
             geojson = json.load(geojson_handle)
             geojson_handle.close()
