@@ -1,0 +1,46 @@
+altair
+bs4
+collections (built-in)
+datetime
+itertools (built-in)
+linearmodels
+math (built-in)
+matplotlib
+nltk
+numpy
+os (built-in)
+pandas
+pmdarima
+platform (built-in)
+plotly
+pybase64
+pysummarization
+pyquery
+random (built-in)
+regex
+requests
+scipy
+statsmodels
+seaborn
+sklearn
+skopt
+streamlit
+time (built-in)
+tqdm
+wordcloud
+yfinance
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
