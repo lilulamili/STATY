@@ -6,6 +6,7 @@ matplotlib
 nltk
 numpy
 pandas
+plotly
 pmdarima
 pybase64
 pysummarization
