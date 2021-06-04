@@ -34,8 +34,8 @@ def app():
     # Load background image
     
         
-    home_bg_dark =  "/default data/bg_image_dark.jpg"
-    home_bg_light = "/default data/bg_image_light.jpg"
+    home_bg_dark =  "default data/bg_image_dark.jpg"
+    home_bg_light = "default data/bg_image_light.jpg"
     bg_ext = "jpg"
 
     # Check if wide mode
@@ -232,7 +232,7 @@ def app():
     st.write("To get started, open the menu on the left, or check the intro video!")
     
     
-    staty_video =open("/default data/staty_web.mp4", 'rb')        
+    staty_video =open("default data/staty_web.mp4", 'rb')        
     staty_video_bytes=staty_video.read()
     st.video(staty_video_bytes)
     #st.caption("Music by Sophonic Media, http://instrumentalsfree.com")
@@ -243,9 +243,9 @@ def app():
         st.write("STATY is an ongoing educational project designed and developed by [Oskar Kärcher](mailto:o.kaercher@hs-osnabrueck.de?subject=Staty-App) and [Danijela Markovic](mailto:d.markovic-bredthauer@hs-osnabrueck.de?subject=Staty-App) with the aim of improving data literacy among undergraduate and graduate students.")
 
     if sett_theme == "Dark":
-        image = Image.open("/default data/HS-OS-Logo_dark.png")
+        image = Image.open("default data/HS-OS-Logo_dark.png")
     else:
-        image = Image.open("/default data/HS-OS-Logo_light.png")
+        image = Image.open("default data/HS-OS-Logo_light.png")
     with col2:
         st.image(image)
 
