@@ -5,8 +5,8 @@ linearmodels
 matplotlib
 nltk
 numpy
+pandas
 pmdarima
-plotly
 pybase64
 pysummarization
 pyquery
