@@ -40,11 +40,7 @@ def app():
     # Show altair tooltip when full screen
     st.markdown('<style>#vg-tooltip-element{z-index: 1000051}</style>',unsafe_allow_html=True)
 
-    # Working directory
-    if platform.system() == "Windows":
-        cwd = os.getcwd()
-    if platform.system() == "Darwin":
-        cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
+    
 
     #------------------------------------------------------------------------------------------
     
@@ -62,19 +58,11 @@ def app():
             df = pd.read_csv(uploaded_data, sep = ";|,|\t",engine='python')
             st.sidebar.success('Loading data... done!')
         elif uploaded_data is None:
-            if platform.system() == "Windows":
-                cwd = os.getcwd()
-                df = pd.read_csv(cwd + "\\default data\\Happy.csv", sep = ";|,|\t",engine='python')
-            if platform.system() == "Darwin":
-                cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-                df = pd.read_csv(cwd + "/default data/Happy.csv", sep = ";|,|\t",engine='python')
-    else:
-        if platform.system() == "Windows":
-            cwd = os.getcwd()
-            df = pd.read_csv(cwd + "\\default data\\Happy.csv", sep = ";|,|\t",engine='python')
-        if platform.system() == "Darwin":
-            cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-            df = pd.read_csv(cwd + "/default data/Happy.csv", sep = ";|,|\t",engine='python')
+            
+            df = pd.read_csv("/default data/Happy.csv", sep = ";|,|\t",engine='python')
+    else:        
+        df = pd.read_csv("/default data/Happy.csv", sep = ";|,|\t",engine='python')
+    
     st.sidebar.markdown("")
         
     #Basic data info

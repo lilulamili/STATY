@@ -43,12 +43,7 @@ def app():
     # Hide traceback in error messages (comment out for de-bugging)
     sys.tracebacklimit = 0
 
-    # Working directory
-    if platform.system() == "Windows":
-        cwd = os.getcwd()
-    if platform.system() == "Darwin":
-        cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-
+   
     #------------------------------------------------------------------------------------------
     # SETTINGS
 

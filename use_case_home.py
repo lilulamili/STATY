@@ -32,14 +32,10 @@ def app():
     st.sidebar.markdown("")
 
     # Load background image
-    if platform.system() == "Windows":
-        cwd = os.getcwd()
-        home_bg_dark = os.getcwd() + "\\default data\\bg_image_dark.jpg"
-        home_bg_light = os.getcwd() + "\\default data\\bg_image_light.jpg"
-    if platform.system() == "Darwin":
-        cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-        home_bg_dark = os.getcwd() + "/default data/bg_image_dark.jpg"
-        home_bg_light = os.getcwd() + "/default data/bg_image_light.jpg"
+    
+        
+    home_bg_dark =  "/default data/bg_image_dark.jpg"
+    home_bg_light = "/default data/bg_image_light.jpg"
     bg_ext = "jpg"
 
     # Check if wide mode
@@ -235,12 +231,8 @@ def app():
     #st.markdown("You don’t need any programming skills to get started - STATY will do data mining and machine learning for you, present you great visualisations of your data and will boost your curiosity to explore more. ")
     st.write("To get started, open the menu on the left, or check the intro video!")
     
-    if platform.system() == "Windows":
-        cwd = os.getcwd()
-        staty_video =open(cwd + "\\default data\\staty_web.mp4", 'rb')
-    if platform.system() == "Darwin":
-        cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-        staty_video =open(cwd + "/default data/staty_web.mp4", 'rb')        
+    
+    staty_video =open("/default data/staty_web.mp4", 'rb')        
     staty_video_bytes=staty_video.read()
     st.video(staty_video_bytes)
     #st.caption("Music by Sophonic Media, http://instrumentalsfree.com")
@@ -251,26 +243,14 @@ def app():
         st.write("STATY is an ongoing educational project designed and developed by [Oskar Kärcher](mailto:o.kaercher@hs-osnabrueck.de?subject=Staty-App) and [Danijela Markovic](mailto:d.markovic-bredthauer@hs-osnabrueck.de?subject=Staty-App) with the aim of improving data literacy among undergraduate and graduate students.")
 
     if sett_theme == "Dark":
-        image = Image.open(cwd + "/default data/HS-OS-Logo_dark.png")
+        image = Image.open("/default data/HS-OS-Logo_dark.png")
     else:
-        image = Image.open(cwd + "/default data/HS-OS-Logo_light.png")
+        image = Image.open("/default data/HS-OS-Logo_light.png")
     with col2:
         st.image(image)
 
     
-    #if platform.system() == "Windows":
-    #    staty_info = open(cwd + "\\default data\\Staty_info.gif", "rb")
-    #if platform.system() == "Darwin":
-    #    staty_info = open(cwd + "/default data/Staty_info.gif", "rb")
-    #contents = staty_info.read()
-    #data_url = pybase64.b64encode(contents).decode("utf-8")
-   
-    #staty_info.close()
-
-    #st.markdown(
-    #    f'<img src="data:image/gif;base64,{data_url}" alt="staty info" style="width:100%;">',
-    #    unsafe_allow_html=True
-    #)
+    
     
 
     

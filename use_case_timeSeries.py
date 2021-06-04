@@ -32,12 +32,6 @@ def app():
     # Hide traceback in error messages (comment out for de-bugging)
     sys.tracebacklimit = 0
 
-    # Working directory
-    if platform.system() == "Windows":
-        cwd = os.getcwd()
-    if platform.system() == "Darwin":
-        cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-
     #++++++++++++++++++++++++++++++++++++++++++++
     # DATA IMPORT
 
@@ -51,19 +45,9 @@ def app():
             df = pd.read_csv(uploaded_data, sep = ";|,|\t",engine='python')
             st.sidebar.success('Loading data... done!')
         elif uploaded_data is None:
-            if platform.system() == "Windows":
-                cwd = os.getcwd()
-                df = pd.read_csv(cwd + "\\default data\\xrate.csv", sep = ";|,|\t",engine='python')
-            if platform.system() == "Darwin":
-                cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-                df = pd.read_csv(cwd + "/default data/xrate.csv", sep = ";|,|\t",engine='python')
+           df = pd.read_csv("/default data/xrate.csv", sep = ";|,|\t",engine='python')
     else:
-        if platform.system() == "Windows":
-                cwd = os.getcwd()
-                df = pd.read_csv(cwd + "\\default data\\xrate.csv", sep = ";|,|\t",engine='python')
-        if platform.system() == "Darwin":
-            cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-            df = pd.read_csv(cwd + "/default data/xrate.csv", sep = ";|,|\t",engine='python')
+        df = pd.read_csv("/default data/xrate.csv", sep = ";|,|\t",engine='python')
     st.sidebar.markdown("")
      
     #Basic data info

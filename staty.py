@@ -38,7 +38,9 @@ from PIL import Image
 ###############
 
 
-staty_favi = "/default data/staty_icon.ico"
+staty_favi =  "/default data/staty_icon.ico"
+
+
 
 # Define page setting
 st.set_page_config(

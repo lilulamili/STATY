@@ -25,14 +25,7 @@ def app():
     # Hide traceback in error messages (comment out for de-bugging)
     sys.tracebacklimit = 0
 
-    # Working directory
-    if platform.system() == "Windows":
-        cwd = os.getcwd()
-    if platform.system() == "Darwin":
-        cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-
-    #------------------------------------------------------------------------------------------
-       
+   
     # File upload section
     df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload your data"])
 
@@ -44,20 +37,12 @@ def app():
             st.sidebar.success('Loading data... done!')
             if len(df)<4:
                 small_dataset_error ="The sample is so small that you should better use a pocket calculator as the learning effect will be larger!"
-        elif uploaded_data is None:
-            if platform.system() == "Windows":
-                cwd = os.getcwd()
-                df = pd.read_csv(cwd + "\\default data\\WHR_2021.csv", sep = ";|,|\t",engine='python')
-            if platform.system() == "Darwin":
-                cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-                df = pd.read_csv(cwd + "/default data/WHR_2021.csv", sep = ";|,|\t",engine='python')
-    else:
-        if platform.system() == "Windows":
-            cwd = os.getcwd()
-            df = pd.read_csv(cwd + "\\default data\\WHR_2021.csv", sep = ";|,|\t",engine='python')
-        if platform.system() == "Darwin":
-            cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-            df = pd.read_csv(cwd + "/default data/WHR_2021.csv", sep = ";|,|\t",engine='python')
+        elif uploaded_data is None:            
+            df = pd.read_csv("\\default data\\WHR_2021.csv", sep = ";|,|\t",engine='python')
+           
+    else:        
+        df = pd.read_csv("\\default data\\WHR_2021.csv", sep = ";|,|\t",engine='python')
+        
     st.sidebar.markdown("")
 
     #Basic data info      
@@ -528,10 +513,8 @@ def app():
                 fid_key='properties.adm0_a3'
 
             # read geojson ne_110m_admin_0_countries.geojson: 110m resolution geojson from http://geojson.xyz/ based on Natural Earth Data            
-            if platform.system() == "Windows":
-                geojson_file =(cwd + "\\default data\\ne_110m_admin_0_countries.geojson")
-            if platform.system() == "Darwin":
-                geojson_file =(cwd + "/default data/ne_110m_admin_0_countries.geojson")
+            
+            geojson_file =("/default data/ne_110m_admin_0_countries.geojson")
             geojson_handle = open(geojson_file, )
             geojson = json.load(geojson_handle)
             geojson_handle.close()
