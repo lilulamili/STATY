@@ -59,9 +59,9 @@ def app():
             st.sidebar.success('Loading data... done!')
         elif uploaded_data is None:
             
-            df = pd.read_csv("/default data/Happy.csv", sep = ";|,|\t",engine='python')
+            df = pd.read_csv("default data/Happy.csv", sep = ";|,|\t",engine='python')
     else:        
-        df = pd.read_csv("/default data/Happy.csv", sep = ";|,|\t",engine='python')
+        df = pd.read_csv("default data/Happy.csv", sep = ";|,|\t",engine='python')
     
     st.sidebar.markdown("")
         
