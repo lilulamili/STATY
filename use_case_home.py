@@ -232,7 +232,7 @@ def app():
     st.write("To get started, open the menu on the left, or check the intro video!")
     
     
-    staty_video =open("default data/staty_web.mp4", 'rb')        
+    staty_video =open("default data/Staty_web.mp4", 'rb')        
     staty_video_bytes=staty_video.read()
     st.video(staty_video_bytes)
     #st.caption("Music by Sophonic Media, http://instrumentalsfree.com")
