@@ -40,14 +40,17 @@ from PIL import Image
 # Working directory
 if platform.system() == "Windows":
     cwd = os.getcwd()
+    staty_favi = os.getcwd() + "\\default data\\staty_icon.ico"
 if platform.system() == "Darwin":
     cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
+    staty_favi = os.getcwd() + "/default data/staty_icon.ico"
 
 
 
 # Define page setting
 st.set_page_config(
     page_title = "STATY",
+    page_icon = staty_favi,
     layout = "centered",
     initial_sidebar_state = "collapsed",
 )   
@@ -80,7 +83,6 @@ components.html("""
 
 
 st.markdown("Your data can tell great stories! Let STATY do all data the juggling for you, and focus your attention on the outcomes of powerful models.")
-#st.markdown("You don’t need any programming skills to get started - STATY will do data mining and machine learning for you, present you great visualisations of your data and will boost your curiosity to explore more. ")
 st.sidebar.title("Menu")
 
 

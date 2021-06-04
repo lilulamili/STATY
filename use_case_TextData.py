@@ -251,68 +251,7 @@ def app():
                     stock_dataToplot2=stock_df[stock_para2]
                     st.line_chart(stock_dataToplot2)        
 
-        dev_expander_perfextra = st.beta_expander("Check additional stock info")
-        with dev_expander_perfextra:
-                
-                #checkbox to display stock actions for the searched ticker
-                actions = st.checkbox("Stock Actions")
-                if actions:
-                    st.subheader("""Stock **actions** for """ + selected_stock)
-                    display_action = (stock_data.actions)
-                    if display_action.empty == True:
-                        st.write("No data available at the moment")
-                    else:
-                        st.write(display_action)
-                
-                #checkbox to display quarterly financials for the searched ticker
-                financials = st.checkbox("Quarterly Financials")
-                if financials:
-                    st.subheader("""**Quarterly financials** for """ + selected_stock)
-                    display_financials = (stock_data.quarterly_financials)
-                    if display_financials.empty == True:
-                        st.write("No data available at the moment")
-                    else:
-                        st.write(display_financials)
-
-                #checkbox to display list of institutional shareholders for searched ticker
-                major_shareholders = st.checkbox("Institutional Shareholders")
-                if major_shareholders:
-                    st.subheader("""**Institutional investors** for """ + selected_stock)
-                    display_shareholders = (stock_data.institutional_holders)
-                    if display_shareholders.empty == True:
-                        st.write("No data available at the moment")
-                    else:
-                        st.write(display_shareholders)
-
-                #checkbox to display quarterly balance sheet for searched ticker
-                balance_sheet = st.checkbox("Quarterly Balance Sheet")
-                if balance_sheet:
-                    st.subheader("""**Quarterly balance sheet** for """ + selected_stock)
-                    display_balancesheet = (stock_data.quarterly_balance_sheet)
-                    if display_balancesheet.empty == True:
-                        st.write("No data available at the moment")
-                    else:
-                        st.write(display_balancesheet)
-
-                #checkbox to display quarterly cashflow for searched ticker
-                cashflow = st.checkbox("Quarterly Cashflow")
-                if cashflow:
-                    st.subheader("""**Quarterly cashflow** for """ + selected_stock)
-                    display_cashflow = (stock_data.quarterly_cashflow)
-                    if display_cashflow.empty == True:
-                        st.write("No data available at the moment")
-                    else:
-                        st.write(display_cashflow)
-
-                #checkbox to display quarterly earnings for searched ticker
-                earnings = st.checkbox("Quarterly Earnings")
-                if earnings:
-                    st.subheader("""**Quarterly earnings** for """ + selected_stock)
-                    display_earnings = (stock_data.quarterly_earnings)
-                    if display_earnings.empty == True:
-                        st.write("No data available at the moment")
-                    else:
-                        st.write(display_earnings)
+       
 
     if tw_classifier=='WordCloud':
         user_color=21  

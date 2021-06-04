@@ -248,7 +248,7 @@ def app():
     
     col1, col2 = st.beta_columns(2)
     with col1:
-        st.write("STATY is an ongoing educational project designed and developed by [Dr. Oskar Kärcher](mailto:o.kaercher@hs-osnabrueck.de?subject=Staty-App) and [Prof. Dr. Danijela Markovic-Bredthauer](mailto:d.markovic-bredthauer@hs-osnabrueck.de?subject=Staty-App) with the aim of improving data literacy among undergraduate and graduate students.")
+        st.write("STATY is an ongoing educational project designed and developed by [Oskar Kärcher](mailto:o.kaercher@hs-osnabrueck.de?subject=Staty-App) and [Danijela Markovic](mailto:d.markovic-bredthauer@hs-osnabrueck.de?subject=Staty-App) with the aim of improving data literacy among undergraduate and graduate students.")
 
     if sett_theme == "Dark":
         image = Image.open(cwd + "/default data/HS-OS-Logo_dark.png")
