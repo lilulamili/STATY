@@ -248,8 +248,10 @@ def app():
         image = Image.open("default data/HS-OS-Logo_light.png")
     with col2:
         st.image(image)
-
     
+    st.markdown("")
+    st.markdown("")
+    st.write("STATY and the related tools and data are provided for educational purposes only. Note, the project is still under development, and some features may still not work properly!")
     
     
 
