@@ -45,7 +45,7 @@ if platform.system() == "Darwin":
     cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
     staty_favi = os.getcwd() + "/default data/staty_icon.ico"
 
-
+staty_favi = "/default data/staty_icon.ico"
 
 # Define page setting
 st.set_page_config(
