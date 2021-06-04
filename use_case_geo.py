@@ -38,7 +38,7 @@ def app():
             if len(df)<4:
                 small_dataset_error ="The sample is so small that you should better use a pocket calculator as the learning effect will be larger!"
         elif uploaded_data is None:            
-            df = pd.read_csv("\\default data\\WHR_2021.csv", sep = ";|,|\t",engine='python')
+            df = pd.read_csv("default data/WHR_2021.csv", sep = ";|,|\t",engine='python')
            
     else:        
         df = pd.read_csv("default data/WHR_2021.csv", sep = ";|,|\t",engine='python')
