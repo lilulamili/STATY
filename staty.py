@@ -37,13 +37,6 @@ from PIL import Image
 # PAGE CONFIG #
 ###############
 
-# Working directory
-if platform.system() == "Windows":
-    cwd = os.getcwd()
-    staty_favi = os.getcwd() + "\\default data\\staty_icon.ico"
-if platform.system() == "Darwin":
-    cwd = str(os.path.abspath(os.path.dirname(sys.argv[0])))
-    staty_favi = os.getcwd() + "/default data/staty_icon.ico"
 
 staty_favi = "/default data/staty_icon.ico"
 
