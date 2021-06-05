@@ -302,7 +302,7 @@ def app():
                 
                 wordcount= pd.DataFrame(WordCloud().process_text(document),index=[0])
                 if st.checkbox('Show a word count', value = False): 
-                    st.table(wordcount)    
+                    st.write(wordcount)    
                 word_sorted=wordcount.sort_values(by=0, axis=1, ascending=False)
                 word_stopwords=st.multiselect("Remove words from wordcloud", word_sorted.columns)
                 
@@ -310,7 +310,8 @@ def app():
                 if run_wp:
                     wordcloud = WordCloud(background_color="white",
                         contour_color="white",max_words=100,stopwords=word_stopwords,
-                        width=600,height=400,color_func=random_color_func).generate(document)  
+                        width=600,height=400,color_func=random_color_func).generate_from_frequencies(document)  
+                    
                     fig_wp, ax = plt.subplots()
                     ax=plt.imshow(wordcloud, interpolation='bilinear')
                     plt.axis("off")                           
