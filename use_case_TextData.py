@@ -310,7 +310,7 @@ def app():
                 if run_wp:
                     wordcloud = WordCloud(background_color="white",
                         contour_color="white",max_words=100,stopwords=word_stopwords,
-                        width=600,height=400,color_func=random_color_func).generate_from_frequencies(document)  
+                        width=600,height=400,color_func=random_color_func).generate(document)  
                     
                     fig_wp, ax = plt.subplots()
                     ax=plt.imshow(wordcloud, interpolation='bilinear')
