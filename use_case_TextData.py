@@ -302,7 +302,7 @@ def app():
                 
                 wordcount= pd.DataFrame(WordCloud().process_text(document),index=[0])
                 if st.checkbox('Show a word count', value = False): 
-                    st.write(wordcount)    
+                    st.table(wordcount)    
                 word_sorted=wordcount.sort_values(by=0, axis=1, ascending=False)
                 word_stopwords=st.multiselect("Remove words from wordcloud", word_sorted.columns)
                 
