@@ -1,6 +1,6 @@
 [global]
 developmentMode = false
-showErrorDetails = true
+
 [server]
 port = 8501
 
