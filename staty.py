@@ -114,7 +114,7 @@ st.sidebar.markdown("We‘d love to hear your [feedback] (https://qfreeaccountss
 st.sidebar.markdown("Report a [bug] (https://drive.google.com/file/d/1iDLJMyYxwRGXtpQUj6H1Ose5DJ0AnICj/view?usp=sharing)!")
 
 st.sidebar.markdown("")
-st.sidebar.markdown("Your :rocket: to data science! Licensed under the [Apache License, Version 2.0] (https://www.apache.org/licenses/LICENSE-2.0.html)")
+st.sidebar.markdown("Your :rocket: to data science! \n Licensed under the [Apache License, Version 2.0] (https://www.apache.org/licenses/LICENSE-2.0.html)")
 
  
 
