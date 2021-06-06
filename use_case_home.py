@@ -240,7 +240,7 @@ def app():
     
     col1, col2 = st.beta_columns(2)
     with col1:
-        st.write("STATY is an ongoing educational project designed and developed by [Oskar Kärcher](mailto:o.kaercher@hs-osnabrueck.de?subject=Staty-App) and [Danijela Markovic](mailto:d.markovic-bredthauer@hs-osnabrueck.de?subject=Staty-App) with the aim of improving data literacy among undergraduate and graduate students.")
+        st.write("STATY is an ongoing educational project designed and developed by [Oskar Kärcher](mailto:o.kaercher@hs-osnabrueck.de?subject=Staty-App) and [Danijela Markovic](mailto:d.markovic-bredthauer@hs-osnabrueck.de?subject=Staty-App) with the aim of improving data literacy among undergraduate and graduate students. The project is still under development, and some features may not yet work properly!")
 
     if sett_theme == "Dark":
         image = Image.open("default data/HS-OS-Logo_dark.png")
@@ -251,7 +251,7 @@ def app():
     
     st.markdown("")
     st.markdown("")
-    st.write("Disclaimer: STATY and the related tools and data are provided for educational purposes only. Note, the project is still under development, and some features may not yet work properly! \n  Licensed under the [Apache License, Version 2.0] (https://www.apache.org/licenses/LICENSE-2.0.html).")
+  #  st.write("Disclaimer: STATY and the related tools and data are provided for educational purposes only. Note, the project is still under development, and some features may not yet work properly! \n  Licensed under the [Apache License, Version 2.0] (https://www.apache.org/licenses/LICENSE-2.0.html).")
     
     
 
