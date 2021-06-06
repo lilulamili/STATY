@@ -48,7 +48,7 @@ st.set_page_config(
     page_icon = staty_favi,
     layout = "centered",
     initial_sidebar_state = "collapsed",
-    client.showTracebacks=True,
+    
 )   
 
 hide_footer_style = """
