@@ -3,6 +3,10 @@
 [server]
 port = 8501
 
+[logger]
+level = "debug"
+
+
 [client]
 showErrorDetails = true
 
