@@ -4,6 +4,9 @@ developmentMode = false
 [server]
 port = 8501
 
+[client]
+showErrorDetails = true
+
 [theme]
 primaryColor="#38bcf0"
 backgroundColor="#FFFFFF"
