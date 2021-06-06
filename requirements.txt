@@ -17,6 +17,7 @@ scipy
 statsmodels
 seaborn
 sklearn
+scikit-learn==0.23.2
 scikit-optimize
 streamlit
 tqdm
