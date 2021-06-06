@@ -1,8 +1,8 @@
-[global]
-developmentMode = false
+#[global]
+#developmentMode = false
 
-#[server]
-#port = 8501
+[server]
+port = 8501
 
 [client]
 showErrorDetails = true
