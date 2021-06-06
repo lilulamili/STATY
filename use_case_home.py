@@ -250,8 +250,7 @@ def app():
         st.image(image)
     
     st.markdown("")
-    st.markdown("")
-    st.write("The project is still under development, and some features may not yet work properly!")
+    st.write("STATY is still under development, and some features may not yet work properly!")
   #  st.write("Disclaimer: STATY and the related tools and data are provided for educational purposes only. Note, the project is still under development, and some features may not yet work properly! \n  Licensed under the [Apache License, Version 2.0] (https://www.apache.org/licenses/LICENSE-2.0.html).")
     
     
