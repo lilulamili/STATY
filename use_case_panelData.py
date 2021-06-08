@@ -52,7 +52,7 @@ def app():
     
     # File upload section
     df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"])
-
+    uploaded_data = None
     if df_dec == "Upload data":
         #st.subheader("Upload your data")
         uploaded_data = st.sidebar.file_uploader("", type=["csv", "txt"])
@@ -175,6 +175,36 @@ def app():
             dev_expander_dsPre = st.beta_expander("Explore raw panel data", expanded = False)
             st.empty()
             with dev_expander_dsPre:
+                # Default data description:
+                if uploaded_data == None:
+                    if st.checkbox("Show data description", value = False, key = session_state.id):          
+                        st.markdown("**Data source:**")
+                        st.markdown("This is the original 11-firm data set from Grunfeld’s Ph.D. thesis (*Grunfeld, 1958, The Determinants of Corporate Investment, Departmentof Economics, University of Chicago*). For more details see online complements for the article [The Grunfeld Data at 50] (https://www.zeileis.org/grunfeld/).")
+                        st.markdown("**Citation:**")
+                        st.markdown("Kleiber C, Zeileis A (2010). “The Grunfeld Data at 50,” German Economic Review, 11(4), 404-417. [doi:10.1111/j.1468-0475.2010.00513.x] (https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1468-0475.2010.00513.x)")
+                        st.markdown("**Variables in the dataset:**")
+
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("invest")
+                        col2.write("Gross  investment,  defined  as  additions  to  plant  and  equipment  plusmaintenance and repairs in millions of dollars deflated by the implicitprice deflator of producers’ durable equipment (base 1947).")
+                        
+                        col1,col2=st.beta_columns(2)
+                        col1.write("value")
+                        col2.write("Market  value  of  the  firm,  defined  as  the  price  of  common  shares  atDecember 31 (or, for WH, IBM and CH, the average price of Decem-ber  31  and  January  31  of  the  following  year)  times  the  number  ofcommon shares outstanding plus price of preferred shares at Decem-ber 31 (or average price of December 31 and January 31 of the followingyear) times number of preferred shares plus total book value of debt atDecember 31 in millions of dollars deflated by the implicit GNP pricedeflator (base 1947).")
+                        
+                        col1,col2=st.beta_columns(2)
+                        col1.write("capital")
+                        col2.write("Stock of plant and equipment, defined as the accumulated sum of netadditions to plant and equipment deflated by the implicit price defla-tor for producers’ durable equipment (base 1947) minus depreciationallowance deflated by depreciation expense deflator (10 years movingaverage  of  wholesale  price  index  of  metals  and  metal  products,  base1947).")
+
+                        col1,col2=st.beta_columns(2)
+                        col1.write("firm")
+                        col2.write("General Motors (GM), US Steel (US), General Electric (GE), Chrysler(CH),  Atlantic  Refining  (AR),  IBM,  Union  Oil  (UO),  Westinghouse(WH), Goodyear (GY), Diamond Match (DM), American Steel (AS).")
+
+                        col1,col2=st.beta_columns(2)
+                        col1.write("year")
+                        col2.write("Year ranging from 1935 to 1954.")
+                        st.markdown("")
+
                 # Show raw data & data info
                 df_summary = fc.data_summary(df) 
                 if st.checkbox("Show raw data", value = False, key = session_state.id):      

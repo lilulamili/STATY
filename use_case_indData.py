@@ -50,7 +50,7 @@ def app():
 
     # File upload section
     df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"])
-
+    uploaded_data = None
     if df_dec == "Upload data":
         #st.subheader("Upload your data")
         uploaded_data = st.sidebar.file_uploader("", type=["csv", "txt"])
@@ -59,9 +59,9 @@ def app():
             st.sidebar.success('Loading data... done!')
         elif uploaded_data is None:
             
-            df = pd.read_csv("default data/Happy.csv", sep = ";|,|\t",engine='python')
+            df = pd.read_csv("default data/WHR_2021.csv", sep = ";|,|\t",engine='python')
     else:        
-        df = pd.read_csv("default data/Happy.csv", sep = ";|,|\t",engine='python')
+        df = pd.read_csv("default data/WHR_2021.csv", sep = ";|,|\t",engine='python')
     
     st.sidebar.markdown("")
         
@@ -144,6 +144,61 @@ def app():
 
         dev_expander_dsPre = st.beta_expander("Explore raw data ", expanded = False)
         with dev_expander_dsPre:
+
+            # Default data description:
+            if uploaded_data == None:
+                if st.checkbox("Show data description", value = False, key = session_state.id):          
+                    st.markdown("**Data source:**")
+                    st.markdown("The data come from the Gallup World Poll surveys from 2018 to 2020. For more details see the [World Happiness Report 2021] (https://worldhappiness.report/).")
+                    st.markdown("**Citation:**")
+                    st.markdown("Helliwell, John F., Richard Layard, Jeffrey Sachs, and Jan-Emmanuel De Neve, eds. 2021. World Happiness Report 2021. New York: Sustainable Development Solutions Network.")
+                    st.markdown("**Variables in the dataset:**")
+
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("Country")
+                    col2.write("country name")
+                    
+                    col1,col2=st.beta_columns(2)
+                    col1.write("Year ")
+                    col2.write("year ranging from 2005 to 2020")
+                    
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("Ladder")
+                    col2.write("happiness  score  or  subjective  well-being with the best possible life being a 10, and the worst possible life being a 0")
+                    
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("Log GDP per capita")
+                    col2.write("in purchasing power parity at  constant  2017  international  dollar  prices")
+                    
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("Social support")
+                    col2.write("the national average of the binary responses (either 0 or 1) to the question regarding relatives or friends to count on")
+                    
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("Healthy life expectancy at birth")
+                    col2.write("based on  the  data  extracted  from  the  World  Health  Organization’s  Global Health Observatory data repository")
+                   
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("Freedom to make life choices")
+                    col2.write("national average of responses to the corresponding question")
+
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("Generosity")
+                    col2.write("residual of regressing national average of response to the question rerading money donations in the past month on GDPper capita")
+
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("Perceptions of corruption")
+                    col2.write("the national average of the survey responses to the coresponding question")
+                    
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("Positive affect")
+                    col2.write("the  average  of  three  positive  affect  measures (happiness,  laugh  and  enjoyment)")
+                    
+                    col1,col2=st.beta_columns(2)
+                    col1.write("Negative affectt (worry, sadness and anger)")
+                    col2.write("the  average  of  three  negative  affect  measures  (worry, sadness and anger)")
+
+                    st.markdown("")
 
             # Show raw data & data info
             df_summary = fc.data_summary(df) 
@@ -907,8 +962,8 @@ def app():
                             st.write("")
                             
                             if run_models:
-
-                                #Hyperparameter tuning 
+                                df=df.dropna() # just to make sure that NAs are out!
+                                #Hyperparameter   
                                 if do_hypTune == "Yes":
 
                                     # Tuning

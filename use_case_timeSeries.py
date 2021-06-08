@@ -37,7 +37,7 @@ def app():
 
     # File upload section
     df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"])
-
+    uploaded_data = None
     if df_dec == "Upload data":
         #st.subheader("Upload your data")
         uploaded_data = st.sidebar.file_uploader("", type=["csv", "txt"])
@@ -45,9 +45,9 @@ def app():
             df = pd.read_csv(uploaded_data, sep = ";|,|\t",engine='python')
             st.sidebar.success('Loading data... done!')
         elif uploaded_data is None:
-           df = pd.read_csv("default data/xrate.csv", sep = ";|,|\t",engine='python')
+           df = pd.read_csv("default data/Air_passengers.csv", sep = ";|,|\t",engine='python')
     else:
-        df = pd.read_csv("default data/xrate.csv", sep = ";|,|\t",engine='python')
+        df = pd.read_csv("default data/Air_passengers.csv", sep = ";|,|\t",engine='python')
     st.sidebar.markdown("")
      
     #Basic data info
@@ -114,7 +114,27 @@ def app():
 
         ts_expander_raw = st.beta_expander("Explore raw data")
         with ts_expander_raw:
+            # Default data description:
+            if uploaded_data == None:
+                if st.checkbox("Show data description", value = False, key = session_state.id):          
+                    st.markdown("**Data source:**")
+                    st.markdown("The data come from Box & Jenkins (1970), but we use the version that is integrated in the R package ['astsa'] (https://www.stat.pitt.edu/stoffer/tsa4/ ) which is a companion to the book ['Time Series Analysis and Its Applications'] (https://www.springer.com/de/book/9783319524511) by Shumway & Stoffer's (2017)  .")
+                                       
+                    st.markdown("**Citation:**")
+                    st.markdown("Box, G.E.P. and G.M. Jenkins (1970).Time Series Analysis, Forecasting, and Control. Oakland,CA: Holden-Day")
+                    st.markdown("Shumway, R.H, and D.S. Stoffer (2017) Time Series Analysis and Its Applications: With R Examples. New York: Springer")
+                    
+                    st.markdown("**Variables in the dataset:**")
 
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("Air passengers")
+                    col2.write("The monthly totals of international airline passengers")
+                    
+                    col1,col2=st.beta_columns(2)
+                    col1.write("Date ")
+                    col2.write("Month ranging from January 1949 to December 1960")
+                    
+                    st.markdown("")
             # Show raw data & data info
             df_summary = fc.data_summary(df) 
             if st.checkbox("Show raw time series data", value = False, key = session_state.id):      

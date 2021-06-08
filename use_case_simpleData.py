@@ -55,7 +55,7 @@ def app():
 
     # File upload section
     df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"])
-
+    uploaded_data=None
     if df_dec == "Upload data":
         #st.subheader("Upload your data")
         uploaded_data = st.sidebar.file_uploader("", type=["csv", "txt"])
@@ -63,9 +63,9 @@ def app():
             df = pd.read_csv(uploaded_data, sep = ";|,|\t",engine='python')
             st.sidebar.success('Loading data... done!')
         elif uploaded_data is None:
-           df = pd.read_csv("default data/social.csv", sep = ";|,|\t",engine='python')
+           df = pd.read_csv("default data/savings.csv", sep = ";|,|\t",engine='python')
     else:
-        df = pd.read_csv("default data/social.csv", sep = ";|,|\t",engine='python') 
+        df = pd.read_csv("default data/savings.csv", sep = ";|,|\t",engine='python') 
     st.sidebar.markdown("")
      
     #Basic data info
@@ -136,6 +136,71 @@ def app():
 
         dev_expander_raw = st.beta_expander("Explore raw data", expanded = False)
         with dev_expander_raw:
+            # Default data description:
+            if uploaded_data == None:
+                if st.checkbox("Show data description", value = False, key = session_state.id):          
+                    st.markdown("**Data source:**")
+                    st.markdown("The data come from the World Bank's study on [financial intermediation and growth] (https://datacatalog.worldbank.org/dataset/wps2059-finance-and-sources-growth-and-financial-intermediation-and-growth). ")
+                    
+                    st.markdown("**Citation:**")
+                    st.markdown(" Levine, Ross; Loayza, Norman; Beck, Thorsten.1999. Financial intermediation and growth : Causality and causes (English). Policy, Research working paper ; no. WPS 2059 Washington, D.C. : World Bank Group. ")
+                    
+                    st.markdown("**Variables in the dataset:**")
+                    st.write("*The term 'period average' relates to the period 1970-1995.*")
+                    col1,col2=st.beta_columns(2) 
+                    col1.write("UrbanPopulation")
+                    col2.write("Share of urban population")
+                    
+                    col1,col2=st.beta_columns(2)
+                    col1.write("PrivateSaving")
+                    col2.write("Private saving rate as the ratio of gross private savings and GPDI")
+                    
+                    col1,col2=st.beta_columns(2)	
+                    col1.write("logGDPI")
+                    col2.write("Log of real per capita GPDI")
+
+                    col1,col2=st.beta_columns(2)
+                    col1.write("GrowtRate")
+                    col2.write("Growth rate of real GPDI")
+
+                    col1,col2=st.beta_columns(2)
+                    col1.write("GovermentSaving")
+                    col2.write("Government saving as share of real GDP")
+
+                    col1,col2=st.beta_columns(2)
+                    col1.write("LogTermsTrade")
+                    col2.write("Log of terms of trade")
+
+                    col1,col2=st.beta_columns(2)
+                    col1.write("OlderThan65")
+                    col2.write("Share of population over 65 in total population")
+
+                    col1,col2=st.beta_columns(2)
+                    col1.write("Under15")
+                    col2.write("Share of population under 15 in total population")
+
+                    col1,col2=st.beta_columns(2)
+                    col1.write("CommercialCentralBank")
+                    col2.write("Commercial-Central Bank, period average")
+
+                    col1,col2=st.beta_columns(2)
+                    col1.write("LiquidLiabilities")
+                    col2.write("Liquid Liabilities, period average")
+
+                    col1,col2=st.beta_columns(2)
+                    col1.write("PrivateCredit")
+                    col2.write("Private Credit, period average")
+
+                    col1,col2=st.beta_columns(2)
+                    col1.write("BankCredit")
+                    col2.write("Bank credit, period average")
+
+                    col1,col2=st.beta_columns(2)
+                    col1.write("LegalOrigin")
+                    col2.write("English, French, German or Scandinavian")
+
+
+                    st.markdown("")
 
             # Show raw data & data info
             df_summary = fc.data_summary(df) 
