@@ -1015,11 +1015,12 @@ def app():
                     transf_cols.append([column])
 
             
-            if len(non_trans_cols)<len(df_cor.columns):
-                #st.info("All columns except " + str(non_trans_cols.values) + " are factorized to enable regression analysis!")    
+            if len(non_trans_cols)<len(df_cor.columns):                
                 if transf_cols !=None:
-                    st.info('Please note, non-numerical variables are factorized to enable regression analysis (i.e., automatically transformed to numerical variables)! The factorized variables are: ' + str(transf_cols)) 
-            listOfAllColumns = df_cor.columns.to_list()   
+                    #st.info('Please note, non-numerical variables are factorized to enable regression analysis! The factorized variables are: ' + str(transf_cols)) 
+                    st.info('Note, there are non-numerical variables in your dataset: ' + str(transf_cols)) 
+            #listOfAllColumns = df_cor.columns.to_list()   
+            listOfAllColumns = non_trans_cols.to_list()             
             cor_sel_var=st.multiselect("Select variabes for correlation analysis",listOfAllColumns, listOfAllColumns, key = session_state.id)
             cor_methods=['Pearson', 'Kendall', 'Spearman']
             cor_method=st.selectbox("Select the method",cor_methods, key = session_state.id)
@@ -1031,7 +1032,8 @@ def app():
                 sel_method='spearman'    
 
             if st.checkbox("Show data for correlation analysis", value = False, key = session_state.id):        
-                st.write(df_cor)
+                st.write(df_cor[cor_sel_var])
+                
             st.write("")
             st.write("")    
 
