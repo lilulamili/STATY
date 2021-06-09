@@ -78,7 +78,7 @@ components.html("""
 )
 
 
-st.markdown("Your data can tell great stories! Let STATY do all data the juggling for you, and focus your attention on the outcomes of powerful models.")
+st.markdown("Your data can tell great stories! Let STATY do all the data juggling for you, and focus your attention on the outcomes of powerful models.")
 st.sidebar.title("Menu")
 
 
