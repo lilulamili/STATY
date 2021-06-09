@@ -677,7 +677,7 @@ def app():
                 elif np.where(df[response_var].isnull())[0].size > 0:
                     response_var_message_na = "ERROR: Please select a response variable without NAs or delete/replace rows with NAs in data processing preferences!"
                 elif var_cat.loc[response_var] == "categorical":
-                    response_var_message_cat = "WARNING: Categorical variable is treated as continuous variable!"
+                    response_var_message_cat = "WARNING: Non-continuous variables are treated as continuous!"
                 
                 if response_var_message_num != False:
                     st.error(response_var_message_num)
