@@ -962,7 +962,7 @@ def app():
                             st.write("")
                             
                             if run_models:
-                                df=df.dropna() # just to make sure that NAs are out!
+                                
                                 #Hyperparameter   
                                 if do_hypTune == "Yes":
 
