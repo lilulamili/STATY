@@ -580,8 +580,8 @@ def app():
                 
                 fig = px.scatter(x=df[x_var], y=df[y_var], color_discrete_sequence=['rgba(55, 126, 184, 0.7)'])
                 fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',}) 
-                fig.update_layout(xaxis=dict(title=y_var, titlefont_size=12, tickfont_size=14,),)
-                fig.update_layout(yaxis=dict(title=x_var, titlefont_size=12, tickfont_size=14,),)
+                fig.update_layout(xaxis=dict(title=x_var, titlefont_size=12, tickfont_size=14,),)
+                fig.update_layout(yaxis=dict(title=y_var, titlefont_size=12, tickfont_size=14,),)
                 st.plotly_chart(fig,use_container_width=True) 
                 
                 if sett_hints:
