@@ -54,11 +54,17 @@ def theme_func_dark():
     section[data-testid*="stSidebar"] > div > div > div > div {{
         background-color: rgb(49, 51, 63);
     }}
+    section[data-testid*="stSidebar"] > div > div > div > div > div > ul > li > div > div > div {{
+        background-color: rgb(49, 51, 63);
+    }}
     section[data-testid*="stSidebar"] > div > button {{
         background-color: rgb(38, 40, 43);
     }}
     section[data-testid*="stSidebar"] > div > div > button {{
         color: white;
+    }}
+    div[data-testid*="stFileUploader"] > label {{
+        color: white !important;
     }}
     div[data-testid*="stMarkdownContainer"] > h1 {{
         color: white;
@@ -204,6 +210,43 @@ def theme_func_light():
     }}
     </style> 
     
+    """,
+        unsafe_allow_html=True,
+    )
+
+#----------------------------------------------------------------------------------------------
+#FUNCTION FOR DOWNLOAD BUTTON THEME
+
+def theme_func_dl_button():
+    st.markdown(
+        f"""
+    <style>
+    #button_dl {{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgb(255, 255, 255);
+        color: rgb(38, 39, 48) !important;
+        padding: .25rem .75rem;
+        margin: 0px;
+        position: relative;
+        text-decoration: none;
+        border-radius: 0.25rem;
+        border-width: 1px;
+        border-style: solid;
+        border-color: rgb(230, 234, 241);
+        border-image: initial;
+    }} 
+    #button_dl:hover {{
+        border-color: #38bcf0;
+        color: #38bcf0 !important;
+    }}
+    #button_dl:active {{
+        box-shadow: none;
+        background-color: #38bcf0;
+        color: white;
+        }}
+    </style>
     """,
         unsafe_allow_html=True,
     )
@@ -769,6 +812,34 @@ def var_transform_numCat(data, var_list):
     return data
 
 #---------------------------------------------------------------------------------------------
+#FUNCTION FOR VARIABLE MULTIPLICATION
+
+def var_transform_mult(data, var_1, var_2):
+
+    # transform only if numeric     
+    if data[var_1].dtypes == "float64" or data[var_1].dtypes == "int64" or data[var_1].dtypes == "float32" or data[var_1].dtypes == "int32":
+        if data[var_2].dtypes == "float64" or data[var_2].dtypes == "int64" or data[var_2].dtypes == "float32" or data[var_2].dtypes == "int32":
+            new_var_name = "mult_" + var_1 + "_" + var_2
+            new_var = data[var_1]*data[var_2]
+            data[new_var_name] = new_var 
+
+    return data
+
+#---------------------------------------------------------------------------------------------
+#FUNCTION FOR VARIABLE DIVISION
+
+def var_transform_div(data, var_1, var_2):
+
+    # transform only if numeric     
+    if data[var_1].dtypes == "float64" or data[var_1].dtypes == "int64" or data[var_1].dtypes == "float32" or data[var_1].dtypes == "int32":
+        if data[var_2].dtypes == "float64" or data[var_2].dtypes == "int64" or data[var_2].dtypes == "float32" or data[var_2].dtypes == "int32":
+            new_var_name = "div_" + var_1 + "_" + var_2
+            new_var = data[var_1]/data[var_2]
+            data[new_var_name] = new_var 
+
+    return data
+
+#---------------------------------------------------------------------------------------------
 #FUNCTION FOR COMBINED DATA SUMMARY
 
 def data_summary(data):
@@ -1016,17 +1087,17 @@ def regression_models(X_ini, Y_ini, expl_var,reg_technique,poly_order):
 
     # ANOVA
     mlr_reg_anova.loc["Regression"]["DF"] = full_model_fit.df_model
-    mlr_reg_anova.loc["Regression"]["SS"] = full_model_fit.ess
-    mlr_reg_anova.loc["Regression"]["MS"] = full_model_fit.ess/full_model_fit.df_model
-    mlr_reg_anova.loc["Regression"]["F-statistic"] = full_model_fit.fvalue
-    mlr_reg_anova.loc["Regression"]["p-value"] = full_model_fit.f_pvalue
+    mlr_reg_anova.loc["Regression"]["SS"] = (full_model_fit.ess).round(4)
+    mlr_reg_anova.loc["Regression"]["MS"] = (full_model_fit.ess/full_model_fit.df_model).round(4)
+    mlr_reg_anova.loc["Regression"]["F-statistic"] = (full_model_fit.fvalue).round(4)
+    mlr_reg_anova.loc["Regression"]["p-value"] = (full_model_fit.f_pvalue).round(4)
     mlr_reg_anova.loc["Residual"]["DF"] = full_model_fit.df_resid
-    mlr_reg_anova.loc["Residual"]["SS"] = full_model_fit.ssr
-    mlr_reg_anova.loc["Residual"]["MS"] = full_model_fit.ssr/full_model_fit.df_resid
+    mlr_reg_anova.loc["Residual"]["SS"] = (full_model_fit.ssr).round(4)
+    mlr_reg_anova.loc["Residual"]["MS"] = (full_model_fit.ssr/full_model_fit.df_resid).round(4)
     mlr_reg_anova.loc["Residual"]["F-statistic"] = ""
     mlr_reg_anova.loc["Residual"]["p-value"] = ""
     mlr_reg_anova.loc["Total"]["DF"] = full_model_fit.df_resid + full_model_fit.df_model
-    mlr_reg_anova.loc["Total"]["SS"] = full_model_fit.ssr + full_model_fit.ess
+    mlr_reg_anova.loc["Total"]["SS"] = (full_model_fit.ssr + full_model_fit.ess).round(4)
     mlr_reg_anova.loc["Total"]["MS"] = ""
     mlr_reg_anova.loc["Total"]["F-statistic"] = ""
     mlr_reg_anova.loc["Total"]["p-value"] = ""

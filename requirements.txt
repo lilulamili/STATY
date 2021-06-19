@@ -1,6 +1,8 @@
 altair
+base64
 bs4
 datetime
+io
 linearmodels
 matplotlib
 nltk
@@ -9,6 +11,7 @@ pandas
 plotly
 pmdarima
 pybase64
+pygam
 pysummarization
 pyquery
 regex
@@ -21,6 +24,7 @@ scikit-optimize
 streamlit
 tqdm
 wordcloud
+xlsxwriter
 yfinance
 
 

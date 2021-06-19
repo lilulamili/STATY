@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from streamlit.proto.RootContainer_pb2 import SIDEBAR
 import plotly as dd
 import plotly.express as px
 import seaborn as sns
@@ -17,6 +18,8 @@ from streamlit import caching
 import SessionState
 import sys
 import platform
+import base64
+from io import BytesIO
 
 import sklearn
 from sklearn.linear_model import LinearRegression
@@ -33,7 +36,8 @@ from scipy import stats
 from scipy.stats import chi2_contingency
 from scipy.stats import f
 from tqdm import tqdm
-
+from scipy.stats import t
+from scipy.stats import norm
 
 
 #----------------------------------------------------------------------------------------------
@@ -44,11 +48,13 @@ def app():
     caching.clear_cache()
 
     # Hide traceback in error messages (comment out for de-bugging)
-    sys.tracebacklimit = 0
+    #sys.tracebacklimit = 0
 
     # Show altair tooltip when full screen
     st.markdown('<style>#vg-tooltip-element{z-index: 1000051}</style>',unsafe_allow_html=True)
 
+    #Session state
+    session_state = SessionState.get(id = 0)
    
     #++++++++++++++++++++++++++++++++++++++++++++
     # DATA IMPORT
@@ -58,14 +64,50 @@ def app():
     uploaded_data=None
     if df_dec == "Upload data":
         #st.subheader("Upload your data")
-        uploaded_data = st.sidebar.file_uploader("", type=["csv", "txt"])
+        #uploaded_data = st.sidebar.file_uploader("Make sure that dot (.) is a decimal separator!", type=["csv", "txt"])
+        separator_expander=st.sidebar.beta_expander('Upload settings')
+        with separator_expander:
+                      
+            a4,a5=st.beta_columns(2)
+            with a4:
+                dec_sep=a4.selectbox("Decimal sep.",['.',','], key = session_state.id)
+
+            with a5:
+                col_sep=a5.selectbox("Column sep.",[';',  ','  , '|', '\s+','\t','other'], key = session_state.id)
+                if col_sep=='other':
+                    col_sep=st.text_input('Specify your column separator', key = session_state.id)     
+
+            a4,a5=st.beta_columns(2)  
+            with a4:    
+                thousands_sep=a4.selectbox("Thousands x sep.",[None,'.', ' ','\s+', 'other'], key = session_state.id)
+                if thousands_sep=='other':
+                    thousands_sep=st.text_input('Specify your thousands separator', key = session_state.id)  
+             
+            with a5:    
+                encoding_val=a5.selectbox("Encoding",[None,'utf_8','utf_8_sig','utf_16_le','cp1140','cp1250','cp1251','cp1252','cp1253','cp1254','other'], key = session_state.id)
+                if encoding_val=='other':
+                    encoding_val=st.text_input('Specify your encoding', key = session_state.id)  
+        
+        # Error handling for separator selection:
+        if dec_sep==col_sep: 
+            st.sidebar.error("Decimal and column separators cannot be identical!") 
+        elif dec_sep==thousands_sep:
+            st.sidebar.error("Decimal and thousands separators cannot be identical!") 
+        elif  col_sep==thousands_sep:
+            st.sidebar.error("Column and thousands separators cannot be identical!")    
+        
+        uploaded_data = st.sidebar.file_uploader("Default separators: decimal '.'    |     column  ';'", type=["csv", "txt"])
+        
         if uploaded_data is not None:
-            df = pd.read_csv(uploaded_data, sep = ";|,|\t",engine='python')
+            df = pd.read_csv(uploaded_data, decimal=dec_sep, sep = col_sep,thousands=thousands_sep,encoding=encoding_val, engine='python')
+            df_name=os.path.splitext(uploaded_data.name)[0]
             st.sidebar.success('Loading data... done!')
         elif uploaded_data is None:
            df = pd.read_csv("default data/savings.csv", sep = ";|,|\t",engine='python')
+           df_name="Savings" 
     else:
         df = pd.read_csv("default data/savings.csv", sep = ";|,|\t",engine='python') 
+        df_name="Savings" 
     st.sidebar.markdown("")
      
     #Basic data info
@@ -95,17 +137,18 @@ def app():
         fc.theme_func_dark()
     if sett_theme == "Light":
         fc.theme_func_light()
+    fc.theme_func_dl_button()
 
     #++++++++++++++++++++++++++++++++++++++++++++
     # RESET INPUT
 
     reset_clicked = st.sidebar.button("Reset all your input")
-    session_state = SessionState.get(id = 0)
+    #session_state = SessionState.get(id = 0)
     if reset_clicked:
         session_state.id = session_state.id + 1
     st.sidebar.markdown("")
     
-    #------------------------------------------------------------------------------------------
+    
 
     #++++++++++++++++++++++++++++++++++++++++++++
     # DATA EXPLORATION & VISUALIZATION
@@ -236,6 +279,23 @@ def app():
                 if sett_hints:
                     st.info(str(fc.learning_hints("de_summary_statistics")))
 
+            # Download link for exploration statistics
+                        
+            output = BytesIO()
+            excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+            df_summary["Variable types"].to_excel(excel_file, sheet_name="variable_info")
+            df_summary["ALL"].to_excel(excel_file, sheet_name="summary_statistics")
+            excel_file.save()
+            excel_file = output.getvalue()
+            b64 = base64.b64encode(excel_file)
+            dl_file_name = "Exploration statistics_univariate_" + df_name + ".xlsx"
+            st.markdown(
+                f"""
+            <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download exploration statistics</a>
+            """,
+            unsafe_allow_html=True)
+        
+        
         #++++++++++++++++++++++
         # DATA PROCESSING
 
@@ -262,6 +322,14 @@ def app():
 
                     st.markdown("**Data cleaning**")
 
+                    # Delete rows
+                    sb_DM_delRows = st.multiselect("Select rows to delete ", df.index, key = session_state.id)
+                    df = df.loc[~df.index.isin(sb_DM_delRows)]
+
+                    # Delete columns
+                    sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
+                    df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
+
                     # Delete duplicates if any exist
                     if df[df.duplicated()].shape[0] > 0:
                         sb_DM_delDup = st.selectbox("Delete duplicate rows ", ["No", "Yes"], key = session_state.id)
@@ -279,14 +347,6 @@ def app():
                             df = df.dropna()
                     elif n_rows_wNAs == 0: 
                         sb_DM_delRows_wNA = "No"   
-
-                    # Delete rows
-                    sb_DM_delRows = st.multiselect("Select rows to delete ", df.index, key = session_state.id)
-                    df = df.loc[~df.index.isin(sb_DM_delRows)]
-
-                    # Delete columns
-                    sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
-                    df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
 
                     # Filter data
                     st.markdown("**Data filtering**")
@@ -337,18 +397,82 @@ def app():
                     sb_DM_dTrans_norm = st.multiselect("Select columns for normalization ", transform_options, key = session_state.id)
                     if sb_DM_dTrans_norm is not None: 
                         df = fc.var_transform_norm(df, sb_DM_dTrans_norm)
-                    if df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] == 0:
-                        sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = session_state.id)
-                        if sb_DM_dTrans_numCat is not None: 
-                            df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
+                    sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = session_state.id)
+                    if sb_DM_dTrans_numCat:
+                        if not df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist(): 
+                            sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = session_state.id)
+                            if sb_DM_dTrans_numCat_sel:
+                                for var in sb_DM_dTrans_numCat_sel:
+                                    if df[var].unique().size > 5: 
+                                        st.error("ERROR: Selected variable has too many categories (>5): " + str(var))
+                                        return
+                                    else:
+                                        manual_cats = pd.DataFrame(index = range(0, df[var].unique().size), columns=["Value", "Cat"])
+                                        text = "Category for "
+                                        # Save manually selected categories
+                                        for i in range(0, df[var].unique().size):
+                                            text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
+                                            man_cat = st.number_input(text1, value = 0, min_value=0, key = session_state.id)
+                                            manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
+                                            manual_cats.loc[i]["Cat"] = man_cat
+                                        
+                                        new_var_name = "numCat_" + var
+                                        new_var = pd.DataFrame(index = df.index, columns = [new_var_name])
+                                        for c in df[var].index:
+                                            if pd.isnull(df[var][c]) == True:
+                                                new_var.loc[c, new_var_name] = np.nan
+                                            elif pd.isnull(df[var][c]) == False:
+                                                new_var.loc[c, new_var_name] = int(manual_cats[manual_cats["Value"] == df[var][c]]["Cat"])
+                                        df[new_var_name] = new_var.astype('int64')
+                                    # Exclude columns with manual categorization from standard categorization
+                                    numCat_wo_manCat = [var for var in sb_DM_dTrans_numCat if var not in sb_DM_dTrans_numCat_sel]
+                                    df = fc.var_transform_numCat(df, numCat_wo_manCat)
+                            else:
+                                df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
+                        else:
+                            col_with_na = df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist()
+                            st.error("ERROR: Please select columns without NAs: " + ', '.join(map(str,col_with_na)))
+                            return
                     else:
                         sb_DM_dTrans_numCat = None
+                    sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = session_state.id)
+                    if sb_DM_dTrans_mult != 0: 
+                        multiplication_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_mult), columns=["Var1", "Var2"])
+                        text = "Multiplication pair"
+                        for i in range(0, sb_DM_dTrans_mult):
+                            text1 = text + " " + str(i+1)
+                            text2 = text + " " + str(i+1) + " "
+                            mult_var1 = st.selectbox(text1, transform_options, key = session_state.id)
+                            mult_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                            multiplication_pairs.loc[i]["Var1"] = mult_var1
+                            multiplication_pairs.loc[i]["Var2"] = mult_var2
+                            fc.var_transform_mult(df, mult_var1, mult_var2)
+                    sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, key = session_state.id)
+                    if sb_DM_dTrans_div != 0:
+                        division_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_div), columns=["Var1", "Var2"]) 
+                        text = "Division pair"
+                        for i in range(0, sb_DM_dTrans_div):
+                            text1 = text + " " + str(i+1) + " (numerator)"
+                            text2 = text + " " + str(i+1) + " (denominator)"
+                            div_var1 = st.selectbox(text1, transform_options, key = session_state.id)
+                            div_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                            division_pairs.loc[i]["Var1"] = div_var1
+                            division_pairs.loc[i]["Var2"] = div_var2
+                            fc.var_transform_div(df, div_var1, div_var2)
             else:
                 with a1:
                     #--------------------------------------------------------------------------------------
                     # DATA CLEANING
 
                     st.markdown("**Data cleaning**")
+
+                    # Delete rows
+                    sb_DM_delRows = st.multiselect("Select rows to delete ", df.index, key = session_state.id)
+                    df = df.loc[~df.index.isin(sb_DM_delRows)]
+
+                    # Delete columns
+                    sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
+                    df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
 
                     # Delete duplicates if any exist
                     if df[df.duplicated()].shape[0] > 0:
@@ -368,16 +492,9 @@ def app():
                     elif n_rows_wNAs == 0: 
                         sb_DM_delRows_wNA = "No"   
 
-                    # Delete rows
-                    sb_DM_delRows = st.multiselect("Select rows to delete ", df.index, key = session_state.id)
-                    df = df.loc[~df.index.isin(sb_DM_delRows)]
-
-                    # Delete columns
-                    sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
-                    df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
-
                     # Filter data
                     st.markdown("**Data filtering**")
+                    
                     filter_var=st.selectbox('Filter your data by a variable...',  list('-')+ list(df.columns), key = session_state.id)
                     if filter_var !='-':
                         filter_vals=st.selectbox('Filter your data by a value...', (df[filter_var]).unique(), key = session_state.id)
@@ -406,12 +523,68 @@ def app():
                     sb_DM_dTrans_norm = st.multiselect("Select columns for normalization ", transform_options, key = session_state.id)
                     if sb_DM_dTrans_norm is not None: 
                         df = fc.var_transform_norm(df, sb_DM_dTrans_norm)
-                    if df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] == 0:
-                        sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = session_state.id)
-                        if sb_DM_dTrans_numCat is not None: 
-                            df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
+                    sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = session_state.id)
+                    if sb_DM_dTrans_numCat:
+                        if not df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist(): 
+                            sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = session_state.id)
+                            if sb_DM_dTrans_numCat_sel:
+                                for var in sb_DM_dTrans_numCat_sel:
+                                    if df[var].unique().size > 5: 
+                                        st.error("ERROR: Selected variable has too many categories (>5): " + str(var))
+                                        return
+                                    else:
+                                        manual_cats = pd.DataFrame(index = range(0, df[var].unique().size), columns=["Value", "Cat"])
+                                        text = "Category for "
+                                        # Save manually selected categories
+                                        for i in range(0, df[var].unique().size):
+                                            text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
+                                            man_cat = st.number_input(text1, value = 0, min_value=0, key = session_state.id)
+                                            manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
+                                            manual_cats.loc[i]["Cat"] = man_cat
+                                        
+                                        new_var_name = "numCat_" + var
+                                        new_var = pd.DataFrame(index = df.index, columns = [new_var_name])
+                                        for c in df[var].index:
+                                            if pd.isnull(df[var][c]) == True:
+                                                new_var.loc[c, new_var_name] = np.nan
+                                            elif pd.isnull(df[var][c]) == False:
+                                                new_var.loc[c, new_var_name] = int(manual_cats[manual_cats["Value"] == df[var][c]]["Cat"])
+                                        df[new_var_name] = new_var.astype('int64')
+                                    # Exclude columns with manual categorization from standard categorization
+                                    numCat_wo_manCat = [var for var in sb_DM_dTrans_numCat if var not in sb_DM_dTrans_numCat_sel]
+                                    df = fc.var_transform_numCat(df, numCat_wo_manCat)
+                            else:
+                                df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
+                        else:
+                            col_with_na = df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist()
+                            st.error("ERROR: Please select columns without NAs: " + ', '.join(map(str,col_with_na)))
+                            return
                     else:
                         sb_DM_dTrans_numCat = None
+                    sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = session_state.id)
+                    if sb_DM_dTrans_mult != 0: 
+                        multiplication_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_mult), columns=["Var1", "Var2"])
+                        text = "Multiplication pair"
+                        for i in range(0, sb_DM_dTrans_mult):
+                            text1 = text + " " + str(i+1)
+                            text2 = text + " " + str(i+1) + " "
+                            mult_var1 = st.selectbox(text1, transform_options, key = session_state.id)
+                            mult_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                            multiplication_pairs.loc[i]["Var1"] = mult_var1
+                            multiplication_pairs.loc[i]["Var2"] = mult_var2
+                            fc.var_transform_mult(df, mult_var1, mult_var2)
+                    sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, key = session_state.id)
+                    if sb_DM_dTrans_div != 0:
+                        division_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_div), columns=["Var1", "Var2"]) 
+                        text = "Division pair"
+                        for i in range(0, sb_DM_dTrans_div):
+                            text1 = text + " " + str(i+1) + " (numerator)"
+                            text2 = text + " " + str(i+1) + " (denominator)"
+                            div_var1 = st.selectbox(text1, transform_options, key = session_state.id)
+                            div_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                            division_pairs.loc[i]["Var1"] = div_var1
+                            division_pairs.loc[i]["Var2"] = div_var2
+                            fc.var_transform_div(df, div_var1, div_var2)
 
                 #--------------------------------------------------------------------------------------
                 # PROCESSING SUMMARY
@@ -422,6 +595,20 @@ def app():
                     #--------------------------------------------------------------------------------------
                     # DATA CLEANING
 
+                    # Rows
+                    if len(sb_DM_delRows) > 1:
+                        st.write("-", len(sb_DM_delRows), " rows were manually deleted:", ', '.join(map(str,sb_DM_delRows)))
+                    elif len(sb_DM_delRows) == 1:
+                        st.write("-",len(sb_DM_delRows), " row was manually deleted:", str(sb_DM_delRows[0]))
+                    elif len(sb_DM_delRows) == 0:
+                        st.write("- No row was manually deleted!")
+                    # Columns
+                    if len(sb_DM_delCols) > 1:
+                        st.write("-", len(sb_DM_delCols), " columns were manually deleted:", ', '.join(sb_DM_delCols))
+                    elif len(sb_DM_delCols) == 1:
+                        st.write("-",len(sb_DM_delCols), " column was manually deleted:", str(sb_DM_delCols[0]))
+                    elif len(sb_DM_delCols) == 0:
+                        st.write("- No column was manually deleted!")
                     # Duplicates
                     if sb_DM_delDup == "Yes":
                         if n_rows_dup > 1:
@@ -438,20 +625,6 @@ def app():
                             st.write("-", n_rows - n_rows_wNAs, "row with NAs was deleted!")
                     else:
                         st.write("- No row with NAs was deleted!")
-                    # Rows
-                    if len(sb_DM_delRows) > 1:
-                        st.write("-", len(sb_DM_delRows), " rows were manually deleted:", ', '.join(map(str,sb_DM_delRows)))
-                    elif len(sb_DM_delRows) == 1:
-                        st.write("-",len(sb_DM_delRows), " row was manually deleted:", str(sb_DM_delRows[0]))
-                    elif len(sb_DM_delRows) == 0:
-                        st.write("- No row was manually deleted!")
-                    # Columns
-                    if len(sb_DM_delCols) > 1:
-                        st.write("-", len(sb_DM_delCols), " columns were manually deleted:", ', '.join(sb_DM_delCols))
-                    elif len(sb_DM_delCols) == 1:
-                        st.write("-",len(sb_DM_delCols), " column was manually deleted:", str(sb_DM_delCols[0]))
-                    elif len(sb_DM_delCols) == 0:
-                        st.write("- No column was manually deleted!")
                     # Filter
                     if filter_var != "-":
                         st.write("-", " Data filtered by:", str(filter_var) , " > " , str(filter_vals))
@@ -509,6 +682,18 @@ def app():
                             st.write("-",len(sb_DM_dTrans_numCat), " column was transformed to numeric categories:", sb_DM_dTrans_numCat[0])
                         elif len(sb_DM_dTrans_numCat) == 0:
                             st.write("- No column was transformed to numeric categories!")
+                    # multiplication
+                    if sb_DM_dTrans_mult != 0:
+                        st.write("-", "Number of variable multiplications: ", sb_DM_dTrans_mult)
+                    elif sb_DM_dTrans_mult == 0:
+                        st.write("- No variables were multiplied!")
+                    # division
+                    if sb_DM_dTrans_div != 0:
+                        st.write("-", "Number of variable divisions: ", sb_DM_dTrans_div)
+                    elif sb_DM_dTrans_div == 0:
+                        st.write("- No variables were divided!")
+                    st.write("")
+                    st.write("")
             
         #------------------------------------------------------------------------------------------
         
@@ -516,7 +701,7 @@ def app():
         # UPDATED DATA SUMMARY   
 
         # Show only if changes were made
-        if any(v for v in [sb_DM_delRows, sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes":
+        if any(v for v in [sb_DM_delRows, sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or filter_var != "-":
             dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed data ", expanded = False)
             with dev_expander_dsPost:
                 if df.shape[1] > 0 and df.shape[0] > 0:
@@ -555,7 +740,23 @@ def app():
                         if sett_hints:
                             st.info(str(fc.learning_hints("de_summary_statistics")))     
                 else: st.error("ERROR: No data available for Data Exploration!") 
-                    
+
+                # Download link for cleaned exploration statistics
+                output = BytesIO()
+                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                df.to_excel(excel_file, sheet_name="cleaned_data")
+                df_summary_post["Variable types"].to_excel(excel_file, sheet_name="cleaned_variable_info")
+                df_summary_post["ALL"].to_excel(excel_file, sheet_name="cleaned_summary_statistics")
+                excel_file.save()
+                excel_file = output.getvalue()
+                b64 = base64.b64encode(excel_file)
+                dl_file_name = "Cleaned data and exploration statistics_univariate_" + df_name + ".xlsx"
+                st.markdown(
+                    f"""
+                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download cleaned data and exploration statistics</a>
+                """,
+                unsafe_allow_html=True)
+                st.write("")    
     #------------------------------------------------------------------------------------------
     
     data_visualization_container = st.beta_container()
@@ -628,8 +829,8 @@ def app():
         st.write("")
         st.header('**Data analyses**')
         dev_expander_fa = st.beta_expander("Univariate frequency analysis", expanded = False)
-        #initialisation
-        fa_uniqueLim=30
+        
+        #initialisation     
         fa_low=None
         fa_up=None
 
@@ -638,22 +839,43 @@ def app():
             feature = st.selectbox('Which variable would you like to analyse?', df.columns, key = session_state.id)
             user_order=[] 
 
+            fa_data_output=st.checkbox("Include data for frequency analysis in the output file", value = False, key = session_state.id)     
+            
+            if df[feature].dtypes=="int64" or df[feature].dtypes=="float64":
+                fa_uniqueLim=30
+            else:
+                fa_uniqueLim=((df[feature]).unique()).size
+
             #-----------------------------------------------
             # Identify the plot type (bar/hist) & key chart properties
-            if ((df[feature]).unique()).size>fa_uniqueLim:
+            if ((df[feature]).unique()).size>fa_uniqueLim:               
                 default_BinNo=min(10,math.ceil(np.sqrt(df.size)))
                 default_bins=default_BinNo
-                plot_type="hist" # i.e. count freq. for value ranges
-            elif df[feature].dtypes=="int64" or df[feature].dtypes=="float64" or df[feature].dtypes=="object" or df[feature].dtypes=="bool" or df[feature].dtypes=="category": 
+                plot_type="hist" # i.e. count freq. for value ranges                  
+            elif df[feature].dtypes=="object" or df[feature].dtypes=="bool":
                 default_BinNo=((df[feature]).unique()).size
                 default_bins=sorted(pd.Series(df[feature]).unique())
                 plot_type="bars" # i.e. count freq. for every unique sample values
+            elif df[feature].dtypes=="int64" or df[feature].dtypes=="float64": 
+                freq_type_sel='classes'
+                freq_type_sel=st.selectbox("Please specify if you would like to group the values into classes (option 'classes'), or to analyse frequency of every single unique value (option 'unique values')", ['classes','unique values'])
+                if freq_type_sel=='classes':
+                    default_BinNo=min(10,math.ceil(np.sqrt(df.size)))
+                    default_bins=default_BinNo
+                    plot_type="hist" # i.e. count freq. for value ranges
+                else:    
+                    default_BinNo=((df[feature]).unique()).size
+                    default_bins=sorted(pd.Series(df[feature]).unique())
+                    plot_type="bars" # i.e. count freq. for every unique sample values
+                      
             else:
                 st.error("ERROR: The variable type is not supported, please select another variable!")    
                 return
             
             show_add_options_hist=st.checkbox("Show additional frequency analysis settings", value = False)
-            if show_add_options_hist:  
+            if show_add_options_hist: 
+
+                
 
                 # for int or float the hist with custom bins can be used:    
                 if plot_type=="hist": 
@@ -668,6 +890,8 @@ def app():
                     user_order=st.multiselect("In case you want to change the order of x-labels, select labels in order you prefer: the first one you select will be the first label and so on..",unique_vals)
                 else:
                     user_order=[]
+
+                
                 #--------------------------------------------------------
 
             st.write("")  
@@ -778,6 +1002,24 @@ def app():
                 st.subheader("Frequency table")
                 st.table(df_freqanal)
 
+                # xls-File download link:
+                output = BytesIO()
+                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                if fa_data_output==True:
+                    df[feature].to_excel(excel_file, sheet_name="data")
+                df_freqanal.to_excel(excel_file, sheet_name="frequency analysis")
+                excel_file.save()
+                excel_file = output.getvalue()
+                b64 = base64.b64encode(excel_file)
+                dl_file_name = "Frequency analysis_univariate_" + df_name +"_" + feature+ ".xlsx"
+                st.markdown(
+                    f"""
+                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download frequency table</a>
+                """,
+                unsafe_allow_html=True)
+                st.write("")    
+                st.write("") 
+                st.write("") 
         # -------------------
         # Anova
         #----------------------
@@ -792,13 +1034,19 @@ def app():
                 class_var_options = df.columns
                 class_var_options = class_var_options[class_var_options.isin(df.drop(target_var, axis = 1).columns)]
                 clas_var=st.selectbox('Select the classifier variable', class_var_options, key = session_state.id) 
-            
-            
-                if len((df[clas_var]).unique())>20:
+
+                st.write("")
+                anova_data_output=st.checkbox("Include data from ANOVA in the output file", value=False)
+                st.write("")
+
+                if len((df[clas_var]).unique())>=len(df[clas_var]):
                     st.error("ERROR: The variable you selected is not suitable as a classifier!")
                 else:
                     
-                    run_anova = st.button("Press to perform one-way ANOVA")  
+                    run_anova = st.button("Press to perform one-way ANOVA") 
+                    st.write("") 
+                    st.write("")
+
                     if run_anova:         
                         
                         # Boxplot
@@ -890,13 +1138,416 @@ def app():
                             st.subheader("Histogram")
                             st.plotly_chart(res_hist, use_container_width=True)
                     
+                        output = BytesIO()
+                        excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                        if anova_data_output==True:
+                            df[[target_var,clas_var]].to_excel(excel_file, sheet_name="data")
+                        anova_summary.to_excel(excel_file, sheet_name="Groups summary")
+                        anova_table.to_excel(excel_file, sheet_name="ANOVA")
+                        excel_file.save()
+                        excel_file = output.getvalue()
+                        b64 = base64.b64encode(excel_file)
+                        dl_file_name = "ANOVA_univariate_" + df_name + "_"+ target_var + clas_var + ".xlsx"
+                        st.markdown(
+                            f"""
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download ANOVA results</a>
+                        """,
+                        unsafe_allow_html=True)
+                        st.write("")                       
                         st.write("")
                         st.write("")
-                        st.write("")
+
+                        # xls-File download link:
+              
                 
             else:
                 st.error("ERROR: The target variable must be a numerical one!")
+
+
+        # -------------------
+        # Hypothesis testing
+        #----------------------
+
+        dev_expander_test = st.beta_expander("Hypothesis testing", expanded = False)
+        with dev_expander_test:
+
+            #initialisation
+            test_check=False
+                        
+            # Test selection
+            test_sel = st.selectbox('Select the test', ['z-test','One sample location t-test', 'Two sample location t-test'], key = session_state.id)     
+
+            # Test variable                       
+            test_var = st.selectbox('Select the test variable', df.columns, key = session_state.id)
+            
+            if df[test_var].dtypes=="int64" or df[test_var].dtypes=="float64":                    
                 
+                a4,a5=st.beta_columns(2)                
+                with a4:
+                    if test_sel in ['z-test','One sample location t-test']:
+                        test_sollwert=st.number_input('Enter sollwert/population mean',format="%.8f", key = session_state.id) 
+                        test_check=True
+                    if test_sel=='z-test':
+                        with a5:
+                            test_variance=st.number_input('Enter the population variance',format="%.8f", key = session_state.id) 
+                    if test_sel=='Two sample location t-test':
+                        test_variance_ass=st.selectbox('Select variance assumption', ['equal variance', 'unequal variance'], key = session_state.id) 
+                            
+            else:
+                st.error("ERROR: The test variable must be a numerical one!")       
+            
+            if test_sel =='Two sample location t-test': 
+                #a4,a5=st.beta_columns(2) 
+                with a4:
+                    group_var = st.selectbox('Select the sample info variable', df.columns, key = session_state.id)
+               
+                if df[group_var].unique().size>2:  
+                    with a5:  
+                        st.write("")                      
+                        st.warning('The variable ' + group_var + ' has more than two realisations! Choose another variable or reclassify ' + group_var+ '!')            
+                        test_check=False
+                                       
+                        test_group_var_reclas=st.checkbox('Reclassify '+group_var, value=False )        
+                        test_check=False
+                    if test_group_var_reclas==True:
+                        test_check=True
+                        if df[group_var].dtypes=="int64" or df[group_var].dtypes=="float64": 
+                            a4,a5=st.beta_columns(2)
+                            with a4: 
+                                test_recl=st.selectbox('First group is where values are ...', options=['greather','greather or equal','smaller','smaller or equal', 'equal','between'], key = session_state.id)
+                           
+                            with a5:
+                                if test_recl=='between':
+                                    test_recl_thr_1=st.number_input('Lower limit for the classification',format="%.8f", key = session_state.id)
+                                    test_recl_thr_2=st.number_input('Upper limit for the classification',format="%.8f", key = session_state.id)
+                                    #reclassify values:
+                                    df['test_class'] = np.where(((df[group_var] > test_recl_thr_1) & (df[group_var] < test_recl_thr_2)),1,0)  
+                                   
+                                else:
+                                    test_recl_thr_1=st.number_input('Specify the value',format="%.8f", key = session_state.id)
+                                    
+                                     #reclassify values:
+                                    if test_recl=='greather':
+                                        df['test_class'] = np.where((df[group_var] > test_recl_thr_1),1,0) 
+                                        
+                                    elif test_recl=='greather or equal':
+                                        df['test_class'] = np.where((df[group_var] >= test_recl_thr_1),1,0) 
+                                        
+                                    elif test_recl=='smaller':
+                                        df['test_class'] = np.where((df[group_var] < test_recl_thr_1),1,0) 
+                                        
+                                    elif test_recl=='smaller or equal':
+                                        df['test_class'] = np.where((df[group_var] <= test_recl_thr_1),1,0) 
+                                       
+                                    elif test_recl=='equal':
+                                        df['test_class'] = np.where((df[group_var] == test_recl_thr_1),1,0) 
+                                        
+                                         
+
+                        else:
+                            a4,a5=st.beta_columns(2)
+                            with a4:
+                                test_recl=st.selectbox('First group is where values are ...', options=(df[group_var]).unique(), key = session_state.id)
+                                df['test_class'] = np.where((df[group_var] == test_recl),1,0) 
+                                #st.write(df[[test_var,group_var,'test_class']])
+                                test_check=True
+             
+            st.write("")    
+            if test_check==True:
+                st.write("")            
+                test_data_output=st.checkbox("Include data from hypothesis testing in the output file", value=False)
+                st.write("") 
+
+                run_test = st.button("Press to perform hypothesis testing") 
+                st.write("") 
+                st.write("")
+
+                if run_test:
+                                        
+                    #'z-test'
+                    if test_sel=='z-test':
+                        test_dataset=df[test_var].dropna()
+                        
+                        st.subheader("**z-test**")
+                        st.write("")
+                        st.write('Investigated variable: ' + test_var)
+                        st.write('Sollwert/population mean = ' + str(test_sollwert))
+                        st.write('Population variance = ' + str(test_variance))
+                        st.write('Sample size = ' + str(len(test_dataset)))
+                        st.write('Sample mean = ' + str(test_dataset.mean().round(4)))
+                        st.write('Sample std = ' + str(test_dataset.std().round(4)))
+                       
+                        z_val=(test_dataset.mean()-test_sollwert)/(np.sqrt(test_variance)/np.sqrt(len(test_dataset)))
+                        p_value_one_sided = scipy.stats.norm.sf(abs(z_val)) 
+                        p_value_two_sided = scipy.stats.norm.sf(abs(z_val))*2 
+                        
+                        a4,a5=st.beta_columns(2)
+                        with a4:
+                            st.write("")
+                            st.write('**Test statistics**')
+                            st.write("")
+                            st.write("")
+                            st.write("")
+                            st.write('z = ' + str(z_val.round(4)))
+                            st.write('p-value (one sided) = ' + str(p_value_one_sided.round(4)))
+                            st.write('p-value (two sided) = ' + str(p_value_two_sided.round(4))) 
+
+                        with a5:
+                            st.write("")
+                            # Distribution plot
+                            st.write('**St.normal distribution**') 
+                            
+                            x_var = np.linspace(norm.ppf(0.00001),norm.ppf(0.99999), 100)
+                            y_var=norm.pdf(x_var)
+                            
+                            fig = px.line(x=x_var, y=y_var, color_discrete_sequence=['rgba(55, 126, 184, 0.7)'], height=300)
+                            fig.add_vline(x=z_val, line_width=3, line_dash="dash", line_color='indianred')
+                            fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',}) 
+                            fig.update_layout(xaxis=dict(title='z', titlefont_size=12, tickfont_size=14,),)
+                            fig.update_layout(yaxis=dict(title='pdf', titlefont_size=12, tickfont_size=14,),)
+                            st.plotly_chart(fig,use_container_width=True)  
+                        
+                        
+                        
+                        z_stats = pd.DataFrame(index = ["Tested variable", "Sollwert", "Population variance", "n", "sample mean", "sample std", "z", "p-value - one sided","p-value - two sided"], columns = ["z-test"])
+                        z_stats.loc["Tested variable"]=test_var
+                        z_stats.loc["Sollwert"]=test_sollwert
+                        z_stats.loc["Population variance"]=test_variance
+                        z_stats.loc["n"]=len(test_dataset)
+                        z_stats.loc["sample mean"]=test_dataset.mean()
+                        z_stats.loc["sample std"]=test_dataset.std()
+                        z_stats.loc["z"]=z_val
+                        z_stats.loc["p-value - one sided"]=p_value_one_sided
+                        z_stats.loc["p-value - two sided"]=p_value_two_sided
+
+                        st.write("")                 
+                        st.write("")
+                        # Download link for exploration statistics
+                        output = BytesIO()
+                        excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                        if test_data_output==True:
+                            test_dataset.to_excel(excel_file, sheet_name="data")    
+                        z_stats.to_excel(excel_file, sheet_name="z-test")
+                        excel_file.save()
+                        excel_file = output.getvalue()
+                        b64 = base64.b64encode(excel_file)
+                        dl_file_name = "z-test_" + df_name + test_var+ ".xlsx"
+                        st.markdown(
+                            f"""
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download z-test results</a>
+                        """,
+                        unsafe_allow_html=True)
+                        st.write("")    
+                        st.write("") 
+                        st.write("") 
+
+
+
+                    # 'One sample location t-test'
+                    elif test_sel=='One sample location t-test':
+
+                        test_dataset=df[test_var].dropna() 
+
+                        st.subheader("One sample location t-test")
+                        st.write("")
+
+                        st.write('Investigated variable: ' + test_var)
+                        st.write('Sollwert/population mean = ' + str(test_sollwert))                        
+                        st.write('Sample size = ' + str(len(test_dataset)))
+                        st.write('Sample mean = ' + str(test_dataset.mean().round(4)))
+                        st.write('Sample std. = ' + str(test_dataset.std().round(4)))
+                        n_sqr=np.sqrt(len(test_dataset))
+                            
+                        a4,a5=st.beta_columns(2)
+                        with a4:
+                            st.write("")
+                            st.write("**Test statistics**")
+                            st.write("")
+                            st.write("")
+                            st.write("")
+                            t_val=(test_dataset.mean()-test_sollwert)/(test_dataset.std()/n_sqr)
+                            st.write('t = ' + str(t_val.round(4)))
+                            test_dof=len(test_dataset)-1
+                            st.write('DOF = ' + str(test_dof))
+                            p_value_one_sided = scipy.stats.t.sf(abs(t_val),len(test_dataset)-1) 
+                            st.write('p-value (one sided) = ' + str(p_value_one_sided.round(4)))
+                            p_value_two_sided = scipy.stats.t.sf(abs(t_val),len(test_dataset)-1)*2                         
+                            st.write('p-value (two sided) = ' + str(p_value_two_sided.round(4))) 
+
+                            t_stats = pd.DataFrame(index = ["Tested variable", "Sollwert",  "n", "sample mean","Sample std", "t", "DOF","p-value - one sided","p-value - two sided"], columns = ["t-test"])
+                            t_stats.loc["Tested variable"]=test_var
+                            t_stats.loc["Sollwert"]=test_sollwert
+                            t_stats.loc["Sample std"]=test_dataset.std()
+                            t_stats.loc["n"]=len(test_dataset)
+                            t_stats.loc["sample mean"]=test_dataset.mean()
+                            t_stats.loc["t"]=t_val
+                            t_stats.loc["DOF"]=test_dof
+                            t_stats.loc["p-value - one sided"]=p_value_one_sided
+                            t_stats.loc["p-value - two sided"]=p_value_two_sided
+
+                        with a5:
+                            st.write("")
+                            # Distribution plot
+                            st.write('**t-distribution** '+ '(DOF = ' + str(test_dof)+')') 
+                            
+                            x_var = np.linspace(t.ppf(0.00001, test_dof),t.ppf(0.99999, test_dof), 100)
+                            y_var=t.pdf(x_var, test_dof)
+                            
+                            fig = px.line(x=x_var, y=y_var, color_discrete_sequence=['rgba(55, 126, 184, 0.7)'], height=300)
+                            fig.add_vline(x=t_val, line_width=3, line_dash="dash", line_color='indianred')
+                            fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',}) 
+                            fig.update_layout(xaxis=dict(title='t', titlefont_size=12, tickfont_size=14,),)
+                            fig.update_layout(yaxis=dict(title='pdf', titlefont_size=12, tickfont_size=14,),)
+                            st.plotly_chart(fig,use_container_width=True)     
+
+
+                        st.write("")                 
+                        st.write("")
+                        # Download link for exploration statistics
+                        output = BytesIO()
+                        excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                        if test_data_output==True:
+                            test_dataset.to_excel(excel_file, sheet_name="data")    
+                        t_stats.to_excel(excel_file, sheet_name="t-test")
+                        excel_file.save()
+                        excel_file = output.getvalue()
+                        b64 = base64.b64encode(excel_file)
+                        dl_file_name = "t-test_" + df_name + test_var + ".xlsx"
+                        st.markdown(
+                            f"""
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download t-test results</a>
+                        """,
+                        unsafe_allow_html=True)
+                        st.write("")    
+                        st.write("") 
+                        st.write("") 
+
+
+
+                    #  'Two sample location t-test'
+                    elif test_sel=='Two sample location t-test':
+                        st.subheader("Two sample location t-test")
+                        st.write("")
+                       
+                        #test_var group_var
+                        #test_variance_ass
+                        #df['test_class']
+                        if test_var==group_var:
+                            test_dataset=df[[test_var,'test_class']].dropna()                            
+                        else:
+                            test_dataset=df[[test_var,group_var,'test_class']].dropna()   
+                        
+                        #identifying two data samples
+                        test_sample_0 =test_dataset[test_dataset['test_class']==0]
+                        test_sample_1 =test_dataset[test_dataset['test_class']==1]
+                       
+                        st.write('Investigated variable: ' + test_var)
+                        st.write('Group info: ' + group_var)                                              
+                        st.write('Variance assumption = ' + test_variance_ass )
+
+                        st.write("")
+                        st.write("")                    
+                        a4,a5=st.beta_columns(2)
+                        with a4:
+                            st.write('**1. sample**')
+                            st.write('Sample size = ' + str(len(test_sample_0)))
+                            st.write('Mean = ' + str(test_sample_0[test_var].mean()))
+                            st.write('Std. = ' + str(test_sample_0[test_var].std()))
+                        with a5:
+                            st.write('**2. sample**')
+                            st.write('Sample size = ' + str(len(test_sample_1)))
+                            st.write('Mean = ' + str(test_sample_1[test_var].mean()))
+                            st.write('Std. = ' + str(test_sample_1[test_var].std()))
+                        
+                        st.write("") 
+                        st.write("") 
+
+                        a4,a5=st.beta_columns(2)
+                        with a4:
+                            st.write("")
+                            st.write('**Test statistics**')
+                            if test_variance_ass=="equal variance":
+                                equal_var_bool=True
+                            else:
+                                equal_var_bool=False 
+
+                            (t_val, p_value_less)=scipy.stats.ttest_ind(test_sample_0.loc[:,test_var].values,test_sample_1[test_var],equal_var=equal_var_bool, alternative='less')
+                            (t_val, p_value_greater)=scipy.stats.ttest_ind(test_sample_0.loc[:,test_var].values,test_sample_1[test_var],equal_var=equal_var_bool, alternative='greater')
+                            (t_val, p_value_two_sided)=scipy.stats.ttest_ind(test_sample_0.loc[:,test_var].values,test_sample_1[test_var],equal_var=equal_var_bool, alternative='two-sided')
+                            
+                            st.write('t = ' + str(t_val.round(4))) 
+                            if test_variance_ass=="equal variance":                      
+                                test_dof=test_sample_0[test_var].size+test_sample_1[test_var].size-2    
+                                
+                            else:    
+                                test_dof = (test_sample_0[test_var].var()/test_sample_0[test_var].size + test_sample_1[test_var].var()/test_sample_1[test_var].size)**2 / ((test_sample_0[test_var].var()/test_sample_0[test_var].size)**2 / (test_sample_0[test_var].size-1) + (test_sample_1[test_var].var()/test_sample_1[test_var].size)**2 / (test_sample_1[test_var].size-1))
+                                test_dof =test_dof.round(4)
+                            st.write('DOF = ' + str(test_dof))
+                            st.write('$H_{1}: \mu < \mu_{0}$ p-value = ' + str(p_value_less.round(4)))
+                            st.write('$H_{1}: \mu > \mu_{0}$ p-value = ' + str(p_value_greater.round(4))) 
+                            st.write('$H_{1}: \mu\, {=}\mathllap{/\,}\, \mu_{0}$ p-value = ' + str(p_value_two_sided.round(4))) 
+
+                        # plot pdf
+                                             
+                        with a5:
+                            # Distribution plot
+                            st.write('**t-distribution** '+ '(DOF = ' + str(test_dof)+')') 
+                            x_var = np.linspace(t.ppf(0.00001, test_dof),t.ppf(0.99999, test_dof), 100)
+                            y_var=t.pdf(x_var, test_dof)
+                            
+                            fig = px.line(x=x_var, y=y_var, color_discrete_sequence=['rgba(55, 126, 184, 0.7)'], height=300)
+                            fig.add_vline(x=t_val, line_width=3, line_dash="dash", line_color='indianred')
+                            fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',}) 
+                            fig.update_layout(xaxis=dict(title='t', titlefont_size=12, tickfont_size=14,),)
+                            fig.update_layout(yaxis=dict(title='pdf', titlefont_size=12, tickfont_size=14,),)
+                            st.plotly_chart(fig,use_container_width=True)     
+                            
+
+                        t_stats = pd.DataFrame(index = ["Tested variable", "Group info", 'Variance assumption', "Sample 1 n", "Sample 1 mean","Sample 1 std", "Sample 2 n", "Sample 2 mean","Sample 2 std","t", "DOF" ,"p-value - less","p-value - greater","p-value - two sided"], columns = ["t-test"])
+                        t_stats.loc["Tested variable"]=test_var
+                        t_stats.loc["Group info"]=group_var
+                        #t_stats.loc["Sollwert"]=test_sollwert
+                        t_stats.loc["Variance assumption"]=test_variance_ass
+                        
+                        
+                        t_stats.loc["Sample 1 n"]=len(test_sample_0[test_var])
+                        t_stats.loc["Sample 1 mean"]=test_sample_0[test_var].mean()
+                        t_stats.loc["Sample 1 std"]=test_sample_0[test_var].std()
+                        t_stats.loc["Sample 2 n"]=len(test_sample_1[test_var])
+                        t_stats.loc["Sample 2 mean"]=test_sample_1[test_var].mean()
+                        t_stats.loc["Sample 2 std"]=test_sample_1[test_var].std()
+                        t_stats.loc["t"]=t_val
+                        t_stats.loc["DOF"]=test_dof
+                        t_stats.loc["p-value - less"]=p_value_less
+                        t_stats.loc["p-value - greater"]=p_value_greater
+                        t_stats.loc["p-value - two sided"]=p_value_two_sided
+
+                        st.write("")                 
+                        st.write("")
+                        # Download link for exploration statistics
+                        output = BytesIO()
+                        excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                        if test_data_output==True:
+                            test_dataset.to_excel(excel_file, sheet_name="data")    
+                        t_stats.to_excel(excel_file, sheet_name="t-test")
+                        excel_file.save()
+                        excel_file = output.getvalue()
+                        b64 = base64.b64encode(excel_file)
+                        dl_file_name = "t-test_two sample" + df_name + test_var + group_var + ".xlsx"
+                        st.markdown(
+                            f"""
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download t-test results</a>
+                        """,
+                        unsafe_allow_html=True)
+                        st.write("")    
+                        st.write("") 
+                        st.write("")
+
+
+
+                    
+
+
         # --------------------
         # Fit theoretical dist
         #----------------------
@@ -924,6 +1575,12 @@ def app():
                 # Variable selection:
                 ft_var=st.selectbox("Select a variabe for dist. fitting",num_columns, key = session_state.id)
                 ft_data=df[ft_var]
+                
+                #remove NAs if present   
+                if np.where(ft_data.isnull())[0].size > 0:
+                    ft_data = ft_data.dropna()
+                    st.warning("WARNING: Your data set includes NAs. Rows with NAs are automatically deleted!")
+           
 
                 ft_selection=st.radio("Please choose if you would like to fit all distributions or a selection of distributions:", ["all (Note, this may take a while!)", "selection"], index=1, key = session_state.id)
                 
@@ -935,6 +1592,7 @@ def app():
                 if len(ft_data)>4 and len(ft_data)<500:
                     iniBins=10*math.ceil(((len(ft_data))**0.5)/10)
                 
+                ft_data_output=st.checkbox("Include data from distribution fitting in the output file", value=False)
                 # Number of classes in the empirical distribution
                 Nobins =iniBins
                 ft_showOptions=st.checkbox("Additional settings?", value = False, key = session_state.id)
@@ -997,6 +1655,26 @@ def app():
                     if sett_hints:
                         st.info(str(fc.learning_hints("fit_hints")))
                         st.write("")
+
+                    # xls-File download link:
+                    output = BytesIO()
+                    excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                    if ft_data_output==True:
+                        ft_data.to_excel(excel_file, sheet_name="data")
+                    results[['SSD', 'Chi-squared','DOF', 'p-value','Distribution']].to_excel(excel_file, sheet_name="Goodness-of-fit results")
+                    rel_freq_comp.to_excel(excel_file, sheet_name="frequency comparision")
+                    excel_file.save()
+                    excel_file = output.getvalue()
+                    b64 = base64.b64encode(excel_file)
+                    dl_file_name = "Distribution fitting_" + df_name +"_" + ft_var + ".xlsx"
+                    st.markdown(
+                        f"""
+                    <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download fitting results</a>
+                    """,
+                    unsafe_allow_html=True)
+                    st.write("")    
+                    st.write("") 
+                    st.write("")     
         # ---------------------
         # Corr. analysis
         #----------------------
@@ -1015,13 +1693,19 @@ def app():
                     transf_cols.append([column])
 
             
-            if len(non_trans_cols)<len(df_cor.columns):                
+            if len(non_trans_cols)<len(df_cor.columns):
                 if transf_cols !=None:
                     #st.info('Please note, non-numerical variables are factorized to enable regression analysis! The factorized variables are: ' + str(transf_cols)) 
-                    st.info('Note, there are non-numerical variables in your dataset: ' + str(transf_cols)) 
+                    st.info('There are non-numerical variables in your dataset: ' + str(transf_cols)+ '. These will NOT be considered in the correlation analysis!') 
             #listOfAllColumns = df_cor.columns.to_list()   
-            listOfAllColumns = non_trans_cols.to_list()             
+            listOfAllColumns = non_trans_cols.to_list()      
             cor_sel_var=st.multiselect("Select variabes for correlation analysis",listOfAllColumns, listOfAllColumns, key = session_state.id)
+            
+            #remove NAs if present   
+            if np.where(df_cor[cor_sel_var].isnull())[0].size > 0:
+                df_cor = df_cor[cor_sel_var].dropna()
+                st.warning("WARNING: Your data set includes NAs. Rows with NAs are automatically deleted!")
+          
             cor_methods=['Pearson', 'Kendall', 'Spearman']
             cor_method=st.selectbox("Select the method",cor_methods, key = session_state.id)
             if cor_method=='Pearson':
@@ -1032,24 +1716,30 @@ def app():
                 sel_method='spearman'    
 
             if st.checkbox("Show data for correlation analysis", value = False, key = session_state.id):        
-                st.write(df_cor[cor_sel_var])
-                
+                st.write(df_cor[cor_sel_var].dropna())
             st.write("")
-            st.write("")    
+            st.write("") 
 
+            #remove NAs if present   
+            if np.where(df_cor[cor_sel_var].isnull())[0].size > 0:
+                df_cor = df_cor[cor_sel_var].dropna()
+                st.warning("WARNING: Your data set includes NAs. Rows with NAs are automatically deleted!")
+        
+            
             run_corr = st.button("Press to start the correlation analysis...")           
             st.write("")
             st.write("")
 
-            if run_corr:
+            if run_corr:                
                 if sett_hints:
                     st.info(str(fc.learning_hints("correlation_hints")))
                     st.write("")
                 
                 st.subheader("Correlation matrix")
-            # Define variable selector
+                # Define variable selector
                 var_sel_cor = alt.selection_single(fields=['variable', 'variable2'], clear=False, 
                                     init={'variable': cor_sel_var[0], 'variable2': cor_sel_var[0]})
+                
                 # Calculate correlation data
                 corr_data = df_cor[cor_sel_var].corr(method=sel_method).stack().reset_index().rename(columns={0: "correlation", 'level_0': "variable", 'level_1': "variable2"})
                 corr_data["correlation_label"] = corr_data["correlation"].map('{:.2f}'.format)
@@ -1090,6 +1780,23 @@ def app():
                 st.subheader("Correlation table")
                 st.table(df_cor.corr(method=sel_method))
 
+                # xls-File download link:
+                output = BytesIO()
+                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                df_cor.corr(method=sel_method).to_excel(excel_file, sheet_name="Correlation matrix")
+                excel_file.save()
+                excel_file = output.getvalue()
+                b64 = base64.b64encode(excel_file)
+                dl_file_name = "Correlation_" + df_name +"_" + sel_method + ".xlsx"
+                st.markdown(
+                    f"""
+                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download correlation table</a>
+                """,
+                unsafe_allow_html=True)
+                st.write("")    
+                st.write("") 
+                st.write("")  
+
         #--------------------------------------
         # Regression analysis
         #--------------------------------------
@@ -1102,9 +1809,7 @@ def app():
             poly_order=2 # default for the polynomial regression
             num_columns=df.columns
             
-            df_ra = df.copy()
-            df_ra=df_ra.dropna() # just to make sure that NAs are removed in case the user hasn't done it before
-            
+            df_ra = df.copy()                       
             
             # check variable type
             for column in df_ra:            
@@ -1118,6 +1823,14 @@ def app():
                 ra_Xvar=st.selectbox("Select the X variabe for regression analysis", num_columns, key = session_state.id)
                 ra_Yvar=st.selectbox("Select the Y variabe for regression analysis",num_columns,index=1, key = session_state.id)
 
+                #reduce the dataset to selected variables only
+                df_ra=df_ra[[ra_Xvar,ra_Yvar]]
+                #remove NAs if present   
+                if np.where(df_ra.isnull())[0].size > 0:
+                    df_ra = df_ra.dropna()
+                    st.warning("WARNING: Your data set includes NAs. Rows with NAs are automatically deleted!")
+          
+                
                 if ra_Xvar==ra_Yvar:
                     st.error("ERROR: Regressing a variable against itself doesn't make much sense!")             
                 else:      
@@ -1136,11 +1849,12 @@ def app():
                         poly_order=st.number_input('Specify the polynomial order for the polynomial regression',value=2, step=1)    
                     
                     ra_detailed_output=st.checkbox("Show detailed output per technique?", value = False, key = session_state.id)
-
+                    ra_data_output=st.checkbox("Include data in the output file", value = False, key = session_state.id)
 
                     # specify the dataset for the regression analysis:
-                    X_ini=df[ra_Xvar]
-                    Y_ini=df[ra_Yvar]
+                    
+                    X_ini=df_ra[ra_Xvar]
+                    Y_ini=df_ra[ra_Yvar]
                     expl_var=ra_Xvar
 
                     st.write("")
@@ -1174,21 +1888,30 @@ def app():
                                 st.write("")
 
                             model_comparison = pd.DataFrame(index = ["R²","Adj. R²","Log-likelihood", "MSE", "RMSE", "MAE", "MaxErr", "EVRS", "SSR"], columns = ra_techniques_names)
-                            
+                            # xls-File download link:
+                            output = BytesIO()
+                            excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                            if ra_data_output==True:
+                                #write data to xls file
+                                df_ra[[ra_Xvar,ra_Yvar]].to_excel(excel_file, sheet_name="data")
+
                             for reg_technique in ra_tech:                            
                                 mlr_reg_inf, mlr_reg_stats, mlr_reg_anova, mlr_reg_coef,X_data, Y_data, Y_pred = fc.regression_models(X_ini, Y_ini, expl_var,reg_technique,poly_order)
                                 # Model comparison
-                                model_comparison.loc["R²"][reg_technique] = (mlr_reg_stats.loc["R²"]).Value
-                                model_comparison.loc["Adj. R²"][reg_technique] = (mlr_reg_stats.loc["Adj. R²"]).Value 
-                                model_comparison.loc["Log-likelihood"][reg_technique] = (mlr_reg_stats.loc["Log-likelihood"]).Value 
+                                model_comparison.loc["R²"][reg_technique] = np.round_((mlr_reg_stats.loc["R²"]).Value,decimals=4)
+                                model_comparison.loc["Adj. R²"][reg_technique] = np.round_((mlr_reg_stats.loc["Adj. R²"]).Value,decimals=4) 
+                                model_comparison.loc["Log-likelihood"][reg_technique] = np.round_((mlr_reg_stats.loc["Log-likelihood"]).Value,decimals=4) 
                                 #model_comparison.loc["% VE"][reg_technique] =  r2_score(Y_data, Y_pred)
-                                model_comparison.loc["MSE"][reg_technique] = mean_squared_error(Y_data, Y_pred, squared = True)
-                                model_comparison.loc["RMSE"][reg_technique] = mean_squared_error(Y_data, Y_pred, squared = False)
-                                model_comparison.loc["MAE"][reg_technique] = mean_absolute_error(Y_data, Y_pred)
-                                model_comparison.loc["MaxErr"][reg_technique] = max_error(Y_data, Y_pred)
-                                model_comparison.loc["EVRS"][reg_technique] = explained_variance_score(Y_data, Y_pred)
-                                model_comparison.loc["SSR"][reg_technique] = ((Y_data-Y_pred)**2).sum()
-                                                        
+                                model_comparison.loc["MSE"][reg_technique] = np.round_(mean_squared_error(Y_data, Y_pred, squared = True),decimals=4)
+                                model_comparison.loc["RMSE"][reg_technique] = np.round_(mean_squared_error(Y_data, Y_pred, squared = False),decimals=4)
+                                model_comparison.loc["MAE"][reg_technique] = np.round_(mean_absolute_error(Y_data, Y_pred),decimals=4)
+                                model_comparison.loc["MaxErr"][reg_technique] = np.round_(max_error(Y_data, Y_pred),decimals=4)
+                                model_comparison.loc["EVRS"][reg_technique] = np.round_(explained_variance_score(Y_data, Y_pred),decimals=4)
+                                model_comparison.loc["SSR"][reg_technique] = np.round_(((Y_data-Y_pred)**2).sum(),decimals=4)
+
+
+
+
                                 # scatterplot with the initial data:
                                 x_label=str(X_label_prefix[reg_technique])+str(ra_Xvar)
                                 y_label=str(Y_label_prefix[reg_technique])+str(ra_Yvar)
@@ -1242,7 +1965,12 @@ def app():
                                 if ra_detailed_output:
                                     #st.table(mlr_reg_stats)
                                     st.table(mlr_reg_anova)
-                                    st.table(mlr_reg_coef)                           
+                                    st.table(mlr_reg_coef.round(decimals=4))
+ 
+                                    #write output to xls file
+                                    mlr_reg_anova.to_excel(excel_file, sheet_name="Anova_" + reg_technique)
+                                    mlr_reg_coef.to_excel(excel_file, sheet_name="Coef_" + reg_technique)                         
+                                    
                                     a4,a5=st.beta_columns(2)
                                     with a4:
                                         st.subheader("Regression plot")
@@ -1264,7 +1992,25 @@ def app():
                             
                             st.subheader('Regression techniques summary') 
                             model_output=(model_comparison[ra_tech]).transpose()   
-                            st.write(model_output)   
+                            st.write(model_output) 
+                            st.write("") 
+                            st.write("")  
+
+                            
+                            model_output.to_excel(excel_file, sheet_name="Model comparision")
+                            excel_file.save()
+                            excel_file = output.getvalue()
+                            b64 = base64.b64encode(excel_file)
+                            dl_file_name = "Regression_" + df_name +"_" + ra_Xvar + ra_Yvar + ".xlsx"
+                            st.markdown(
+                                f"""
+                            <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download regression results</a>
+                            """,
+                            unsafe_allow_html=True)
+                            st.write("")    
+                            st.write("") 
+                            st.write("")  
+  
 
         #------------------------------------------------------
         #-------------------------------------------------------
@@ -1360,18 +2106,33 @@ def app():
 
             # central part - contigency analysis
             if cont_check==True:
-                cont_extra=st.checkbox("Show marginal frequencies", value = False, key = session_state.id)        
-                    
 
+                #check NAs
+                if np.where(df.isnull())[0].size > 0:
+                    df = df.dropna()
+                    st.warning("WARNING: Your data set includes NAs. Rows with NAs are automatically deleted!")
+        
+                # xls-File download link:
+                output = BytesIO()
+                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                              
+
+                cont_extra=st.checkbox("Show marginal frequencies", value = False, key = session_state.id)        
+                
                 if st.checkbox("Show data for contingency analysis", value = False, key = session_state.id):        
                     st.write(df)
-
+                cont_data_output=st.checkbox("Include data for contingency analysis in the output file", value = False, key = session_state.id)
+                
+                #xls write
+                if cont_data_output==True:
+                    df.to_excel(excel_file, sheet_name="data")
+                
                 st.write("")            
                 run_cont = st.button("Press to start the data processing...")           
                 st.write("")
                 st.write("")    
              
-                if run_cont:
+                if run_cont:                    
 
                     if sett_hints:
                         st.info(str(fc.learning_hints("contingency_hints")))
@@ -1380,6 +2141,8 @@ def app():
                     if data_reclas==2:
                         step0=(up0-low0)/noclass0
                         lim_ser = pd.Series(np.arange(low0, up0, step0)) 
+                        lim_ser=lim_ser.round(4) 
+
                         for k in range(len(lim_ser)-1):
                             df.loc[(df[cont_numerical[0]]>lim_ser[k]) & (df[cont_numerical[0]] <= lim_ser[k+1]), cont_numerical[0]] = lim_ser[k]
                         df.loc[df[cont_numerical[0]]>max(lim_ser), cont_numerical[0]] = '>'+ str(max(lim_ser))#+step0
@@ -1392,6 +2155,8 @@ def app():
                     elif data_reclas==1:
                         step0=(up0-low0)/noclass0
                         lim_ser = pd.Series(np.arange(low0, up0, step0)) 
+                        lim_ser=lim_ser.round(4)                                             
+                        
                         for k in range(len(lim_ser)-1):
                             
                             df.loc[(df[cont_numerical[0]]>lim_ser[k]) & (df[cont_numerical[0]] <= lim_ser[k+1]), cont_numerical[0]] = lim_ser[k]
@@ -1404,19 +2169,31 @@ def app():
                     st.subheader('Contingency table with absolute frequencies')    
                     st.table(bivarite_table)
                     
+                    #xls output:
+                    bivarite_table.to_excel(excel_file, sheet_name="absolute frequencies")
+
                     no_vals=bivarite_table.iloc[len(bivarite_table)-1,len(bivarite_table.columns)-1]
                     st.subheader('Contingency table with relative frequencies')
                     cont_rel=bivarite_table/no_vals
                     st.table(cont_rel)
+
+                    #xls output:
+                    cont_rel.to_excel(excel_file, sheet_name="relative frequencies")
 
                     if cont_extra:
                         st.subheader('Contingency table with marginal frequencies ('+ str(ub_sel_var[0])+')')
                         bivarite_table_marg0 =bivarite_table.iloc[:,:].div(bivarite_table.Total, axis=0)
                         st.table(bivarite_table_marg0)
 
+                        #xls output:
+                        bivarite_table_marg0.to_excel(excel_file, sheet_name="marginal"+ ub_sel_var[0][:min(len(ub_sel_var[0]),15)])
+
                         st.subheader('Contingency table with marginal frequencies ('+ str(ub_sel_var[1])+')')
                         bivarite_table_marg1 =bivarite_table.div(bivarite_table.iloc[-1])
                         st.table(bivarite_table_marg1)
+
+                        #xls output:
+                        bivarite_table_marg1.to_excel(excel_file, sheet_name="marginal"+ ub_sel_var[1][:min(len(ub_sel_var[1]),15)])
 
                         # draw a bar plot with the results
                         colors = px.colors.qualitative.Pastel2
@@ -1456,27 +2233,54 @@ def app():
                     col_names=list(bivarite_table.columns[0:len(bivarite_table.columns)-1])
                     dfexp.columns= col_names
                     st.table(dfexp)
+
+                    #xls output:
+                    dfexp.to_excel(excel_file, sheet_name="expected frequencies")
                             
                     st.subheader('Contingency stats') 
                     st.write('')
-                    st.write('$\chi^2$ = ' + str(stat))
-                    st.write('p-value = ' + str(p))
+                    st.write('$\chi^2$ = ' + str(stat.round(4)))
+                    st.write('p-value = ' + str(p.round(4)))
 
-                    pearson_coef=np.sqrt(stat/(stat+len(df)))  
+                    pearson_coef=(np.sqrt(stat/(stat+len(df)))).round(4)  
                     st.write('Pearson contingency coefficient $K$ = ' + str(pearson_coef))
 
                     min_kl=min(len(bivarite_table)-1,len(bivarite_table.columns)-1)
-                    K_max=np.sqrt((min_kl-1)/min_kl)
+                    K_max=(np.sqrt((min_kl-1)/min_kl)).round(4)
                     st.write('$K_{max}$ = ' + str(K_max))
                         
-                    pearson_cor=pearson_coef/K_max
+                    pearson_cor=(pearson_coef/K_max).round(4)
                     st.write('Corrected Pearson contingency coefficient $K_{cor}$ = ' + str(pearson_cor))
+                    
+                    cont_stats = pd.DataFrame(index = ["Chi2", "p-value", "K", "Kmax", "Kcor"], columns = ["stats"])
+                    cont_stats.loc["Chi2"]=stat.round(4)
+                    cont_stats.loc["p-value"]=p.round(4)
+                    cont_stats.loc["K"]=pearson_coef.round(4)
+                    cont_stats.loc["Kmax"]=K_max.round(4)
+                    cont_stats.loc["Kcor"]=pearson_cor
 
-                    #st.latex(r'''\chi^2=\sum_{i=1}^{k}\sum_{j=1}^{l}\frac{\left( n_{ij}-\tilde{n}_{ij} \right) ^3}{n_{ij}}''')
+                    st.write("")    
+                    st.write("") 
 
-    
+                    
+                    cont_stats.to_excel(excel_file, sheet_name="stats")
+                    excel_file.save()
+                    excel_file = output.getvalue()
+                    b64 = base64.b64encode(excel_file)
+                    dl_file_name = "Contingency_" + df_name +"_" + ub_sel_var[0] +ub_sel_var[1]+ ".xlsx"
+                    st.markdown(
+                        f"""
+                    <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download contingency results</a>
+                    """,
+                    unsafe_allow_html=True)
+                    st.write("")    
+                    st.write("") 
+                    st.write("") 
 
-    
+
+
+
+#st.latex(r'''\chi^2=\sum_{i=1}^{k}\sum_{j=1}^{l}\frac{\left( n_{ij}-\tilde{n}_{ij} \right) ^3}{n_{ij}}''')
 
 
 # Pie chart
@@ -1486,10 +2290,10 @@ def app():
         #else:
         #    labels=df_freqanal['Class']    
         #values = df_freqanal['Rel. freq.']
-        
-        # Use hole to create a donut-like pie chart
-        #fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.3)])
-        #fig.update_traces(hoverinfo='label+value', marker=dict(colors=px.colors.sequential.Blues,line=dict(color='#FFFFFF', width=1.0)))
-       # st.plotly_chart(fig, use_container_width=True)
+
+# Use hole to create a donut-like pie chart
+#fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.3)])
+#fig.update_traces(hoverinfo='label+value', marker=dict(colors=px.colors.sequential.Blues,line=dict(color='#FFFFFF', width=1.0)))
+# st.plotly_chart(fig, use_container_width=True)
 
 

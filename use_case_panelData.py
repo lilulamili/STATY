@@ -25,8 +25,8 @@ import sys
 import SessionState
 from streamlit import caching
 import platform
-
-
+import base64
+from io import BytesIO
 from linearmodels import PanelOLS
 from linearmodels import RandomEffects
 from linearmodels import PooledOLS
@@ -44,30 +44,81 @@ def app():
     # Show altair tooltip when full screen
     st.markdown('<style>#vg-tooltip-element{z-index: 1000051}</style>',unsafe_allow_html=True)
 
-    #------------------------------------------------------------------------------------------
+    #Session state
+    session_state = SessionState.get(id = 0)
 
+    #------------------------------------------------------------------------------------------
     
     #++++++++++++++++++++++++++++++++++++++++++++
     # DATA IMPORT
-    
+
     # File upload section
     df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"])
-    uploaded_data = None
+    uploaded_data=None
     if df_dec == "Upload data":
         #st.subheader("Upload your data")
-        uploaded_data = st.sidebar.file_uploader("", type=["csv", "txt"])
+        #uploaded_data = st.sidebar.file_uploader("Make sure that dot (.) is a decimal separator!", type=["csv", "txt"])
+        separator_expander=st.sidebar.beta_expander('Upload settings')
+        with separator_expander:
+                      
+            a4,a5=st.beta_columns(2)
+            with a4:
+                dec_sep=a4.selectbox("Decimal sep.",['.',','], key = session_state.id)
+
+            with a5:
+                col_sep=a5.selectbox("Column sep.",[';',  ','  , '|', '\s+', '\t','other'], key = session_state.id)
+                if col_sep=='other':
+                    col_sep=st.text_input('Specify your column separator', key = session_state.id)     
+
+            a4,a5=st.beta_columns(2)  
+            with a4:    
+                thousands_sep=a4.selectbox("Thousands x sep.",[None,'.', ' ','\s+', 'other'], key = session_state.id)
+                if thousands_sep=='other':
+                    thousands_sep=st.text_input('Specify your thousands separator', key = session_state.id)  
+             
+            with a5:    
+                encoding_val=a5.selectbox("Encoding",[None,'utf_8','utf_8_sig','utf_16_le','cp1140','cp1250','cp1251','cp1252','cp1253','cp1254','other'], key = session_state.id)
+                if encoding_val=='other':
+                    encoding_val=st.text_input('Specify your encoding', key = session_state.id)  
+        
+        # Error handling for separator selection:
+        if dec_sep==col_sep: 
+            st.sidebar.error("Decimal and column separators cannot be identical!") 
+        elif dec_sep==thousands_sep:
+            st.sidebar.error("Decimal and thousands separators cannot be identical!") 
+        elif  col_sep==thousands_sep:
+            st.sidebar.error("Column and thousands separators cannot be identical!")    
+        
+        uploaded_data = st.sidebar.file_uploader("Default separators: decimal '.'    |     column  ';'", type=["csv", "txt"])
+        
         if uploaded_data is not None:
-            df = pd.read_csv(uploaded_data, sep = ";|,|\t",engine='python')
+            df = pd.read_csv(uploaded_data, decimal=dec_sep, sep = col_sep,thousands=thousands_sep,encoding=encoding_val, engine='python')
+            df_name=os.path.splitext(uploaded_data.name)[0]
             st.sidebar.success('Loading data... done!')
         elif uploaded_data is None:
-       	    df = pd.read_csv("default data/Grunfeld.csv", sep = ";|,|\t",engine='python')
-    else:        
-        df = pd.read_csv("default data/Grunfeld.csv", sep = ";|,|\t",engine='python')
+           df = pd.read_csv("default data/Grunfeld.csv", sep = ";|,|\t",engine='python')
+           df_name="Grunfeld" 
+    else:
+        df = pd.read_csv("default data/Grunfeld.csv", sep = ";|,|\t",engine='python') 
+        df_name="Grunfeld" 
     st.sidebar.markdown("")
     
     #Basic data info
     n_rows = df.shape[0]
-    n_cols = df.shape[1] 
+    n_cols = df.shape[1]
+    # df_name = "Grunfeld"
+    # if uploaded_data is not None:
+    #     df_name = list(uploaded_data.name.split(".")[:-1])
+    #     if len(df_name) > 1:
+    #         new_name = ""
+    #         for i in range(0, len(df_name)):
+    #             if i < len(df_name)-1:
+    #                 new_name += df_name[i]+"_"
+    #             if i == len(df_name)-1:
+    #                 new_name += df_name[i]
+    #         df_name = new_name
+    #     else:
+    #         df_name = df_name[0] 
 
     #++++++++++++++++++++++++++++++++++++++++++++
     # SETTINGS
@@ -92,6 +143,7 @@ def app():
         fc.theme_func_dark()
     if sett_theme == "Light":
         fc.theme_func_light()
+    fc.theme_func_dl_button()
 
     #++++++++++++++++++++++++++++++++++++++++++++
     # RESET INPUT
@@ -108,7 +160,7 @@ def app():
     # DATA EXPLORATION & VISUALIZATION
     
     st.header("**Panel data**")
-    st.markdown("Get your data ready for powerfull methods! Let STATY do the data cleaning, variable transformations, visualizations and deliver you the stats you need. Specify your data processing preferences and start exploring your data stories right below... ")
+    st.markdown("Get your data ready for powerfull methods! Let STATY do data cleaning, variable transformations, visualizations and deliver you the stats you need. Specify your data processing preferences and start exploring your data stories right below... ")
 
     # Check if enough data is available
     if n_cols >= 2 and n_rows > 0:
@@ -179,30 +231,30 @@ def app():
                 if uploaded_data == None:
                     if st.checkbox("Show data description", value = False, key = session_state.id):          
                         st.markdown("**Data source:**")
-                        st.markdown("This is the original 11-firm data set from Grunfeld’s Ph.D. thesis (*Grunfeld, 1958, The Determinants of Corporate Investment, Departmentof Economics, University of Chicago*). For more details see online complements for the article [The Grunfeld Data at 50] (https://www.zeileis.org/grunfeld/).")
+                        st.markdown("This is the original 11-firm data set from Grunfeld’s Ph.D. thesis (*Grunfeld, 1958, The Determinants of Corporate Investment, Department of Economics, University of Chicago*). For more details see online complements for the article [The Grunfeld Data at 50] (https://www.zeileis.org/grunfeld/).")
                         st.markdown("**Citation:**")
                         st.markdown("Kleiber C, Zeileis A (2010). “The Grunfeld Data at 50,” German Economic Review, 11(4), 404-417. [doi:10.1111/j.1468-0475.2010.00513.x] (https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1468-0475.2010.00513.x)")
                         st.markdown("**Variables in the dataset:**")
 
                         col1,col2=st.beta_columns(2) 
                         col1.write("invest")
-                        col2.write("Gross  investment,  defined  as  additions  to  plant  and  equipment  plusmaintenance and repairs in millions of dollars deflated by the implicitprice deflator of producers’ durable equipment (base 1947).")
+                        col2.write("Gross  investment,  defined  as  additions  to  plant  and  equipment  plus maintenance and repairs in millions of dollars deflated by the implicit price deflator of producers’ durable equipment (base 1947)")
                         
                         col1,col2=st.beta_columns(2)
                         col1.write("value")
-                        col2.write("Market  value  of  the  firm,  defined  as  the  price  of  common  shares  atDecember 31 (or, for WH, IBM and CH, the average price of Decem-ber  31  and  January  31  of  the  following  year)  times  the  number  ofcommon shares outstanding plus price of preferred shares at Decem-ber 31 (or average price of December 31 and January 31 of the followingyear) times number of preferred shares plus total book value of debt atDecember 31 in millions of dollars deflated by the implicit GNP pricedeflator (base 1947).")
+                        col2.write("Market  value  of  the  firm,  defined  as  the  price  of  common  shares  at December 31 (or, for WH, IBM and CH, the average price of December  31  and  January  31  of  the  following  year)  times  the  number  of common shares outstanding plus price of preferred shares at December 31 (or average price of December 31 and January 31 of the following year) times number of preferred shares plus total book value of debt at December 31 in millions of dollars deflated by the implicit GNP price deflator (base 1947)")
                         
                         col1,col2=st.beta_columns(2)
                         col1.write("capital")
-                        col2.write("Stock of plant and equipment, defined as the accumulated sum of netadditions to plant and equipment deflated by the implicit price defla-tor for producers’ durable equipment (base 1947) minus depreciationallowance deflated by depreciation expense deflator (10 years movingaverage  of  wholesale  price  index  of  metals  and  metal  products,  base1947).")
+                        col2.write("Stock of plant and equipment, defined as the accumulated sum of net additions to plant and equipment deflated by the implicit price deflator for producers’ durable equipment (base 1947) minus depreciation allowance deflated by depreciation expense deflator (10 years moving average  of  wholesale  price  index  of  metals  and  metal  products,  base1947)")
 
                         col1,col2=st.beta_columns(2)
                         col1.write("firm")
-                        col2.write("General Motors (GM), US Steel (US), General Electric (GE), Chrysler(CH),  Atlantic  Refining  (AR),  IBM,  Union  Oil  (UO),  Westinghouse(WH), Goodyear (GY), Diamond Match (DM), American Steel (AS).")
+                        col2.write("General Motors (GM), US Steel (US), General Electric (GE), Chrysler (CH),  Atlantic Refining (AR), IBM, Union Oil (UO), Westinghouse (WH), Goodyear (GY), Diamond Match (DM), American Steel (AS)")
 
                         col1,col2=st.beta_columns(2)
                         col1.write("year")
-                        col2.write("Year ranging from 1935 to 1954.")
+                        col2.write("Year ranging from 1935 to 1954")
                         st.markdown("")
 
                 # Show raw data & data info
@@ -233,6 +285,22 @@ def app():
                     if sett_hints:
                         st.info(str(fc.learning_hints("de_summary_statistics")))
 
+                # Download link for exploration statistics
+                output = BytesIO()
+                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                df_summary["Variable types"].to_excel(excel_file, sheet_name="variable_info")
+                df_summary["ALL"].to_excel(excel_file, sheet_name="summary_statistics")
+                excel_file.save()
+                excel_file = output.getvalue()
+                b64 = base64.b64encode(excel_file)
+                dl_file_name = "Exploration statistics__" + df_name + ".xlsx"
+                st.markdown(
+                    f"""
+                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download exploration statistics</a>
+                """,
+                unsafe_allow_html=True)
+                st.write("")
+
             dev_expander_anovPre = st.beta_expander("Explore ANOVA for raw panel data", expanded = False)
             with dev_expander_anovPre:  
                 if df.shape[1] > 2:
@@ -244,7 +312,7 @@ def app():
                         class_var_options = class_var_options[class_var_options.isin(df.drop(target_var, axis = 1).columns)]
                         clas_var = st.selectbox('Select classifier variable ', [entity, time], key = session_state.id) 
 
-                        # Means by entity and time
+                        # Means and sd by entity 
                         col1, col2 = st.beta_columns(2) 
                         with col1:
                             df_anova_woTime = df.drop([time], axis = 1)
@@ -257,7 +325,7 @@ def app():
                             st.write(df_grouped_ent.std()[target_var])
                             st.write("")
 
-                        # SD by entity and time
+                        # Means and sd by time
                         col3, col4 = st.beta_columns(2) 
                         with col3:
                             df_anova_woEnt= df.drop([entity], axis = 1)
@@ -407,6 +475,26 @@ def app():
                             st.altair_chart(hist_plot_res, use_container_width=True)
                         if sett_hints:
                             st.info(str(fc.learning_hints("de_anova_residuals"))) 
+                        
+                        # Download link for ANOVA statistics
+                        output = BytesIO()
+                        excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                        df_grouped_ent.mean()[target_var].to_excel(excel_file, sheet_name="entity_mean")
+                        df_grouped_ent.std()[target_var].to_excel(excel_file, sheet_name="entity_sd")
+                        df_grouped_time.mean()[target_var].to_excel(excel_file, sheet_name="time_mean")
+                        df_grouped_time.std()[target_var].to_excel(excel_file, sheet_name="time_sd")
+                        counts_ent.transpose().to_excel(excel_file, sheet_name="entity_obs")
+                        counts_time.transpose().to_excel(excel_file, sheet_name="time_obs")
+                        anova_table.to_excel(excel_file, sheet_name="ANOVA table")
+                        excel_file.save()
+                        excel_file = output.getvalue()
+                        b64 = base64.b64encode(excel_file)
+                        dl_file_name = "ANOVA statistics__" + target_var + "__" + df_name + ".xlsx"
+                        st.markdown(
+                            f"""
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download ANOVA statistics</a>
+                        """,
+                        unsafe_allow_html=True)
                         st.write("")
 
                     else:
@@ -438,6 +526,14 @@ def app():
 
                         st.markdown("**Data cleaning**")
 
+                        # Delete rows
+                        sb_DM_delRows = st.multiselect("Select rows to delete", df.index, key = session_state.id)
+                        df = df.loc[~df.index.isin(sb_DM_delRows)]
+
+                        # Delete columns
+                        sb_DM_delCols = st.multiselect("Select columns to delete", df.drop([entity, time], axis = 1).columns, key = session_state.id)
+                        df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
+
                         # Delete duplicates if any exist
                         if df[df.duplicated()].shape[0] > 0:
                             sb_DM_delDup = st.selectbox("Delete duplicate rows", ["No", "Yes"], key = session_state.id)
@@ -455,14 +551,6 @@ def app():
                                 df = df.dropna()
                         elif n_rows_wNAs == 0: 
                             sb_DM_delRows_wNA = "No"   
-
-                        # Delete rows
-                        sb_DM_delRows = st.multiselect("Select rows to delete", df.index, key = session_state.id)
-                        df = df.loc[~df.index.isin(sb_DM_delRows)]
-
-                        # Delete columns
-                        sb_DM_delCols = st.multiselect("Select columns to delete", df.drop([entity, time], axis = 1).columns, key = session_state.id)
-                        df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
                 
                     with a2:
                         #--------------------------------------------------------------------------------------
@@ -507,18 +595,82 @@ def app():
                         sb_DM_dTrans_norm = st.multiselect("Select columns for normalization", transform_options, key = session_state.id)
                         if sb_DM_dTrans_norm is not None: 
                             df = fc.var_transform_norm(df, sb_DM_dTrans_norm)
-                        if df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] == 0:
-                            sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization", numCat_options, key = session_state.id)
-                            if sb_DM_dTrans_numCat is not None: 
-                                df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
+                        sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = session_state.id)
+                        if sb_DM_dTrans_numCat:
+                            if not df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist(): 
+                                sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = session_state.id)
+                                if sb_DM_dTrans_numCat_sel:
+                                    for var in sb_DM_dTrans_numCat_sel:
+                                        if df[var].unique().size > 5: 
+                                            st.error("ERROR: Selected variable has too many categories (>5): " + str(var))
+                                            return
+                                        else:
+                                            manual_cats = pd.DataFrame(index = range(0, df[var].unique().size), columns=["Value", "Cat"])
+                                            text = "Category for "
+                                            # Save manually selected categories
+                                            for i in range(0, df[var].unique().size):
+                                                text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
+                                                man_cat = st.number_input(text1, value = 0, min_value=0, key = session_state.id)
+                                                manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
+                                                manual_cats.loc[i]["Cat"] = man_cat
+                                            
+                                            new_var_name = "numCat_" + var
+                                            new_var = pd.DataFrame(index = df.index, columns = [new_var_name])
+                                            for c in df[var].index:
+                                                if pd.isnull(df[var][c]) == True:
+                                                    new_var.loc[c, new_var_name] = np.nan
+                                                elif pd.isnull(df[var][c]) == False:
+                                                    new_var.loc[c, new_var_name] = int(manual_cats[manual_cats["Value"] == df[var][c]]["Cat"])
+                                            df[new_var_name] = new_var.astype('int64')
+                                        # Exclude columns with manual categorization from standard categorization
+                                        numCat_wo_manCat = [var for var in sb_DM_dTrans_numCat if var not in sb_DM_dTrans_numCat_sel]
+                                        df = fc.var_transform_numCat(df, numCat_wo_manCat)
+                                else:
+                                    df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
+                            else:
+                                col_with_na = df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist()
+                                st.error("ERROR: Please select columns without NAs: " + ', '.join(map(str,col_with_na)))
+                                return
                         else:
                             sb_DM_dTrans_numCat = None
+                        sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = session_state.id)
+                        if sb_DM_dTrans_mult != 0: 
+                            multiplication_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_mult), columns=["Var1", "Var2"])
+                            text = "Multiplication pair"
+                            for i in range(0, sb_DM_dTrans_mult):
+                                text1 = text + " " + str(i+1)
+                                text2 = text + " " + str(i+1) + " "
+                                mult_var1 = st.selectbox(text1, transform_options, key = session_state.id)
+                                mult_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                                multiplication_pairs.loc[i]["Var1"] = mult_var1
+                                multiplication_pairs.loc[i]["Var2"] = mult_var2
+                                fc.var_transform_mult(df, mult_var1, mult_var2)
+                        sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, key = session_state.id)
+                        if sb_DM_dTrans_div != 0:
+                            division_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_div), columns=["Var1", "Var2"]) 
+                            text = "Division pair"
+                            for i in range(0, sb_DM_dTrans_div):
+                                text1 = text + " " + str(i+1) + " (numerator)"
+                                text2 = text + " " + str(i+1) + " (denominator)"
+                                div_var1 = st.selectbox(text1, transform_options, key = session_state.id)
+                                div_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                                division_pairs.loc[i]["Var1"] = div_var1
+                                division_pairs.loc[i]["Var2"] = div_var2
+                                fc.var_transform_div(df, div_var1, div_var2)
                 else:
                     with a1:
                         #--------------------------------------------------------------------------------------
                         # DATA CLEANING
 
                         st.markdown("**Data cleaning**")
+
+                        # Delete rows
+                        sb_DM_delRows = st.multiselect("Select rows to delete", df.index, key = session_state.id)
+                        df = df.loc[~df.index.isin(sb_DM_delRows)]
+
+                        # Delete columns
+                        sb_DM_delCols = st.multiselect("Select columns to delete", df.drop([entity, time], axis = 1).columns, key = session_state.id)
+                        df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
 
                         # Delete duplicates if any exist
                         if df[df.duplicated()].shape[0] > 0:
@@ -537,14 +689,6 @@ def app():
                                 df = df.dropna()
                         elif n_rows_wNAs == 0: 
                             sb_DM_delRows_wNA = "No"   
-
-                        # Delete rows
-                        sb_DM_delRows = st.multiselect("Select rows to delete", df.index, key = session_state.id)
-                        df = df.loc[~df.index.isin(sb_DM_delRows)]
-
-                        # Delete columns
-                        sb_DM_delCols = st.multiselect("Select columns to delete", df.drop([entity, time], axis = 1).columns, key = session_state.id)
-                        df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
 
                     with a2:
                         #--------------------------------------------------------------------------------------
@@ -569,12 +713,68 @@ def app():
                         sb_DM_dTrans_norm = st.multiselect("Select columns for normalization", transform_options, key = session_state.id)
                         if sb_DM_dTrans_norm is not None: 
                             df = fc.var_transform_norm(df, sb_DM_dTrans_norm)
-                        if df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] == 0:
-                            sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization", numCat_options, key = session_state.id)
-                            if sb_DM_dTrans_numCat is not None: 
-                                df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
+                        sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = session_state.id)
+                        if sb_DM_dTrans_numCat:
+                            if not df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist(): 
+                                sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = session_state.id)
+                                if sb_DM_dTrans_numCat_sel:
+                                    for var in sb_DM_dTrans_numCat_sel:
+                                        if df[var].unique().size > 5: 
+                                            st.error("ERROR: Selected variable has too many categories (>5): " + str(var))
+                                            return
+                                        else:
+                                            manual_cats = pd.DataFrame(index = range(0, df[var].unique().size), columns=["Value", "Cat"])
+                                            text = "Category for "
+                                            # Save manually selected categories
+                                            for i in range(0, df[var].unique().size):
+                                                text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
+                                                man_cat = st.number_input(text1, value = 0, min_value=0, key = session_state.id)
+                                                manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
+                                                manual_cats.loc[i]["Cat"] = man_cat
+                                            
+                                            new_var_name = "numCat_" + var
+                                            new_var = pd.DataFrame(index = df.index, columns = [new_var_name])
+                                            for c in df[var].index:
+                                                if pd.isnull(df[var][c]) == True:
+                                                    new_var.loc[c, new_var_name] = np.nan
+                                                elif pd.isnull(df[var][c]) == False:
+                                                    new_var.loc[c, new_var_name] = int(manual_cats[manual_cats["Value"] == df[var][c]]["Cat"])
+                                            df[new_var_name] = new_var.astype('int64')
+                                        # Exclude columns with manual categorization from standard categorization
+                                        numCat_wo_manCat = [var for var in sb_DM_dTrans_numCat if var not in sb_DM_dTrans_numCat_sel]
+                                        df = fc.var_transform_numCat(df, numCat_wo_manCat)
+                                else:
+                                    df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
+                            else:
+                                col_with_na = df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist()
+                                st.error("ERROR: Please select columns without NAs: " + ', '.join(map(str,col_with_na)))
+                                return
                         else:
                             sb_DM_dTrans_numCat = None
+                        sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = session_state.id)
+                        if sb_DM_dTrans_mult != 0: 
+                            multiplication_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_mult), columns=["Var1", "Var2"])
+                            text = "Multiplication pair"
+                            for i in range(0, sb_DM_dTrans_mult):
+                                text1 = text + " " + str(i+1)
+                                text2 = text + " " + str(i+1) + " "
+                                mult_var1 = st.selectbox(text1, transform_options, key = session_state.id)
+                                mult_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                                multiplication_pairs.loc[i]["Var1"] = mult_var1
+                                multiplication_pairs.loc[i]["Var2"] = mult_var2
+                                fc.var_transform_mult(df, mult_var1, mult_var2)
+                        sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, key = session_state.id)
+                        if sb_DM_dTrans_div != 0:
+                            division_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_div), columns=["Var1", "Var2"]) 
+                            text = "Division pair"
+                            for i in range(0, sb_DM_dTrans_div):
+                                text1 = text + " " + str(i+1) + " (numerator)"
+                                text2 = text + " " + str(i+1) + " (denominator)"
+                                div_var1 = st.selectbox(text1, transform_options, key = session_state.id)
+                                div_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                                division_pairs.loc[i]["Var1"] = div_var1
+                                division_pairs.loc[i]["Var2"] = div_var2
+                                fc.var_transform_div(df, div_var1, div_var2)
 
                 #--------------------------------------------------------------------------------------
                 # PROCESSING SUMMARY
@@ -585,6 +785,20 @@ def app():
                     #--------------------------------------------------------------------------------------
                     # DATA CLEANING
 
+                    # Rows
+                    if len(sb_DM_delRows) > 1:
+                        st.write("-", len(sb_DM_delRows), " rows were manually deleted:", ', '.join(map(str,sb_DM_delRows)))
+                    elif len(sb_DM_delRows) == 1:
+                        st.write("-",len(sb_DM_delRows), " row was manually deleted:", str(sb_DM_delRows[0]))
+                    elif len(sb_DM_delRows) == 0:
+                        st.write("- No row was manually deleted!")
+                    # Columns
+                    if len(sb_DM_delCols) > 1:
+                        st.write("-", len(sb_DM_delCols), " columns were manually deleted:", ', '.join(sb_DM_delCols))
+                    elif len(sb_DM_delCols) == 1:
+                        st.write("-",len(sb_DM_delCols), " column was manually deleted:", str(sb_DM_delCols[0]))
+                    elif len(sb_DM_delCols) == 0:
+                        st.write("- No column was manually deleted!")
                     # Duplicates
                     if sb_DM_delDup == "Yes":
                         if n_rows_dup > 1:
@@ -601,20 +815,6 @@ def app():
                             st.write("-", n_rows - n_rows_wNAs, "row with NAs was deleted!")
                     else:
                         st.write("- No row with NAs was deleted!")
-                    # Rows
-                    if len(sb_DM_delRows) > 1:
-                        st.write("-", len(sb_DM_delRows), " rows were manually deleted:", ', '.join(map(str,sb_DM_delRows)))
-                    elif len(sb_DM_delRows) == 1:
-                        st.write("-",len(sb_DM_delRows), " row was manually deleted:", str(sb_DM_delRows[0]))
-                    elif len(sb_DM_delRows) == 0:
-                        st.write("- No row was manually deleted!")
-                    # Columns
-                    if len(sb_DM_delCols) > 1:
-                        st.write("-", len(sb_DM_delCols), " columns were manually deleted:", ', '.join(sb_DM_delCols))
-                    elif len(sb_DM_delCols) == 1:
-                        st.write("-",len(sb_DM_delCols), " column was manually deleted:", str(sb_DM_delCols[0]))
-                    elif len(sb_DM_delCols) == 0:
-                        st.write("- No column was manually deleted!")
                     
                     #--------------------------------------------------------------------------------------
                     # DATA IMPUTATION
@@ -670,6 +870,16 @@ def app():
                             st.write("-",len(sb_DM_dTrans_numCat), " column was transformed to numeric categories:", sb_DM_dTrans_numCat[0])
                         elif len(sb_DM_dTrans_numCat) == 0:
                             st.write("- No column was transformed to numeric categories!")
+                    # multiplication
+                    if sb_DM_dTrans_mult != 0:
+                        st.write("-", "Number of variable multiplications: ", sb_DM_dTrans_mult)
+                    elif sb_DM_dTrans_mult == 0:
+                        st.write("- No variables were multiplied!")
+                    # division
+                    if sb_DM_dTrans_div != 0:
+                        st.write("-", "Number of variable divisions: ", sb_DM_dTrans_div)
+                    elif sb_DM_dTrans_div == 0:
+                        st.write("- No variables were divided!")
             
             #------------------------------------------------------------------------------------------
             
@@ -677,7 +887,7 @@ def app():
             # UPDATED DATA SUMMARY   
 
             # Show only if changes were made
-            if  any(v for v in [sb_DM_delRows, sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes":
+            if  any(v for v in [sb_DM_delRows, sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or sb_DM_dTrans_mult != 0 or sb_DM_dTrans_div != 0:
                 dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed panel data", expanded = False)
                 with dev_expander_dsPost:
                     if df.shape[1] > 2 and df.shape[0] > 0:
@@ -715,6 +925,24 @@ def app():
                                 st.caption("** Mode is not unique.") 
                             if sett_hints:
                                 st.info(str(fc.learning_hints("de_summary_statistics")))
+                        
+                        # Download link for cleaned exploration statistics
+                        output = BytesIO()
+                        excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                        df.to_excel(excel_file, sheet_name="cleaned_data")
+                        df_summary_post["Variable types"].to_excel(excel_file, sheet_name="cleaned_variable_info")
+                        df_summary_post["ALL"].to_excel(excel_file, sheet_name="cleaned_summary_statistics")
+                        excel_file.save()
+                        excel_file = output.getvalue()
+                        b64 = base64.b64encode(excel_file)
+                        dl_file_name = "Cleaned data and exploration statistics__" + df_name + ".xlsx"
+                        st.markdown(
+                            f"""
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download cleaned data and exploration statistics</a>
+                        """,
+                        unsafe_allow_html=True)
+                        st.write("")
+
                     else: st.error("ERROR: No data available for Data Exploration!") 
 
                 dev_expander_anovPost = st.beta_expander("Explore ANOVA for cleaned and transformed panel data", expanded = False)
@@ -729,7 +957,7 @@ def app():
                             class_var_options = class_var_options[class_var_options.isin(df.drop(target_var2, axis = 1).columns)]
                             clas_var2 = st.selectbox('Select classifier variable', [entity, time],) 
 
-                            # Means by entity and time
+                            # Means and sd by entity
                             col1, col2 = st.beta_columns(2) 
                             with col1:
                                 df_anova_woTime = df.drop([time], axis = 1)
@@ -742,7 +970,7 @@ def app():
                                 st.write(df_grouped_ent.std()[target_var2])
                                 st.write("")
 
-                            # SD by entity and time
+                            # Means and sd by time
                             col3, col4 = st.beta_columns(2) 
                             with col3:
                                 df_anova_woEnt= df.drop([entity], axis = 1)
@@ -892,7 +1120,27 @@ def app():
                                 st.altair_chart(hist_plot, use_container_width=True)  
                             if sett_hints:
                                 st.info(str(fc.learning_hints("de_anova_residuals"))) 
-                                st.write("")       
+                            
+                            # Download link for ANOVA statistics
+                            output = BytesIO()
+                            excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                            df_grouped_ent.mean()[target_var2].to_excel(excel_file, sheet_name="entity_mean")
+                            df_grouped_ent.std()[target_var2].to_excel(excel_file, sheet_name="entity_sd")
+                            df_grouped_time.mean()[target_var2].to_excel(excel_file, sheet_name="time_mean")
+                            df_grouped_time.std()[target_var2].to_excel(excel_file, sheet_name="time_sd")
+                            counts_ent.transpose().to_excel(excel_file, sheet_name="entity_obs")
+                            counts_time.transpose().to_excel(excel_file, sheet_name="time_obs")
+                            anova_table.to_excel(excel_file, sheet_name="ANOVA table")
+                            excel_file.save()
+                            excel_file = output.getvalue()
+                            b64 = base64.b64encode(excel_file)
+                            dl_file_name = "Cleaned ANOVA statistics__" + target_var2 + "__" + df_name + ".xlsx"
+                            st.markdown(
+                                f"""
+                            <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download cleaned ANOVA statistics</a>
+                            """,
+                            unsafe_allow_html=True)
+                            st.write("")       
                         else:
                             st.error("ERROR: The target variable must be a numerical one!")
                     else: st.error("ERROR: No data available for ANOVA!") 
@@ -1015,7 +1263,7 @@ def app():
             st.write("")
             st.write("")
             st.header("**Panel data modelling**")
-            st.markdown("Go for creating predictive models of your panel data using panel data modelling!  Staty will take care of the modelling for you, so you can put your focus on results interpretation and communication! ")
+            st.markdown("Go for creating predictive models of your panel data using panel data modelling!  STATY will take care of the modelling for you, so you can put your focus on results interpretation and communication! ")
 
             PDM_settings = st.beta_expander("Specify model", expanded = False)
             with PDM_settings:
@@ -1056,8 +1304,8 @@ def app():
                             response_var_message_num = "ERROR: Please select a numeric response variable!"
                         elif var_cat.loc[response_var] == "string/categorical" or var_cat.loc[response_var] == "other" or var_cat.loc[response_var] == "string/single":
                             response_var_message_num = "ERROR: Please select a numeric response variable!"
-                        elif np.where(df[response_var].isnull())[0].size > 0:
-                            response_var_message_na = "ERROR: Please select a response variable without NAs or delete/replace rows with NAs in data processing preferences!"
+                        # elif np.where(df[response_var].isnull())[0].size > 0:
+                        #     response_var_message_na = "ERROR: Please select a response variable without NAs or delete/replace rows with NAs in data processing preferences!"
                         elif var_cat.loc[response_var] == "categorical":
                             response_var_message_cat = "WARNING: Categorical variable is treated as continuous variable!"
 
@@ -1073,6 +1321,7 @@ def app():
                             # Select explanatory variables
                             expl_var_options = response_var_options[response_var_options.isin(df.drop(response_var, axis = 1).columns)]
                             expl_var = st.multiselect("Select explanatory variables", expl_var_options, key = session_state.id)
+                            var_list = list([entity]) + list([time]) + list([response_var]) + list(expl_var)
 
                             # Check if explanatory variables are numeric and have no NAs
                             expl_var_message_num = False
@@ -1080,9 +1329,13 @@ def app():
                             if any(a for a in df[expl_var].dtypes if a != "float64" and a != "float32" and a != "int64" and a != "int64"): 
                                 expl_var_not_num = df[expl_var].select_dtypes(exclude=["int64", "int32", "float64", "float32"]).columns
                                 expl_var_message_num = "ERROR: Please exclude non-numeric variables: " + ', '.join(map(str,list(expl_var_not_num)))
-                            elif np.where(df[expl_var].isnull())[0].size > 0:
-                                expl_var_with_na = df[expl_var].columns[df[expl_var].isna().any()].tolist()
-                                expl_var_message_na = "ERROR: Please select variables without NAs or delete/replace rows with NAs in data processing preferences: " + ', '.join(map(str,list(expl_var_with_na)))
+                            # elif np.where(df[expl_var].isnull())[0].size > 0:
+                            #     expl_var_with_na = df[expl_var].columns[df[expl_var].isna().any()].tolist()
+                            #     expl_var_message_na = "ERROR: Please select variables without NAs or delete/replace rows with NAs in data processing preferences: " + ', '.join(map(str,list(expl_var_with_na)))
+                            
+                            # Check if NAs are present and delete them automatically (delete before run models button)
+                            if np.where(df[var_list].isnull())[0].size > 0:
+                                st.warning("WARNING: Your modelling data set includes NAs. Rows with NAs are automatically deleted!")
 
                             if expl_var_message_num != False:
                                 st.error(expl_var_message_num)
@@ -1121,9 +1374,316 @@ def app():
                                     val_runs = st.slider("Select number for validation runs", 5, 100, 10)
 
                                 #--------------------------------------------------------------------------------------
+                                # PREDICTION SETTINGS
+
+                                st.markdown("**Model predictions**")
+                                do_modprednew = st.selectbox("Use model prediction for new data", ["No", "Yes"])
+
+                                if do_modprednew == "No":
+                                    df_new = pd.DataFrame()
+                                if do_modprednew == "Yes":
+                                    # Upload new data
+                                    new_data_pred = st.file_uploader("  ", type=["csv", "txt"])
+
+                                    if new_data_pred is not None:
+
+                                        # Read data
+                                        if uploaded_data is not None:
+                                            df_new = pd.read_csv(new_data_pred, decimal=dec_sep, sep = col_sep,thousands=thousands_sep,encoding=encoding_val, engine='python')
+                                        else:
+                                            df_new = pd.read_csv(new_data_pred, sep = ";|,|\t",engine='python')
+                                        st.success('Loading data... done!')
+
+                                        # Transform columns if any were transformed
+                                        # Log-transformation
+                                        if sb_DM_dTrans_log is not None:
+
+                                            # List of log-transformed variables that are included as explanatory variables
+                                            tv_list = []
+                                            for tv in sb_DM_dTrans_log:
+                                                if "log_"+tv in expl_var:
+                                                    tv_list.append(tv)
+                                            
+                                            # Check if log-transformed explanatory variables are available for transformation in new data columns
+                                            tv_list_not_avail = []
+                                            if tv_list:
+                                                for tv in tv_list:
+                                                    if tv not in df_new.columns:
+                                                        tv_list_not_avail.append(tv)
+                                                if tv_list_not_avail:
+                                                    st.error("ERROR: Some variables are not available for log-transformation in new data: "+ ', '.join(tv_list_not_avail))
+                                                    return
+                                                else:
+                                                    # Transform data if variables for transformation are all available in new data   
+                                                    df_new = fc.var_transform_log(df_new, tv_list)
+
+                                        # Sqrt-transformation
+                                        if sb_DM_dTrans_sqrt is not None:
+
+                                            # List of sqrt-transformed variables that are included as explanatory variables
+                                            tv_list = []
+                                            for tv in sb_DM_dTrans_sqrt:
+                                                if "sqrt_"+tv in expl_var:
+                                                    tv_list.append(tv)
+                                            
+                                            # Check if sqrt-transformed explanatory variables are available for transformation in new data columns
+                                            tv_list_not_avail = []
+                                            if tv_list:
+                                                for tv in tv_list:
+                                                    if tv not in df_new.columns:
+                                                        tv_list_not_avail.append(tv)
+                                                if tv_list_not_avail:
+                                                    st.error("ERROR: Some variables are not available for sqrt-transformation in new data: "+ ', '.join(tv_list_not_avail))
+                                                    return
+                                                else:
+                                                    # Transform data if variables for transformation are all available in new data   
+                                                    df_new = fc.var_transform_sqrt(df_new, tv_list)
+                                        
+                                        # Square-transformation
+                                        if sb_DM_dTrans_square is not None:
+
+                                            # List of square-transformed variables that are included as explanatory variables
+                                            tv_list = []
+                                            for tv in sb_DM_dTrans_square:
+                                                if "square_"+tv in expl_var:
+                                                    tv_list.append(tv)
+                                            
+                                            # Check if square-transformed explanatory variables are available for transformation in new data columns
+                                            tv_list_not_avail = []
+                                            if tv_list:
+                                                for tv in tv_list:
+                                                    if tv not in df_new.columns:
+                                                        tv_list_not_avail.append(tv)
+                                                if tv_list_not_avail:
+                                                    st.error("ERROR: Some variables are not available for square-transformation in new data: "+ ', '.join(tv_list_not_avail))
+                                                    return
+                                                else:
+                                                    # Transform data if variables for transformation are all available in new data   
+                                                    df_new = fc.var_transform_square(df_new, tv_list)
+
+                                        # Standardization
+                                        if sb_DM_dTrans_stand is not None:
+
+                                            # List of standardized variables that are included as explanatory variables
+                                            tv_list = []
+                                            for tv in sb_DM_dTrans_stand:
+                                                if "stand_"+tv in expl_var:
+                                                    tv_list.append(tv) 
+                                            
+                                            # Check if standardized explanatory variables are available for transformation in new data columns
+                                            tv_list_not_avail = []
+                                            if tv_list:
+                                                for tv in tv_list:
+                                                    if tv not in df_new.columns:
+                                                        tv_list_not_avail.append(tv)
+                                                if tv_list_not_avail:
+                                                    st.error("ERROR: Some variables are not available for standardization in new data: "+ ', '.join(tv_list_not_avail))
+                                                    return
+                                                else:
+                                                    # Transform data if variables for transformation are all available in new data
+                                                    # Use mean and standard deviation of original data for standardization
+                                                    for tv in tv_list:
+                                                        if df_new[tv].dtypes == "float64" or df_new[tv].dtypes == "int64" or df_new[tv].dtypes == "float32" or df_new[tv].dtypes == "int32":
+                                                            if df[tv].std() != 0:
+                                                                new_var_name = "stand_" + tv
+                                                                new_var = (df_new[tv] - df[tv].mean())/df[tv].std()
+                                                                df_new[new_var_name] = new_var
+                                                        else:
+                                                            st.error("ERROR: " + str(tv) + " is not numerical and cannot be standardized!")
+                                                            return    
+
+                                        # Normalization
+                                        if sb_DM_dTrans_norm is not None:
+
+                                            # List of normalized variables that are included as explanatory variables
+                                            tv_list = []
+                                            for tv in sb_DM_dTrans_norm:
+                                                if "norm_"+tv in expl_var:
+                                                    tv_list.append(tv) 
+
+                                            # Check if normalized explanatory variables are available for transformation in new data columns
+                                            tv_list_not_avail = []
+                                            if tv_list:
+                                                for tv in tv_list:
+                                                    if tv not in df_new.columns:
+                                                        tv_list_not_avail.append(tv)
+                                                if tv_list_not_avail:
+                                                    st.error("ERROR: Some variables are not available for normalization in new data: "+ ', '.join(tv_list_not_avail))
+                                                    return
+                                                else:
+                                                    # Transform data if variables for transformation are all available in new data 
+                                                    # Use min and max of original data for normalization
+                                                    for tv in tv_list:
+                                                        if df_new[tv].dtypes == "float64" or df_new[tv].dtypes == "int64" or df_new[tv].dtypes == "float32" or df_new[tv].dtypes == "int32":
+                                                            if (df[tv].max()-df[tv].min()) != 0:
+                                                                new_var_name = "norm_" + tv
+                                                                new_var = (df_new[tv] - df[tv].min())/(df[tv].max()-df[tv].min())
+                                                                df_new[new_var_name] = new_var 
+                                                        else:
+                                                            st.error("ERROR: " + str(tv) + " is not numerical and cannot be normalized!")
+                                                            return  
+                                        
+                                        # Categorization
+                                        if sb_DM_dTrans_numCat is not None: 
+
+                                            # List of categorized variables that are included as explanatory variables
+                                            tv_list = []
+                                            for tv in sb_DM_dTrans_numCat:
+                                                if "numCat_"+tv in expl_var:
+                                                    tv_list.append(tv) 
+                                            
+                                            # Check if categorized explanatory variables are available for transformation in new data columns
+                                            tv_list_not_avail = []
+                                            if tv_list:
+                                                for tv in tv_list:
+                                                    if tv not in df_new.columns:
+                                                        tv_list_not_avail.append(tv)
+                                                if tv_list_not_avail:
+                                                    st.error("ERROR: Some variables are not available for categorization in new data: "+ ', '.join(tv_list_not_avail))
+                                                    return
+                                                else:
+                                                    # Transform data if variables for transformation are all available in new data 
+                                                    # Use same categories as for original data
+                                                    for tv in tv_list:
+                                                        new_var_name = "numCat_" + tv
+                                                        new_var = pd.DataFrame(index = df_new.index, columns = [new_var_name])
+                                                        for r in df_new.index:
+                                                            if df.loc[df[tv] == df_new[tv][r]].empty == False:
+                                                                new_var.loc[r, new_var_name] = df["numCat_" + tv][df.loc[df[tv] == df_new[tv][r]].index[0]]
+                                                            else:
+                                                                st.error("ERROR: Category is missing for the value in row: "+ str(r) + ", variable: " + str(tv))
+                                                                return
+                                                        df_new[new_var_name] = new_var.astype('int64')
+                                        
+                                        # Multiplication
+                                        if sb_DM_dTrans_mult != 0:
+
+                                            # List of multiplied variables that are included as explanatory variables
+                                            tv_list = []
+                                            for tv in range(0, sb_DM_dTrans_mult):
+                                                mult_name = "mult_" + str(multiplication_pairs.loc[tv]["Var1"]) + "_" + str(multiplication_pairs.loc[tv]["Var2"])
+                                                if mult_name in expl_var:
+                                                    tv_list.append(str(multiplication_pairs.loc[tv]["Var1"]))
+                                                    tv_list.append(str(multiplication_pairs.loc[tv]["Var2"]))
+                                            
+                                            # Check if multiplied explanatory variables are available for transformation in new data columns
+                                            tv_list_not_avail = []
+                                            if tv_list:
+                                                for tv in tv_list:
+                                                    if tv not in df_new.columns:
+                                                        tv_list_not_avail.append(tv)
+                                                if tv_list_not_avail:
+                                                    st.error("ERROR: Some variables are not available for multiplication in new data: "+ ', '.join(tv_list_not_avail))
+                                                    return
+                                                else:
+                                                    # Transform data if variables for transformation are all available in new data 
+                                                    for var in range(0, sb_DM_dTrans_mult):  
+                                                        df_new = fc.var_transform_mult(df_new, multiplication_pairs.loc[var]["Var1"], multiplication_pairs.loc[var]["Var2"])
+
+                                        # Division
+                                        if sb_DM_dTrans_div != 0:
+
+                                            # List of divided variables that are included as explanatory variables
+                                            tv_list = []
+                                            for tv in range(0, sb_DM_dTrans_div):
+                                                mult_name = "div_" + str(division_pairs.loc[tv]["Var1"]) + "_" + str(division_pairs.loc[tv]["Var2"])
+                                                if mult_name in expl_var:
+                                                    tv_list.append(str(division_pairs.loc[tv]["Var1"]))
+                                                    tv_list.append(str(division_pairs.loc[tv]["Var2"]))
+                                            
+                                        # Check if multiplied explanatory variables are available for transformation in new data columns
+                                        tv_list_not_avail = []
+                                        if tv_list:
+                                            for tv in tv_list:
+                                                if tv not in df_new.columns:
+                                                    tv_list_not_avail.append(tv)
+                                            if tv_list_not_avail:
+                                                st.error("ERROR: Some variables are not available for division in new data: "+ ', '.join(tv_list_not_avail))
+                                                return
+                                            else:
+                                                # Transform data if variables for transformation are all available in new data 
+                                                for var in range(0, sb_DM_dTrans_div):  
+                                                    df_new = fc.var_transform_div(df_new, division_pairs.loc[var]["Var1"], division_pairs.loc[var]["Var2"])
+
+                                        # Check if explanatory variables are available as columns as well as entity and time
+                                        expl_list = []
+                                        for expl_incl in expl_var:
+                                            if expl_incl not in df_new.columns:
+                                                expl_list.append(expl_incl)
+                                        if expl_list:
+                                            st.error("ERROR: Some variables are missing in new data: "+ ', '.join(expl_list))
+                                            return
+                                        if any(a for a in df_new.columns if a == entity) and any(a for a in df_new.columns if a == time):
+                                            st.info("All variables are available for predictions!")
+                                        elif any(a for a in df_new.columns if a == entity) == False:
+                                            st.error("ERROR: Entity variable is missing!")
+                                            return
+                                        elif any(a for a in df_new.columns if a == time) == False:
+                                            st.error("ERROR: Time variable is missing!")
+                                            return
+                                        
+                                        # Check if NAs are present
+                                        if df_new.iloc[list(pd.unique(np.where(df_new.isnull())[0]))].shape[0] == 0:
+                                            st.empty()
+                                        else:
+                                            df_new = df_new[list([entity]) + list([time]) + expl_var].dropna()
+                                            st.warning("WARNING: Your new data set includes NAs. Rows with NAs are automatically deleted!")
+                                        df_new = df_new[list([entity]) + list([time]) + expl_var]
+                                
+                                # Modelling data set
+                                df = df[var_list]
+
+                                # Check if NAs are present and delete them automatically
+                                if np.where(df[var_list].isnull())[0].size > 0:
+                                    df = df.dropna()
+                                        
+                                #--------------------------------------------------------------------------------------
                                 # SETTINGS SUMMARY
 
                                 st.write("")
+                                # Show modelling data
+                                if st.checkbox("Show modelling data"):
+                                    st.write(df)
+                                    st.write("Data shape: ", df.shape[0],  " rows and ", df.shape[1], " columns")
+                                    
+                                    # Download link for modelling data
+                                    output = BytesIO()
+                                    excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                                    df.to_excel(excel_file, sheet_name="modelling_data")
+                                    excel_file.save()
+                                    excel_file = output.getvalue()
+                                    b64 = base64.b64encode(excel_file)
+                                    dl_file_name= "Modelling data__" + df_name + ".xlsx"
+                                    st.markdown(
+                                        f"""
+                                    <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download modelling data</a>
+                                    """,
+                                    unsafe_allow_html=True)
+                                st.write("")
+
+                                # Show prediction data
+                                if do_modprednew == "Yes":
+                                    if new_data_pred is not None:
+                                        if st.checkbox("Show new data for predictions"):
+                                            st.write(df_new)
+                                            st.write("Data shape: ", df_new.shape[0],  " rows and ", df_new.shape[1], " columns")
+
+                                            # Download link for forecast data
+                                            output = BytesIO()
+                                            excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                                            df_new.to_excel(excel_file, sheet_name="new_data")
+                                            excel_file.save()
+                                            excel_file = output.getvalue()
+                                            b64 = base64.b64encode(excel_file)
+                                            dl_file_name= "New data for predictions__" + df_name + ".xlsx"
+                                            st.markdown(
+                                                f"""
+                                            <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download new data for predictions</a>
+                                            """,
+                                            unsafe_allow_html=True)
+                                        st.write("")
+
+                                # Show modelling settings
                                 if st.checkbox('Show a summary of modelling settings', value = False): 
                                     
                                     #--------------------------------------------------------------------------------------
@@ -1551,6 +2111,49 @@ def app():
                                             reg_ent_effects.loc[e]["Value"] = reg_comb_effects.loc[e,].reset_index(drop = True).iloc[0][0]
                                         for t in reg_time_effects.index:
                                             reg_time_effects.loc[t]["Value"] = 0
+
+                                    # New predictions
+                                    if df_new.empty == False:
+
+                                        data_new = df_new.set_index([entity, time])
+                                        X_data1_new = data_new[expl_var] # for efe, tfe, twfe
+                                        X_data2_new = sm.add_constant(data_new[expl_var]) # for re, pool
+                                        
+                                        if PDM_alg != "Pooled" and PDM_alg != "Random Effects":
+                                            X_data_new = X_data1_new.copy()
+                                        if PDM_alg == "Pooled" or PDM_alg == "Random Effects":
+                                            X_data_new = X_data2_new.copy()
+                                        
+                                        # Prediction for new prediction data (without including effects)
+                                        Y_pred_new = panel_model_fit.predict(X_data_new)
+                                        
+                                        # Add effects for new predictions
+                                        for p in range(Y_pred_new.size):
+                                            
+                                            entity_ind = Y_pred_new.index[p][0]
+                                            time_ind = Y_pred_new.index[p][1]
+                                            
+                                            # if effects are available, add effect
+                                            if PDM_alg == "Entity Fixed Effects":
+                                                if any(a for a in reg_ent_effects.index if a == entity_ind):
+                                                    effect = reg_ent_effects.loc[entity_ind][0]
+                                                    Y_pred_new["predictions"].loc[entity_ind, time_ind] = Y_pred_new["predictions"].loc[entity_ind, time_ind] + effect
+                                            if PDM_alg == "Time Fixed Effects":
+                                                if any(a for a in reg_time_effects.index if a == time_ind):
+                                                    effect = reg_time_effects.loc[time_ind][0]
+                                                    Y_pred_new["predictions"].loc[entity_ind, time_ind] = Y_pred_new["predictions"].loc[entity_ind, time_ind] + effect
+                                            if PDM_alg == "Two-ways Fixed Effects":
+                                                if any(a for a in reg_time_effects.index if a == time_ind):
+                                                    effect_time = reg_time_effects.loc[time_ind][0]
+                                                else: effect_time = 0
+                                                if any(a for a in reg_ent_effects.index if a == entity_ind):
+                                                    effect_entity = reg_ent_effects.loc[entity_ind][0]
+                                                else: effect_entity = 0    
+                                                Y_pred_new["predictions"].loc[entity_ind, time_ind] = Y_pred_new["predictions"].loc[entity_ind, time_ind] + effect_entity + effect_time
+                                            if PDM_alg == "Random Effects":
+                                                if any(a for a in reg_ent_effects.index if a == entity_ind):
+                                                    effect = reg_ent_effects.loc[entity_ind][0]
+                                                    Y_pred_new["predictions"].loc[entity_ind, time_ind] = Y_pred_new["predictions"].loc[entity_ind, time_ind] + effect
                                     
                                     # Variance decomposition
                                     if PDM_alg == "Random Effects":
@@ -1561,6 +2164,8 @@ def app():
                                         reg_var_decomp.loc["idiosyncratic"]["share"] = panel_model_fit.variance_decomposition["Residual"]/(panel_model_fit.variance_decomposition["Residual"]+panel_model_fit.variance_decomposition["Effects"])
                                         reg_var_decomp.loc["individual"]["share"] = panel_model_fit.variance_decomposition["Effects"]/(panel_model_fit.variance_decomposition["Residual"]+panel_model_fit.variance_decomposition["Effects"])
                                         reg_theta.loc["theta"] = list(panel_model_fit.theta.values)
+                                        for j in reg_theta.columns:
+                                            reg_theta.loc["theta"][j] = reg_theta.loc["theta"][j][0]
                                     
                                     # Statistical tests
                                     if PDM_alg == "Entity Fixed Effects":
@@ -1962,7 +2567,80 @@ def app():
                         st.altair_chart(cooksD, use_container_width = True)
                     if sett_hints:
                         st.info(str(fc.learning_hints("mod_md_MLR_resVsLev_cooksD")))
-                    st.write("")
+                
+                # Download link for full model output
+                output = BytesIO()
+                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                model_full_results["Entity information"].to_excel(excel_file, sheet_name="entity_information")
+                model_full_results["Time information"].to_excel(excel_file, sheet_name="time_period_information")
+                model_full_results["Regression information"].to_excel(excel_file, sheet_name="regression_information")
+                model_full_results["Regression statistics"].to_excel(excel_file, sheet_name="regression_statistics")
+                model_full_results["Overall performance"].to_excel(excel_file, sheet_name="overall_performance")
+                model_full_results["Residuals"].to_excel(excel_file, sheet_name="residuals")
+                model_full_results["Coefficients"].to_excel(excel_file, sheet_name="coefficients")
+                if PDM_alg != "Pooled":
+                    model_full_results["Entity effects"].to_excel(excel_file, sheet_name="entity_effects")
+                    model_full_results["Time effects"].to_excel(excel_file, sheet_name="time_effects")
+                    model_full_results["Combined effects"].to_excel(excel_file, sheet_name="combined_effects")
+                if PDM_alg == "Pooled":
+                    model_full_results["ANOVA"].to_excel(excel_file, sheet_name="ANOVA")
+                if PDM_alg == "Random Effects":
+                    model_full_results["Variance decomposition"].to_excel(excel_file, sheet_name="variance_decomposition")
+                    model_full_results["Theta"].to_excel(excel_file, sheet_name="theta")
+                    model_full_results["tests"].to_excel(excel_file, sheet_name="statistical_tests")
+                if PDM_alg == "Entity Fixed Effects":
+                    model_full_results["tests"].to_excel(excel_file, sheet_name="statistical_tests")
+                if PDM_alg != "Entity Fixed Effects" and PDM_alg != "Random Effects":
+                    model_full_results["tests"].to_excel(excel_file, sheet_name="statistical_tests")
+                if PDM_alg == "Pooled":
+                    model_full_results["hetTests"].to_excel(excel_file, sheet_name="heteroskedasticity_tests")
+                excel_file.save()
+                excel_file = output.getvalue()
+                b64 = base64.b64encode(excel_file)
+                dl_file_name= "Full model output__" + PDM_alg + "__" + df_name + ".xlsx"
+                st.markdown(
+                    f"""
+                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download full model output</a>
+                """,
+                unsafe_allow_html=True)
+                st.write("")
+
+        #--------------------------------------------------------------------------------------
+        # FULL MODEL PREDICTIONS
+
+        prediction_output = st.beta_expander("Full model predictions", expanded = False)
+        with prediction_output:
+            pred_col1, pred_col2 = st.beta_columns(2)
+            with pred_col1:
+                st.write("Predictions for original data:")
+                pred_orig = pd.DataFrame(fitted)
+                pred_orig = pred_orig.join(df[[entity, time]])
+                pred_orig = pred_orig.set_index([entity, time])
+                st.write(pred_orig)
+            with pred_col2:
+                if do_modprednew == "Yes":
+                    st.write("Predictions for new data:")
+                    Y_pred_new.columns = [response_var]
+                    st.write(Y_pred_new)
+        
+            #-------------------------------------------------------------
+                        
+            # Download links for prediction data
+            output = BytesIO()
+            predictions_excel = pd.ExcelWriter(output, engine="xlsxwriter")
+            pred_orig.to_excel(predictions_excel, sheet_name="pred_orig")
+            if do_modprednew == "Yes":
+                Y_pred_new.to_excel(predictions_excel, sheet_name="pred_new")
+            predictions_excel.save()
+            predictions_excel = output.getvalue()
+            b64 = base64.b64encode(predictions_excel)
+            dl_file_name= "Full model predictions__" + PDM_alg + "__" + df_name + ".xlsx"
+            st.markdown(
+                f"""
+            <a href="data:file/predictions_excel;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download full model predictions</a>
+            """,
+            unsafe_allow_html=True)
+            st.write("")
 
         #--------------------------------------------------------------------------------------
         # VALIDATION OUTPUT
@@ -2045,5 +2723,22 @@ def app():
                         if sett_hints:
                             st.info(str(fc.learning_hints("mod_pd_val_res")))
                         st.write("")
+
+                   # Download link for validation output
+                    output = BytesIO()
+                    excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                    model_val_results["mean"].to_excel(excel_file, sheet_name="performance_metrics_mean")
+                    model_val_results["sd"].to_excel(excel_file, sheet_name="performance_metrics_sd")
+                    model_val_res.to_excel(excel_file, sheet_name="residuals_distribution")
+                    excel_file.save()
+                    excel_file = output.getvalue()
+                    b64 = base64.b64encode(excel_file)
+                    dl_file_name = "Validation output__" + PDM_alg + "__"  + df_name + ".xlsx"
+                    st.markdown(
+                        f"""
+                    <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download validation output</a>
+                    """,
+                    unsafe_allow_html=True)
+                    st.write("")   
 
 #--------------------------------------------------------------------------------------

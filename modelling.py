@@ -34,9 +34,11 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+from pygam import LinearGAM, LogisticGAM, s
+
 
 #----------------------------------------------------------------------------------------------
-#FUNCTION FOR CREATINGS SEQUENCE FOR PARAMETER RANGES
+#FUNCTION FOR CREATING SEQUENCEs FOR PARAMETER RANGES
 
 def create_seq(min_val, max_val, step, dec_places):
     if min_val == max_val:
@@ -59,7 +61,7 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
     st.info("Tuning progress")
     my_bar = st.progress(0.0)
     progress = 0
-    algs_with_tuning = list(["Boosted Regression Trees", "Artificial Neural Networks"])
+    algs_with_tuning = list(["Random Forest", "Boosted Regression Trees", "Artificial Neural Networks"])
     algs_no = sum(al in algorithms for al in algs_with_tuning)
     
     # Save results
@@ -86,7 +88,200 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
         X_train, X_test, Y_train, Y_test = train_test_split(X_data, Y_data, train_size = 0.8, random_state = 1)
     if response_var_type == "binary":
         X_train, X_test, Y_train, Y_test = train_test_split(X_data, Y_data, train_size = 0.8, random_state = 1) #, stratify = Y_data)
+
+    #---------------------------------------------------------------------------------
+    # Random Forest
+    if any(a for a in algorithms if a == "Random Forest"):
+
+        # Results table
+        rf_tuning_results = pd.DataFrame(index = ["value"], columns = ["scoring", "number of models", "number of trees", "maximum tree depth", "maximum number of features", "sample rate", "mean score", "std score", "test score"])
+        
+        # Different scoring metrics for response variable type
+        if response_var_type == "continuous":
+            rf_tuning_results["scoring"] = "% VE"
+        if response_var_type == "binary":
+            rf_tuning_results["scoring"] = "AUC ROC"
+
+        # Extract hyperparameter range settings
+        min_not = hyPara_values["rf"]["number of trees"]["min"]
+        max_not = hyPara_values["rf"]["number of trees"]["max"]
+        min_mtd = hyPara_values["rf"]["maximum tree depth"]["min"]
+        max_mtd = hyPara_values["rf"]["maximum tree depth"]["max"]
+        min_mnof = hyPara_values["rf"]["maximum number of features"]["min"]
+        max_mnof = hyPara_values["rf"]["maximum number of features"]["max"]
+        min_sr = hyPara_values["rf"]["sample rate"]["min"]
+        max_sr = hyPara_values["rf"]["sample rate"]["max"]
+        if hypTune_method == "grid-search" or hypTune_method == "random grid-search":
+            not_seq = create_seq(min_not, max_not, step = 5, dec_places = 0)
+            if min_mtd is not None:
+                mtd_seq = create_seq(min_mtd, max_mtd, step = 1, dec_places = 0)
+            mnof_seq = create_seq(min_mnof, max_mnof, step = 1, dec_places = 0)
+            sr_seq = create_seq(min_sr, max_sr, step = 0.05, dec_places = 2)
+        if hypTune_method == "Bayes optimization":
+            not_seq = Integer(min_not,max_not)
+            if min_mtd is not None:
+                mtd_seq = Integer(min_mtd,max_mtd)
+            mnof_seq = Integer(min_mnof,max_mnof)
+            sr_seq = Real(min_sr, max_sr)
+        
+        # Set parameter space
+        if hypTune_method == "grid-search" or hypTune_method == "random grid-search" or hypTune_method == "Bayes optimization":
+            if min_mtd is not None:
+                param_space = dict(n_estimators = not_seq, max_depth = mtd_seq, max_features = mnof_seq, max_samples = sr_seq,)
+            else: 
+                param_space = dict(n_estimators = not_seq, max_features = mnof_seq, max_samples = sr_seq,)
+        if hypTune_method == "sequential model-based optimization":
+            if min_mtd is not None:
+                param_space =  [
+                Integer(min_not, max_not, name = "n_estimators"),
+                Integer(min_mtd, max_mtd, name = "max_depth"),
+                Integer(min_mnof, max_mnof, name = "max_features"),
+                Real(min_sr, max_sr, name = "max_samples")
+                ]  
+            else:        
+                param_space =  [
+                Integer(min_not, max_not, name = "n_estimators"),
+                Integer(min_mnof, max_mnof, name = "max_features"),
+                Real(min_sr, max_sr, name = "max_samples")
+                ]  
+
+        # Model specification for continuous variables
+        if response_var_type == "continuous":
+            # Model
+            rf = ensemble.RandomForestRegressor()
+            # Cross-validation technique
+            cv = RepeatedKFold(n_splits = hypTune_nCV, n_repeats = 1, random_state = 0)
+        # Model specification for binary variables
+        if response_var_type == "binary":
+            # Model
+            rf = ensemble.RandomForestClassifier()
+            # Cross-validation technique
+            cv = RepeatedStratifiedKFold(n_splits = hypTune_nCV, n_repeats = 1, random_state = 0)
+
+        # Search method
+        # Grid-search
+        if hypTune_method == "grid-search":
+            rf_grid = GridSearchCV(estimator = rf, param_grid = param_space, scoring = scoring_function, cv = cv, verbose = 1)#, n_jobs = -1)
+        # Random grid-search
+        if hypTune_method == "random grid-search":
+            rf_grid = RandomizedSearchCV(estimator = rf, param_distributions = param_space, n_iter = hypTune_iter, scoring = scoring_function, cv = cv, verbose = 1)#, n_jobs = -1)
+        # Bayes search
+        if hypTune_method == "Bayes optimization":
+            rf_grid = BayesSearchCV(estimator = rf, search_spaces = param_space, n_iter = hypTune_iter, scoring = scoring_function, cv = cv, verbose = 1)#, n_jobs = -1)
+        # Sequential model-based optimization 
+        if hypTune_method == "sequential model-based optimization":
+            # Define new objective function
+            @use_named_args(param_space)
+            def objective(**params):
+                rf.set_params(**params)
+                return -np.mean(cross_val_score(rf, X_train, Y_train, cv = cv, scoring = scoring_function))#, n_jobs = -1))
+
+        # Grid-search, random grid-search and Bayes search results
+        if hypTune_method == "grid-search" or hypTune_method == "random grid-search" or hypTune_method == "Bayes optimization":
+            # Search results
+            rf_grid_test_fit = rf_grid.fit(X_train, Y_train)
+
+            # Extract number of models
+            if hypTune_method == "grid-search" or hypTune_method == "random grid-search":
+                rf_tuning_results["number of models"] = rf_grid_test_fit.cv_results_["mean_test_score"].size
+            if hypTune_method == "Bayes optimization":
+                rf_tuning_results["number of models"] = len(rf_grid_test_fit.cv_results_["mean_test_score"])
+            
+            # Extract best model parameters (parameter setting that gave the best results on the hold out data)
+            rf_final_para = rf_grid_test_fit.best_params_
+            rf_tuning_results["number of trees"] = rf_final_para.get("n_estimators")
+            if min_mtd is not None:
+                rf_tuning_results["maximum tree depth"] = rf_final_para.get("max_depth")
+            else:
+                rf_tuning_results["maximum tree depth"] = str(None)
+            rf_tuning_results["maximum number of features"] = rf_final_para.get("max_features")
+            rf_tuning_results["sample rate"] = rf_final_para.get("max_samples")
+
+            # Extract best score (mean cross-validated score of the best_estimator) and standard deviation
+            rf_tuning_results["mean score"] = rf_grid_test_fit.best_score_
+            rf_tuning_results["std score"] = rf_grid_test_fit.cv_results_["std_test_score"][rf_grid_test_fit.best_index_]
+
+            # Extract parameters for testing on test data set
+            if min_mtd is not None:
+                params = {'n_estimators': rf_final_para.get("n_estimators"),
+                    'max_depth': rf_final_para.get("max_depth"),
+                    'max_features': rf_final_para.get("max_features"),
+                    'max_samples': rf_final_para.get("max_samples")
+                }
+            else:
+                params = {'n_estimators': rf_final_para.get("n_estimators"),
+                    'max_features': rf_final_para.get("max_features"),
+                    'max_samples': rf_final_para.get("max_samples")
+                }
+
+        # Sequential model-based optimization results
+        if hypTune_method == "sequential model-based optimization":
+            rf_grid_test_fit = forest_minimize(objective, param_space, n_calls = hypTune_iter, verbose = 1)#, n_jobs = -1)
+
+            # Extract number of models
+            rf_tuning_results["number of models"] = rf_grid_test_fit.func_vals.size
+
+            # Extract best model parameters (order important!)
+            rf_tuning_results["number of trees"] = rf_grid_test_fit.x[0]
+            if min_mtd is not None:
+                rf_tuning_results["maximum tree depth"] = rf_grid_test_fit.x[1]
+                rf_tuning_results["maximum number of features"] = rf_grid_test_fit.x[2]
+                rf_tuning_results["sample rate"] = rf_grid_test_fit.x[3]
+            else:
+                rf_tuning_results["maximum tree depth"] = str(None)
+                rf_tuning_results["maximum number of features"] = rf_grid_test_fit.x[1]
+                rf_tuning_results["sample rate"] = rf_grid_test_fit.x[2]
+
+            # Extract parameters for testing on test data set
+            if min_mtd is not None:
+                params = {'n_estimators': rf_tuning_results["number of trees"][0],
+                    'max_depth': rf_tuning_results["maximum tree depth"][0],
+                    'max_features': rf_tuning_results["maximum number of features"][0],
+                    'max_samples': rf_tuning_results["sample rate"][0]
+                }
+            else:
+                params = {'n_estimators': rf_tuning_results["number of trees"][0],
+                    'max_features': rf_tuning_results["maximum number of features"][0],
+                    'max_samples': rf_tuning_results["sample rate"][0]
+                }
+
+            # Re-run cv for best paras in SMBO
+            if response_var_type == "continuous":
+                cv_best_para = cross_val_score(ensemble.RandomForestRegressor(**params), X_train, Y_train, cv = cv, scoring = scoring_function)#, n_jobs = -1)
+            if response_var_type == "binary":
+                cv_best_para = cross_val_score(ensemble.RandomForestClassifier(**params), X_train, Y_train, cv = cv, scoring = scoring_function)#, n_jobs = -1)
+
+            # Extract best score (mean cross-validated score of the best_estimator) and standard deviation
+            rf_tuning_results["mean score"] = np.mean(cv_best_para)
+            rf_tuning_results["std score"] = np.std(cv_best_para)
+        
+        # Test final parameters on test dataset
+        if response_var_type == "continuous":
+            rf_final_model = ensemble.RandomForestRegressor(**params)
+        if response_var_type == "binary":
+            rf_final_model = ensemble.RandomForestClassifier(**params)
+        rf_final_model.fit(X_train, Y_train)
     
+        # Prediction for Y_test (continuous)
+        if response_var_type == "continuous":
+            Y_test_pred = rf_final_model.predict(X_test)
+        # Prediction of probability for Y_test (binary)
+        if response_var_type == "binary":
+            Y_test_pred = rf_final_model.predict_proba(X_test)[:, 1]
+
+        # R² for test data (continuous)
+        if response_var_type == "continuous":
+            rf_tuning_results["test score"] = r2_score(Y_test, Y_test_pred)
+        # AUC for test data (binary)
+        if response_var_type == "binary":
+            rf_tuning_results["test score"] = roc_auc_score(Y_test, Y_test_pred)
+
+        # Save results
+        tuning_results["rf tuning"] = rf_tuning_results
+
+        progress += 1
+        my_bar.progress(progress/algs_no)
+
     #---------------------------------------------------------------------------------
     # Boosted Regression Trees
     if any(a for a in algorithms if a == "Boosted Regression Trees"):
@@ -154,7 +349,7 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
         # Bayes search
         if hypTune_method == "Bayes optimization":
             brt_grid = BayesSearchCV(estimator = brt, search_spaces = param_space, n_iter = hypTune_iter, scoring = scoring_function, cv = cv, verbose = 1)#, n_jobs = -1)
-        # Sequential model-based optimization (gaussian process-based, other options possible)
+        # Sequential model-based optimization
         if hypTune_method == "sequential model-based optimization":
             # Define new objective function
             @use_named_args(param_space)
@@ -410,7 +605,7 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
         # Bayes search
         if hypTune_method == "Bayes optimization":
             ann_grid = BayesSearchCV(estimator = ann, search_spaces = param_space, n_iter = hypTune_iter, scoring = scoring_function, cv = cv, verbose = 1)#, n_jobs = -1)
-        # Sequential model-based optimization (gaussian process-based, other options possible)
+        # Sequential model-based optimization
         if hypTune_method == "sequential model-based optimization":
             # Define new objective function
             @use_named_args(param_space)
@@ -560,7 +755,7 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
 #----------------------------------------------------------------------------------------------
 #FUNCTION FOR MODEL VALIDATION RUNS
 #@st.cache(suppress_st_warning = True)
-def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_type, response_var, expl_var, final_hyPara_values):
+def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_type, response_var, expl_var, final_hyPara_values, gam_finalPara):
     
     # Progress bar
     st.info("Validation progress")
@@ -634,7 +829,38 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
 
                     # sklearn
                     ml_model = LinearRegression()
-                    ml_model.fit(X_train, Y_train)                 
+                    ml_model.fit(X_train, Y_train)      
+
+                # Train GAM model
+                if model == "Generalized Additive Models":
+                    if isinstance(gam_finalPara["spline order"][0], list):
+                        nos = gam_finalPara["number of splines"][0]
+                        so = gam_finalPara["spline order"][0]
+                        lam = gam_finalPara["lambda"][0]
+                    else:
+                        nos = int(gam_finalPara["number of splines"][0])
+                        so = int(gam_finalPara["spline order"][0])
+                        lam = float(gam_finalPara["lambda"][0])
+                    ml_model = LinearGAM(n_splines = nos, spline_order = so, lam = lam).fit(X_train, Y_train)
+                    
+                    # Prediction for Y_test
+                    Y_test_pred = ml_model.predict(X_test) 
+
+                # Train RF model
+                if model == "Random Forest":
+                    rf_final_para = final_hyPara_values["rf"]
+                    params = {'n_estimators': rf_final_para["number of trees"][0],
+                    'max_depth': rf_final_para["maximum tree depth"][0],
+                    'max_features': rf_final_para["maximum number of features"][0],
+                    'max_samples': rf_final_para["sample rate"][0],
+                    'bootstrap': True,
+                    'oob_score': True,
+                    }
+                    ml_model = ensemble.RandomForestRegressor(**params)
+                    ml_model.fit(X_train, Y_train)
+                    
+                    # Prediction for Y_test
+                    Y_test_pred = ml_model.predict(X_test)          
                     
                 # Train BRT model
                 if model == "Boosted Regression Trees":
@@ -678,6 +904,10 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
                 # Variable importance with test data (via permutation, order important)
                 scoring_function = make_scorer(r2_score, greater_is_better = True)
                 if model == "Multiple Linear Regression":
+                    varImp = permutation_importance(ml_model , X_test, Y_test, n_repeats = 10, random_state = 0, scoring = scoring_function)
+                elif model == "Generalized Additive Models":
+                    varImp = permutation_importance(ml_model , X_test, Y_test, n_repeats = 10, random_state = 0, scoring = scoring_function)
+                elif model == "Random Forest":
                     varImp = permutation_importance(ml_model , X_test, Y_test, n_repeats = 10, random_state = 0, scoring = scoring_function)
                 elif model == "Boosted Regression Trees":
                     varImp = permutation_importance(ml_model , X_test, Y_test.values.ravel(), n_repeats = 10, random_state = 0, scoring = scoring_function)
@@ -759,7 +989,11 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
 
         # Exclude MLR
         if any(a for a in algorithms if a == "Multiple Linear Regression"):
-            algorithms.remove("Multiple Linear Regression")
+            algo = []
+            for i in algorithms:
+                if i != "Multiple Linear Regression":
+                    algo.append(i)
+            algorithms = algo
 
         if algorithms is not None:
         
@@ -835,7 +1069,40 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
 
                         # Train LR model (sklearn)
                         ml_model_sk = LogisticRegression(solver = "newton-cg", penalty = "none", tol = 1e-05)
-                        ml_model_sk.fit(X_data, Y_data)
+                        ml_model_sk.fit(X_train, Y_train)
+
+                    # Train GAM model
+                    if model == "Generalized Additive Models":
+                        if isinstance(gam_finalPara["spline order"][0], list):
+                            nos = gam_finalPara["number of splines"][0]
+                            so = gam_finalPara["spline order"][0]
+                            lam = gam_finalPara["lambda"][0]
+                        else:
+                            nos = int(gam_finalPara["number of splines"][0])
+                            so = int(gam_finalPara["spline order"][0])
+                            lam = float(gam_finalPara["lambda"][0])
+                        ml_model = LogisticGAM(n_splines = nos, spline_order = so, lam = lam).fit(X_train, Y_train)
+                        
+                        # Prediction for Y_test
+                        Y_test_pred = 1-pd.DataFrame(ml_model.predict_proba(X_test), columns = ["0"])
+                        Y_test_pred["1"] = 1-Y_test_pred
+                        Y_test_pred = Y_test_pred.to_numpy() 
+
+                    # Train RF model
+                    if model == "Random Forest":
+                        rf_final_para = final_hyPara_values["rf"]
+                        params = {'n_estimators': rf_final_para["number of trees"][0],
+                        'max_depth': rf_final_para["maximum tree depth"][0],
+                        'max_features': rf_final_para["maximum number of features"][0],
+                        'max_samples': rf_final_para["sample rate"][0],
+                        'bootstrap': True,
+                        'oob_score': True,
+                        }
+                        ml_model = ensemble.RandomForestClassifier(**params)
+                        ml_model.fit(X_train, Y_train)
+                        
+                        # Prediction for Y_test
+                        Y_test_pred = ml_model.predict_proba(X_test)         
 
                     # Train BRT model
                     if model == "Boosted Regression Trees":
@@ -880,6 +1147,10 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
                     scoring_function = make_scorer(roc_auc_score, greater_is_better = True)
                     if model == "Logistic Regression":
                         varImp = permutation_importance(ml_model_sk , X_test, Y_test, n_repeats = 10, random_state = 0, scoring = scoring_function)
+                    elif model == "Generalized Additive Models":
+                        varImp = permutation_importance(ml_model , X_test, Y_test, n_repeats = 10, random_state = 0, scoring = scoring_function)
+                    elif model == "Random Forest":
+                        varImp = permutation_importance(ml_model , X_test, Y_test, n_repeats = 10, random_state = 0, scoring = scoring_function)
                     elif model == "Boosted Regression Trees":
                         varImp = permutation_importance(ml_model , X_test, Y_test.values.ravel(), n_repeats = 10, random_state = 0, scoring = scoring_function)
                     elif model == "Artificial Neural Networks":
@@ -1024,7 +1295,7 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
 #----------------------------------------------------------------------------------------------
 #FUNCTION FOR FULL MODEL
 #@st.cache(suppress_st_warning = True, allow_output_mutation = True)
-def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_var_type, response_var, expl_var, final_hyPara_values):
+def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_var_type, response_var, expl_var, final_hyPara_values, gam_finalPara):
     
     # Progress bar
     st.info("Full model progress")
@@ -1037,6 +1308,8 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
     # Prepare data
     Y_data = data[response_var]
     X_data = data[expl_var]
+    if data_new.empty == False:
+        X_data_new = data_new[expl_var]
 
     #-----------------------------------------------------------------------------------------
     # Continuous response variables
@@ -1075,7 +1348,10 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
                 full_model_fit = full_model_mlr.fit().get_robustcov_results(cov_type = MLR_cov_type)
             Y_pred = full_model_fit.predict(X_data_mlr)
             Y_pred = Y_pred.to_numpy()
-
+            if data_new.empty == False:
+                X_data_new_mlr = sm.add_constant(X_data_new)
+                Y_pred_new = full_model_fit.predict(X_data_new_mlr)
+                Y_pred_new = Y_pred_new.to_numpy()
 
             # Train MLR model (sklearn)
             full_model_mlr_sk = LinearRegression()
@@ -1166,6 +1442,8 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             full_model_results["MLR Cooks distance"] = full_model_fit.get_influence().cooks_distance[0]
             full_model_results["MLR leverage"] = full_model_fit.get_influence().hat_matrix_diag
             full_model_results["MLR variable importance"] = mlr_reg_varImp 
+            if data_new.empty == False:
+                full_model_results["MLR prediction"] = Y_pred_new
 
             # Model comparison for MLR
             model_comparison.loc["% VE"]["Multiple Linear Regression"] =  r2_score(Y_data, Y_pred)
@@ -1179,7 +1457,182 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
 
             progress2 += 1
             my_bar.progress(progress2/len(algorithms))
+
+        # Generalized Additive Models full model
+        if any(a for a in algorithms if a == "Generalized Additive Models"):
+
+            # Save results
+            gam_reg_inf = pd.DataFrame(index = ["Distribution", "Link function", "Terms", "Features", "No. observations", "Effective DF"], columns = ["Value"])
+            gam_reg_stats = pd.DataFrame(index = ["Log-likelihood", "AIC", "AICc", "GCV", "Scale", "Pseudo R²"], columns = ["Value"])
+            gam_reg_featSign = pd.DataFrame(index = expl_var + ["const"], columns = ["feature function", "coeff", "lambda", "rank", "edof", "p-value"])
+            gam_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
             
+            # Train GAM model
+            if isinstance(gam_finalPara["spline order"][0], list):
+                nos = gam_finalPara["number of splines"][0]
+                so = gam_finalPara["spline order"][0]
+                lam = gam_finalPara["lambda"][0]
+            else:
+                nos = int(gam_finalPara["number of splines"][0])
+                so = int(gam_finalPara["spline order"][0])
+                lam = float(gam_finalPara["lambda"][0])
+            gam = LinearGAM(n_splines = nos, spline_order = so, lam = lam).fit(X_data, Y_data)
+            Y_pred = gam.predict(X_data)
+            if data_new.empty == False:
+                Y_pred_new = gam.predict(X_data_new)
+
+            # Extract essential results from model
+            # Information
+            gam_reg_inf.loc["Distribution"] = gam.distribution
+            gam_reg_inf.loc["Link function"] = gam.link
+            gam_reg_inf.loc["Terms"] = str(gam.terms)
+            gam_reg_inf.loc["Features"] = gam.statistics_["m_features"]
+            gam_reg_inf.loc["No. observations"] = gam.statistics_["n_samples"]
+            gam_reg_inf.loc["Effective DF"] = round(gam.statistics_["edof"],2)
+            # Statistics
+            gam_reg_stats.loc["Log-likelihood"] = gam.statistics_["loglikelihood"]
+            gam_reg_stats.loc["AIC"] = gam.statistics_["AIC"]
+            gam_reg_stats.loc["AICc"] = gam.statistics_["AICc"]
+            gam_reg_stats.loc["GCV"] = gam.statistics_["GCV"]
+            gam_reg_stats.loc["Scale"] = gam.statistics_["scale"]
+            gam_reg_stats.loc["Pseudo R²"] = gam.statistics_["pseudo_r2"]["explained_deviance"]
+            # Feature significance
+            index_save_start = 0
+            index_save_end = 0
+            for c in expl_var + ["const"]:
+                if c != "const":
+                    gam_reg_featSign.loc[c]["feature function"] = "s(" + str(c) + ")"
+                    gam_reg_featSign.loc[c]["lambda"] = gam.lam[(expl_var+ ["const"]).index(c)]
+                    gam_reg_featSign.loc[c]["rank"] = gam.n_splines[(expl_var+ ["const"]).index(c)]
+                else:
+                    gam_reg_featSign.loc[c]["feature function"] = "intercept"
+                    gam_reg_featSign.loc[c]["coeff"] = gam.coef_[-1]
+                    gam_reg_featSign.loc[c]["rank"] = 1
+                index_save_end = index_save_start + gam_reg_featSign.loc[c]["rank"]
+                gam_reg_featSign.loc[c]["edof"] = round(sum(gam.statistics_["edof_per_coef"][index_save_start:index_save_end]),2)
+                index_save_start = index_save_end
+                gam_reg_featSign.loc[c]["p-value"] = str(gam.statistics_["p_values"][(expl_var+ ["const"]).index(c)])
+            # Variable importance (via permutation, order important)
+            scoring_function = make_scorer(r2_score, greater_is_better = True)
+            gam_varImp = permutation_importance(gam , X_data, Y_data, n_repeats = 10, random_state = 0, scoring = scoring_function)
+            for varI in expl_var:
+                gam_reg_varImp.loc[varI]["mean"] = gam_varImp.importances_mean[expl_var.index(varI)]
+                gam_reg_varImp.loc[varI]["std"] = gam_varImp.importances_std[expl_var.index(varI)]
+            gam_reg_varImp = gam_reg_varImp.sort_values(by = ["mean"], ascending = False)
+            # Partial dependence (order important)
+            gam_pd = {}
+            gam_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
+            for varPd in expl_var:
+                term_index = expl_var.index(varPd)
+                XX = gam.generate_X_grid(term=term_index)
+                pdep, confi = gam.partial_dependence(term=term_index, X=XX, width=0.95)
+                PD_data = pd.DataFrame(XX[:, term_index], columns = ["x_values"])
+                PD_data["pd_values"] = pd.DataFrame(pdep)
+                PD_data["lower_95"] = pd.DataFrame(confi[:,0])
+                PD_data["upper_95"] = pd.DataFrame(confi[:,1])
+                gam_pd[varPd] = PD_data
+                gam_pd_min_max.loc[varPd]["min"] = PD_data["lower_95"].min()
+                gam_pd_min_max.loc[varPd]["max"] = PD_data["upper_95"].max()  
+            
+            # Save tables
+            full_model_results["GAM information"] = gam_reg_inf
+            full_model_results["GAM statistics"] = gam_reg_stats
+            full_model_results["GAM feature significance"] = gam_reg_featSign
+            full_model_results["GAM variable importance"] = gam_reg_varImp
+            full_model_results["GAM fitted"] = Y_pred
+            full_model_results["GAM partial dependence"] = gam_pd
+            full_model_results["GAM partial dependence min/max"] = gam_pd_min_max
+            full_model_results["GAM Residual SE"] = np.sqrt(sum((Y_data-Y_pred)**2)/(Y_data.shape[0]- len(expl_var)-1))
+            if data_new.empty == False:
+                full_model_results["GAM prediction"] = Y_pred_new
+
+            # Model comparison for GAM
+            model_comparison.loc["% VE"]["Generalized Additive Models"] =  r2_score(Y_data, Y_pred)
+            model_comparison.loc["MSE"]["Generalized Additive Models"] = mean_squared_error(Y_data, Y_pred, squared = True)
+            model_comparison.loc["RMSE"]["Generalized Additive Models"] = mean_squared_error(Y_data, Y_pred, squared = False)
+            model_comparison.loc["MAE"]["Generalized Additive Models"] = mean_absolute_error(Y_data, Y_pred)
+            model_comparison.loc["MaxErr"]["Generalized Additive Models"] = max_error(Y_data, Y_pred)
+            model_comparison.loc["EVRS"]["Generalized Additive Models"] = explained_variance_score(Y_data, Y_pred)
+            model_comparison.loc["SSR"]["Generalized Additive Models"] = ((Y_data-Y_pred)**2).sum()
+            residuals_comparison["Generalized Additive Models"] = Y_data-Y_pred
+
+            progress2 += 1
+            my_bar.progress(progress2/len(algorithms))
+
+        # Random Forest full model
+        if any(a for a in algorithms if a == "Random Forest"):
+            
+            # Save results
+            rf_reg_inf = pd.DataFrame(index = ["Base estimator", "Estimators", "Features", "OOB score"], columns = ["Value"])
+            rf_reg_featImp = pd.DataFrame(index = expl_var, columns = ["Value"])
+            rf_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
+            
+            # Train RF model
+            rf_final_para = final_hyPara_values["rf"]
+            params = {'n_estimators': rf_final_para["number of trees"][0],
+            'max_depth': rf_final_para["maximum tree depth"][0],
+            'max_features': rf_final_para["maximum number of features"][0],
+            'max_samples': rf_final_para["sample rate"][0],
+            'bootstrap': True,
+            'oob_score': True,
+            }
+            full_model_rf_sk = ensemble.RandomForestRegressor(**params)
+            full_model_rf_sk.fit(X_data, Y_data)
+            Y_pred = full_model_rf_sk.predict(X_data)
+            if data_new.empty == False:
+                Y_pred_new = full_model_rf_sk.predict(X_data_new)
+
+            # Extract essential results from model
+            # Information
+            rf_reg_inf.loc["Base estimator"] = full_model_rf_sk.base_estimator_
+            rf_reg_inf.loc["Estimators"] = len(full_model_rf_sk.estimators_)
+            rf_reg_inf.loc["Features"] = full_model_rf_sk.n_features_
+            rf_reg_inf.loc["OOB score"] = full_model_rf_sk.oob_score_
+            # Feature importances (RF method)
+            rf_featImp = full_model_rf_sk.feature_importances_
+            for varI in expl_var:
+                rf_reg_featImp.loc[varI]["Value"] = rf_featImp[expl_var.index(varI)]
+            rf_reg_featImp = rf_reg_featImp.sort_values(by = ["Value"], ascending = False)
+            # Variable importance (via permutation, order important)
+            scoring_function = make_scorer(r2_score, greater_is_better = True)
+            rf_varImp = permutation_importance(full_model_rf_sk , X_data, Y_data, n_repeats = 10, random_state = 0, scoring = scoring_function)
+            for varI in expl_var:
+                rf_reg_varImp.loc[varI]["mean"] = rf_varImp.importances_mean[expl_var.index(varI)]
+                rf_reg_varImp.loc[varI]["std"] = rf_varImp.importances_std[expl_var.index(varI)]
+            rf_reg_varImp = rf_reg_varImp.sort_values(by = ["mean"], ascending = False)
+            # Partial dependence
+            rf_pd = {}
+            rf_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
+            rf_partDep = plot_partial_dependence(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            for varPd in expl_var:
+                rf_pd[varPd] = rf_partDep[expl_var.index(varPd)]
+                rf_pd_min_max.loc[varPd]["min"] = rf_partDep[expl_var.index(varPd)][0].min()
+                rf_pd_min_max.loc[varPd]["max"] = rf_partDep[expl_var.index(varPd)][0].max()              
+            
+            # Save tables
+            full_model_results["RF information"] = rf_reg_inf
+            full_model_results["RF variable importance"] = rf_reg_varImp
+            full_model_results["RF feature importance"] = rf_reg_featImp
+            full_model_results["RF fitted"] = Y_pred
+            full_model_results["RF partial dependence"] = rf_pd
+            full_model_results["RF partial dependence min/max"] = rf_pd_min_max
+            full_model_results["RF Residual SE"] = np.sqrt(sum((Y_data-Y_pred)**2)/(Y_data.shape[0]- len(expl_var)-1))
+            if data_new.empty == False:
+                full_model_results["RF prediction"] = Y_pred_new
+
+            # Model comparison for BRT
+            model_comparison.loc["% VE"]["Random Forest"] =  r2_score(Y_data, Y_pred)
+            model_comparison.loc["MSE"]["Random Forest"] = mean_squared_error(Y_data, Y_pred, squared = True)
+            model_comparison.loc["RMSE"]["Random Forest"] = mean_squared_error(Y_data, Y_pred, squared = False)
+            model_comparison.loc["MAE"]["Random Forest"] = mean_absolute_error(Y_data, Y_pred)
+            model_comparison.loc["MaxErr"]["Random Forest"] = max_error(Y_data, Y_pred)
+            model_comparison.loc["EVRS"]["Random Forest"] = explained_variance_score(Y_data, Y_pred)
+            model_comparison.loc["SSR"]["Random Forest"] = ((Y_data-Y_pred)**2).sum()
+            residuals_comparison["Random Forest"] = Y_data-Y_pred
+
+            progress2 += 1
+            my_bar.progress(progress2/len(algorithms))
+
         # Boosted Regression Trees full model
         if any(a for a in algorithms if a == "Boosted Regression Trees"):
             
@@ -1198,6 +1651,8 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             full_model_brt_sk = ensemble.GradientBoostingRegressor(**params)
             full_model_brt_sk.fit(X_data, Y_data.values.ravel())
             Y_pred = full_model_brt_sk.predict(X_data)
+            if data_new.empty == False:
+                Y_pred_new = full_model_brt_sk.predict(X_data_new)
 
             # Extract essential results from model
             # Information
@@ -1235,6 +1690,8 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             full_model_results["BRT partial dependence min/max"] = brt_pd_min_max
             full_model_results["BRT train score"] = full_model_brt_sk.train_score_
             full_model_results["BRT Residual SE"] = np.sqrt(sum((Y_data-Y_pred)**2)/(Y_data.shape[0]- len(expl_var)-1))
+            if data_new.empty == False:
+                full_model_results["BRT prediction"] = Y_pred_new
 
             # Model comparison for BRT
             model_comparison.loc["% VE"]["Boosted Regression Trees"] =  r2_score(Y_data, Y_pred)
@@ -1276,6 +1733,9 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             full_model_ann_sk = MLPRegressor(**params)
             full_model_ann_sk.fit(X_data_ann, Y_data)
             Y_pred = full_model_ann_sk.predict(X_data_ann)
+            if data_new.empty == False:
+                X_data_new_ann = scaler.transform(X_data_new)
+                Y_pred_new = full_model_ann_sk.predict(X_data_new_ann)
             
             # Extract essential results from model
             # Regression information
@@ -1310,6 +1770,8 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
                 full_model_results["ANN loss curve"] = full_model_ann_sk.loss_curve_
                 full_model_results["ANN loss"] = full_model_ann_sk.best_loss_
             full_model_results["ANN Residual SE"] = np.sqrt(sum((Y_data-Y_pred)**2)/(Y_data.shape[0]- len(expl_var)-1))
+            if data_new.empty == False:
+                full_model_results["ANN prediction"] = Y_pred_new
 
             # Model comparison for ANN
             model_comparison.loc["% VE"]["Artificial Neural Networks"] =  r2_score(Y_data, Y_pred)
@@ -1368,6 +1830,9 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             full_model_mlr_sk = LinearRegression()
             full_model_mlr_sk.fit(X_data, Y_data)
             Y_pred = full_model_mlr_sk.predict(X_data)
+            if data_new.empty == False:
+                Y_pred_new = full_model_mlr_sk.predict(X_data_new)
+
 
             # Extract essential results from model
             # Information
@@ -1451,7 +1916,9 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             full_model_results["MLR fitted"] = Y_pred
             full_model_results["MLR Cooks distance"] = full_model_fit.get_influence().cooks_distance[0]
             full_model_results["MLR leverage"] = full_model_fit.get_influence().hat_matrix_diag
-            full_model_results["MLR variable importance"] = mlr_reg_varImp 
+            full_model_results["MLR variable importance"] = mlr_reg_varImp
+            if data_new.empty == False:
+                full_model_results["MLR prediction"] = Y_pred_new 
 
             # Residuals MLR
             residuals_comparison["Multiple Linear Regression"] = Y_data-Y_pred
@@ -1464,7 +1931,7 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             
             # Save results
             lr_reg_inf = pd.DataFrame(index = ["Dep. variable", "Model", "Method", "No. observations", "DF residuals", "DF model", "Converged", "Iterations", "Covariance type"], columns = ["Value"])
-            lr_reg_stats = pd.DataFrame(index = ["Pseudo R²", "Log-Likelihood", "LL-Null", "Residual deviance", "Null deviance", "LLR", "LLR p-value", "AIC", "BIC"], columns = ["Value"])
+            lr_reg_stats = pd.DataFrame(index = ["AUC ROC", "Pseudo R²", "Log-Likelihood", "LL-Null", "Residual deviance", "Null deviance", "LLR", "LLR p-value", "AIC", "BIC"], columns = ["Value"])
             lr_reg_coef = pd.DataFrame(index = ["const"]+ expl_var, columns = ["coeff", "std err", "t-statistic", "p-value", "lower 95%", "upper 95%"])
             lr_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
 
@@ -1478,6 +1945,11 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             Y_pred = 1-pd.DataFrame(full_model_fit.predict(X_data_lr), columns = ["0"])
             Y_pred["1"] = 1-Y_pred
             Y_pred = Y_pred.to_numpy()
+            if data_new.empty == False:
+                X_data_new_lr = sm.add_constant(X_data_new)
+                Y_pred_new = 1-pd.DataFrame(full_model_fit.predict(X_data_new_lr), columns = ["0"])
+                Y_pred_new["1"] = 1-Y_pred_new
+                Y_pred_new = Y_pred_new.to_numpy()
 
             # Train LR model (sklearn)
             full_model_lr_sk = LogisticRegression(solver = "newton-cg", penalty = "none", tol = 1e-05)
@@ -1496,6 +1968,7 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             lr_reg_inf.loc["Iterations"] = full_model_fit.mle_retvals["hcalls"]
             lr_reg_inf.loc["Covariance type"] = full_model_fit.cov_type
             # Statistics
+            lr_reg_stats.loc["AUC ROC"] = roc_auc_score(Y_data, Y_pred[:, 1])
             lr_reg_stats.loc["Pseudo R²"] = full_model_fit.prsquared
             lr_reg_stats.loc["Log-Likelihood"] = full_model_fit.llf
             lr_reg_stats.loc["LL-Null"] = full_model_fit.llnull
@@ -1539,6 +2012,8 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             full_model_results["LR fitted"] = Y_pred
             full_model_results["LR variable importance"] = lr_reg_varImp
             full_model_results["LR partial probabilities"] = lr_partial_probs
+            if data_new.empty == False:
+                full_model_results["LR prediction"] = Y_pred_new 
 
             # Model comparison for LR
             model_comparison_thresInd.loc["AUC ROC"]["Logistic Regression"] = roc_auc_score(Y_data, Y_pred[:, 1])
@@ -1559,6 +2034,10 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             # thres = thresholds[thres_index]
 
             Y_pred_bin = np.array([1 if x >= thres else 0 for x in Y_pred[:, 1]])
+            full_model_results["LR fitted binary"] = Y_pred_bin
+            if data_new.empty == False:
+                Y_pred_new_bin = np.array([1 if x >= thres else 0 for x in Y_pred_new[:, 1]])
+                full_model_results["LR prediction binary"] = Y_pred_new_bin 
             TN, FP, FN, TP = confusion_matrix(Y_data, Y_pred_bin).ravel()
             model_comparison_thresDep.loc["TPR"]["Logistic Regression"] =  TP/(TP+FN)
             model_comparison_thresDep.loc["FNR"]["Logistic Regression"] = FN/(TP+FN)
@@ -1570,6 +2049,232 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             model_comparison_thresDep.loc["KAPPA"]["Logistic Regression"] = cohen_kappa_score(Y_data, Y_pred_bin)
             model_comparison_thresDep.loc["ACC"]["Logistic Regression"] = accuracy_score(Y_data, Y_pred_bin)
             model_comparison_thresDep.loc["BAL ACC"]["Logistic Regression"] = balanced_accuracy_score(Y_data, Y_pred_bin)
+
+            progress2 += 1
+            my_bar.progress(progress2/len(algorithms))
+
+        # Generalized Additive Models full model
+        if any(a for a in algorithms if a == "Generalized Additive Models"):
+
+            # Save results
+            gam_reg_inf = pd.DataFrame(index = ["Distribution", "Link function", "Terms", "Features", "No. observations", "Effective DF"], columns = ["Value"])
+            gam_reg_stats = pd.DataFrame(index = ["Log-likelihood", "AIC", "AICc", "UBRE", "Scale", "Pseudo R²", "AUC ROC"], columns = ["Value"])
+            gam_reg_featSign = pd.DataFrame(index = expl_var + ["const"], columns = ["feature function", "coeff", "lambda", "rank", "edof", "p-value"])
+            gam_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
+            
+            # Train GAM model
+            if isinstance(gam_finalPara["spline order"][0], list):
+                nos = gam_finalPara["number of splines"][0]
+                so = gam_finalPara["spline order"][0]
+                lam = gam_finalPara["lambda"][0]
+            else:
+                nos = int(gam_finalPara["number of splines"][0])
+                so = int(gam_finalPara["spline order"][0])
+                lam = float(gam_finalPara["lambda"][0])
+            gam = LogisticGAM(n_splines = nos, spline_order = so, lam = lam).fit(X_data, Y_data)
+            Y_pred = gam.predict_proba(X_data)
+            if data_new.empty == False:
+                Y_pred_new = gam.predict_proba(X_data_new)
+
+            # Extract essential results from model
+            # Information
+            gam_reg_inf.loc["Distribution"] = gam.distribution
+            gam_reg_inf.loc["Link function"] = gam.link
+            gam_reg_inf.loc["Terms"] = str(gam.terms)
+            gam_reg_inf.loc["Features"] = gam.statistics_["m_features"]
+            gam_reg_inf.loc["No. observations"] = gam.statistics_["n_samples"]
+            gam_reg_inf.loc["Effective DF"] = round(gam.statistics_["edof"],2)
+            # Statistics
+            gam_reg_stats.loc["Log-likelihood"] = gam.statistics_["loglikelihood"]
+            gam_reg_stats.loc["AIC"] = gam.statistics_["AIC"]
+            gam_reg_stats.loc["AICc"] = gam.statistics_["AICc"]
+            gam_reg_stats.loc["UBRE"] = gam.statistics_["UBRE"]
+            gam_reg_stats.loc["Scale"] = gam.statistics_["scale"]
+            gam_reg_stats.loc["Pseudo R²"] = gam.statistics_["pseudo_r2"]["explained_deviance"]
+            gam_reg_stats.loc["AUC ROC"] = roc_auc_score(Y_data, Y_pred)
+            # Feature significance
+            index_save_start = 0
+            index_save_end = 0
+            for c in expl_var + ["const"]:
+                if c != "const":
+                    gam_reg_featSign.loc[c]["feature function"] = "s(" + str(c) + ")"
+                    gam_reg_featSign.loc[c]["lambda"] = gam.lam[(expl_var+ ["const"]).index(c)]
+                    gam_reg_featSign.loc[c]["rank"] = gam.n_splines[(expl_var+ ["const"]).index(c)]
+                else:
+                    gam_reg_featSign.loc[c]["feature function"] = "intercept"
+                    gam_reg_featSign.loc[c]["coeff"] = gam.coef_[-1]
+                    gam_reg_featSign.loc[c]["rank"] = 1
+                index_save_end = index_save_start + gam_reg_featSign.loc[c]["rank"]
+                gam_reg_featSign.loc[c]["edof"] = round(sum(gam.statistics_["edof_per_coef"][index_save_start:index_save_end]),2)
+                index_save_start = index_save_end
+                gam_reg_featSign.loc[c]["p-value"] = str(gam.statistics_["p_values"][(expl_var+ ["const"]).index(c)])
+            # Variable importance (via permutation, order important)
+            scoring_function = make_scorer(roc_auc_score, greater_is_better = True)
+            gam_varImp = permutation_importance(gam , X_data, Y_data, n_repeats = 10, random_state = 0, scoring = scoring_function)
+            for varI in expl_var:
+                gam_reg_varImp.loc[varI]["mean"] = gam_varImp.importances_mean[expl_var.index(varI)]
+                gam_reg_varImp.loc[varI]["std"] = gam_varImp.importances_std[expl_var.index(varI)]
+            gam_reg_varImp = gam_reg_varImp.sort_values(by = ["mean"], ascending = False)
+            # Partial dependence (order important)
+            gam_pd = {}
+            gam_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
+            for varPd in expl_var:
+                term_index = expl_var.index(varPd)
+                XX = gam.generate_X_grid(term=term_index)
+                pdep, confi = gam.partial_dependence(term=term_index, X=XX, width=0.95)
+                PD_data = pd.DataFrame(XX[:, term_index], columns = ["x_values"])
+                PD_data["pd_values"] = pd.DataFrame(pdep)
+                PD_data["lower_95"] = pd.DataFrame(confi[:,0])
+                PD_data["upper_95"] = pd.DataFrame(confi[:,1])
+                gam_pd[varPd] = PD_data
+                gam_pd_min_max.loc[varPd]["min"] = PD_data["lower_95"].min()
+                gam_pd_min_max.loc[varPd]["max"] = PD_data["upper_95"].max()  
+            
+            # Save tables
+            full_model_results["GAM information"] = gam_reg_inf
+            full_model_results["GAM statistics"] = gam_reg_stats
+            full_model_results["GAM feature significance"] = gam_reg_featSign
+            full_model_results["GAM variable importance"] = gam_reg_varImp
+            full_model_results["GAM fitted"] = Y_pred
+            full_model_results["GAM partial dependence"] = gam_pd
+            full_model_results["GAM partial dependence min/max"] = gam_pd_min_max
+            full_model_results["GAM ROC curve"] = roc_curve(Y_data, Y_pred)
+            if data_new.empty == False:
+                full_model_results["GAM prediction"] = Y_pred_new
+
+            # Model comparison for GAM
+            model_comparison_thresInd.loc["AUC ROC"]["Generalized Additive Models"] = roc_auc_score(Y_data, Y_pred)
+            model_comparison_thresInd.loc["AP"]["Generalized Additive Models"] = average_precision_score(Y_data, Y_pred)
+            precision, recall, thresholds = precision_recall_curve(Y_data, Y_pred)
+            model_comparison_thresInd.loc["AUC PRC"]["Generalized Additive Models"] =  auc(recall, precision)
+            model_comparison_thresInd.loc["LOG-LOSS"]["Generalized Additive Models"] =  log_loss(Y_data, Y_pred)
+            
+            # Threshold according to Youden's index
+            FPR, TPR, thresholds = roc_curve(Y_data, Y_pred)
+            thres_index = np.argmax(TPR - FPR)
+            thres = thresholds[thres_index]
+            model_comparison_thres.loc["threshold"]["Generalized Additive Models"] = thres
+
+            # Threshold determination (minimizing abs. distance between SENS & SPEC)
+            # FPR, TPR, thresholds = roc_curve(Y_test, Y_test_pred)
+            # thres_index = np.argmin(abs(TPR - (1-FPR)))
+            # thres = thresholds[thres_index]
+
+            Y_pred_bin = np.array([1 if x >= thres else 0 for x in Y_pred])
+            full_model_results["GAM fitted binary"] = Y_pred_bin
+            if data_new.empty == False:
+                Y_pred_new_bin = np.array([1 if x >= thres else 0 for x in Y_pred_new])
+                full_model_results["GAM prediction binary"] = Y_pred_new_bin
+            TN, FP, FN, TP = confusion_matrix(Y_data, Y_pred_bin).ravel()
+            model_comparison_thresDep.loc["TPR"]["Generalized Additive Models"] =  TP/(TP+FN)
+            model_comparison_thresDep.loc["FNR"]["Generalized Additive Models"] = FN/(TP+FN)
+            model_comparison_thresDep.loc["TNR"]["Generalized Additive Models"] = TN/(TN+FP)
+            model_comparison_thresDep.loc["FPR"]["Generalized Additive Models"] = FP/(TN+FP)
+            model_comparison_thresDep.loc["TSS"]["Generalized Additive Models"] = (TP/(TP+FN))+(TN/(TN+FP))-1
+            model_comparison_thresDep.loc["PREC"]["Generalized Additive Models"] = TP/(TP+FP)
+            model_comparison_thresDep.loc["F1"]["Generalized Additive Models"] = f1_score(Y_data, Y_pred_bin)
+            model_comparison_thresDep.loc["KAPPA"]["Generalized Additive Models"] = cohen_kappa_score(Y_data, Y_pred_bin)
+            model_comparison_thresDep.loc["ACC"]["Generalized Additive Models"] = accuracy_score(Y_data, Y_pred_bin)
+            model_comparison_thresDep.loc["BAL ACC"]["Generalized Additive Models"] = balanced_accuracy_score(Y_data, Y_pred_bin)
+
+            progress2 += 1
+            my_bar.progress(progress2/len(algorithms))
+        
+        # Random Forest full model
+        if any(a for a in algorithms if a == "Random Forest"):
+
+            # Save results
+            rf_reg_inf = pd.DataFrame(index = ["Base estimator", "Estimators", "Features", "OOB score"], columns = ["Value"])
+            rf_reg_featImp = pd.DataFrame(index = expl_var, columns = ["Value"])
+            rf_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
+            
+            # Train RF model
+            rf_final_para = final_hyPara_values["rf"]
+            params = {'n_estimators': rf_final_para["number of trees"][0],
+            'max_depth': rf_final_para["maximum tree depth"][0],
+            'max_features': rf_final_para["maximum number of features"][0],
+            'max_samples': rf_final_para["sample rate"][0],
+            'bootstrap': True,
+            'oob_score': True,
+            }
+            full_model_rf_sk = ensemble.RandomForestClassifier(**params)
+            full_model_rf_sk.fit(X_data, Y_data)
+            Y_pred = full_model_rf_sk.predict_proba(X_data)
+            if data_new.empty == False:
+                Y_pred_new = full_model_rf_sk.predict_proba(X_data_new)
+
+            # Extract essential results from model
+            # Information
+            rf_reg_inf.loc["Base estimator"] = full_model_rf_sk.base_estimator_
+            rf_reg_inf.loc["Estimators"] = len(full_model_rf_sk.estimators_)
+            rf_reg_inf.loc["Features"] = full_model_rf_sk.n_features_
+            rf_reg_inf.loc["OOB score"] = full_model_rf_sk.oob_score_
+            # Feature importances (RF method)
+            rf_featImp = full_model_rf_sk.feature_importances_
+            for varI in expl_var:
+                rf_reg_featImp.loc[varI]["Value"] = rf_featImp[expl_var.index(varI)]
+            rf_reg_featImp = rf_reg_featImp.sort_values(by = ["Value"], ascending = False)
+            # Variable importance (via permutation, order important)
+            scoring_function = make_scorer(roc_auc_score, greater_is_better = True)
+            rf_varImp = permutation_importance(full_model_rf_sk , X_data, Y_data, n_repeats = 10, random_state = 0, scoring = scoring_function)
+            for varI in expl_var:
+                rf_reg_varImp.loc[varI]["mean"] = rf_varImp.importances_mean[expl_var.index(varI)]
+                rf_reg_varImp.loc[varI]["std"] = rf_varImp.importances_std[expl_var.index(varI)]
+            rf_reg_varImp = rf_reg_varImp.sort_values(by = ["mean"], ascending = False)
+            # Partial dependence
+            rf_pd = {}
+            rf_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
+            rf_partDep = plot_partial_dependence(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            for varPd in expl_var:
+                rf_pd[varPd] = rf_partDep[expl_var.index(varPd)]
+                rf_pd_min_max.loc[varPd]["min"] = rf_partDep[expl_var.index(varPd)][0].min()
+                rf_pd_min_max.loc[varPd]["max"] = rf_partDep[expl_var.index(varPd)][0].max()                      
+            
+            # Save tables
+            full_model_results["RF information"] = rf_reg_inf
+            full_model_results["RF variable importance"] = rf_reg_varImp
+            full_model_results["RF feature importance"] = rf_reg_featImp
+            full_model_results["RF fitted"] = Y_pred
+            full_model_results["RF partial dependence"] = rf_pd
+            full_model_results["RF partial dependence min/max"] = rf_pd_min_max
+            full_model_results["RF ROC curve"] = roc_curve(Y_data, Y_pred[:,1])
+            if data_new.empty == False:
+                full_model_results["RF prediction"] = Y_pred_new
+
+            # Model comparison for RF
+            model_comparison_thresInd.loc["AUC ROC"]["Random Forest"] = roc_auc_score(Y_data, Y_pred[:, 1])
+            model_comparison_thresInd.loc["AP"]["Random Forest"] = average_precision_score(Y_data, Y_pred[:, 1])
+            precision, recall, thresholds = precision_recall_curve(Y_data, Y_pred[:, 1])
+            model_comparison_thresInd.loc["AUC PRC"]["Random Forest"] =  auc(recall, precision)
+            model_comparison_thresInd.loc["LOG-LOSS"]["Random Forest"] =  log_loss(Y_data, Y_pred)
+            
+            # Threshold according to Youden's index
+            FPR, TPR, thresholds = roc_curve(Y_data, Y_pred[:, 1])
+            thres_index = np.argmax(TPR - FPR)
+            thres = thresholds[thres_index]
+            model_comparison_thres.loc["threshold"]["Random Forest"] = thres
+
+            # Threshold determination (minimizing abs. distance between SENS & SPEC)
+            # FPR, TPR, thresholds = roc_curve(Y_test, Y_test_pred[:, 1])
+            # thres_index = np.argmin(abs(TPR - (1-FPR)))
+            # thres = thresholds[thres_index]
+
+            Y_pred_bin = np.array([1 if x >= thres else 0 for x in Y_pred[:, 1]])
+            full_model_results["RF fitted binary"] = Y_pred_bin
+            if data_new.empty == False:
+                Y_pred_new_bin = np.array([1 if x >= thres else 0 for x in Y_pred_new[:, 1]])
+                full_model_results["RF prediction binary"] = Y_pred_new_bin
+            TN, FP, FN, TP = confusion_matrix(Y_data, Y_pred_bin).ravel()
+            model_comparison_thresDep.loc["TPR"]["Random Forest"] =  TP/(TP+FN)
+            model_comparison_thresDep.loc["FNR"]["Random Forest"] = FN/(TP+FN)
+            model_comparison_thresDep.loc["TNR"]["Random Forest"] = TN/(TN+FP)
+            model_comparison_thresDep.loc["FPR"]["Random Forest"] = FP/(TN+FP)
+            model_comparison_thresDep.loc["TSS"]["Random Forest"] = (TP/(TP+FN))+(TN/(TN+FP))-1
+            model_comparison_thresDep.loc["PREC"]["Random Forest"] = TP/(TP+FP)
+            model_comparison_thresDep.loc["F1"]["Random Forest"] = f1_score(Y_data, Y_pred_bin)
+            model_comparison_thresDep.loc["KAPPA"]["Random Forest"] = cohen_kappa_score(Y_data, Y_pred_bin)
+            model_comparison_thresDep.loc["ACC"]["Random Forest"] = accuracy_score(Y_data, Y_pred_bin)
+            model_comparison_thresDep.loc["BAL ACC"]["Random Forest"] = balanced_accuracy_score(Y_data, Y_pred_bin)
 
             progress2 += 1
             my_bar.progress(progress2/len(algorithms))
@@ -1592,6 +2297,8 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             full_model_brt_sk = ensemble.GradientBoostingClassifier(**params)
             full_model_brt_sk.fit(X_data, Y_data.values.ravel())
             Y_pred = full_model_brt_sk.predict_proba(X_data)
+            if data_new.empty == False:
+                Y_pred_new = full_model_brt_sk.predict_proba(X_data_new)
 
             # Extract essential results from model
             # Information
@@ -1640,6 +2347,8 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             full_model_results["BRT train score"] = full_model_brt_sk.train_score_
             full_model_results["BRT ROC curve"] = roc_curve(Y_data, Y_pred[:,1])
             full_model_results["BRT partial probabilities"] = brt_partial_probs
+            if data_new.empty == False:
+                full_model_results["BRT prediction"] = Y_pred_new
 
             # Model comparison for BRT
             model_comparison_thresInd.loc["AUC ROC"]["Boosted Regression Trees"] = roc_auc_score(Y_data, Y_pred[:, 1])
@@ -1660,6 +2369,10 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             # thres = thresholds[thres_index]
 
             Y_pred_bin = np.array([1 if x >= thres else 0 for x in Y_pred[:, 1]])
+            full_model_results["BRT fitted binary"] = Y_pred_bin
+            if data_new.empty == False:
+                Y_pred_new_bin = np.array([1 if x >= thres else 0 for x in Y_pred_new[:, 1]])
+                full_model_results["BRT prediction binary"] = Y_pred_new_bin
             TN, FP, FN, TP = confusion_matrix(Y_data, Y_pred_bin).ravel()
             model_comparison_thresDep.loc["TPR"]["Boosted Regression Trees"] =  TP/(TP+FN)
             model_comparison_thresDep.loc["FNR"]["Boosted Regression Trees"] = FN/(TP+FN)
@@ -1701,6 +2414,9 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             full_model_ann_sk = MLPClassifier(**params2)
             full_model_ann_sk.fit(X_data_ann, Y_data)
             Y_pred = full_model_ann_sk.predict_proba(X_data_ann)
+            if data_new.empty == False:
+                X_data_new_ann = scaler.transform(X_data_new)
+                Y_pred_new = full_model_ann_sk.predict_proba(X_data_new_ann)
             
             # Extract essential results from model
             # Regression information
@@ -1752,6 +2468,8 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
                 full_model_results["ANN loss"] = full_model_ann_sk.best_loss_
             full_model_results["ANN ROC curve"] = roc_curve(Y_data, Y_pred[:,1])
             full_model_results["ANN partial probabilities"] = ann_partial_probs
+            if data_new.empty == False:
+                full_model_results["ANN prediction"] = Y_pred_new
 
             # Model comparison for ANN
             model_comparison_thresInd.loc["AUC ROC"]["Artificial Neural Networks"] = roc_auc_score(Y_data, Y_pred[:, 1])
@@ -1772,6 +2490,10 @@ def model_full(data, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_
             # thres = thresholds[thres_index]
 
             Y_pred_bin = np.array([1 if x >= thres else 0 for x in Y_pred[:, 1]])
+            full_model_results["ANN fitted binary"] = Y_pred_bin
+            if data_new.empty == False:
+                Y_pred_new_bin = np.array([1 if x >= thres else 0 for x in Y_pred_new[:, 1]])
+                full_model_results["ANN prediction binary"] = Y_pred_new_bin
             TN, FP, FN, TP = confusion_matrix(Y_data, Y_pred_bin).ravel()
             model_comparison_thresDep.loc["TPR"]["Artificial Neural Networks"] =  TP/(TP+FN)
             model_comparison_thresDep.loc["FNR"]["Artificial Neural Networks"] = FN/(TP+FN)
