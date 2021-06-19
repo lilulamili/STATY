@@ -10,6 +10,7 @@ plotly
 pmdarima
 pybase64
 pysummarization
+pygam
 pyquery
 regex
 requests
