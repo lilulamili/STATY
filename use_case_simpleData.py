@@ -741,8 +741,7 @@ def app():
                 
             feature = st.selectbox('Which variable would you like to analyse?', df.columns, key = session_state.id)
             user_order=[] 
-
-            fa_data_output=st.checkbox("Include data for frequency analysis in the output file", value = False, key = session_state.id)     
+            
             
             if df[feature].dtypes=="int64" or df[feature].dtypes=="float64":
                 fa_uniqueLim=30
@@ -777,8 +776,7 @@ def app():
             
             show_add_options_hist=st.checkbox("Show additional frequency analysis settings", value = False)
             if show_add_options_hist: 
-
-                
+               
 
                 # for int or float the hist with custom bins can be used:    
                 if plot_type=="hist": 
@@ -795,7 +793,8 @@ def app():
                     user_order=[]
 
                 
-                #--------------------------------------------------------
+            fa_data_output=st.checkbox("Include data for frequency analysis in the output file", value = False, key = session_state.id)     
+            #--------------------------------------------------------
 
             st.write("")  
             run_freq_anal = st.button("Run frequency analysis...")   
