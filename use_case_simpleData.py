@@ -56,6 +56,7 @@ def app():
     #Session state
     session_state = SessionState.get(id = 0)
    
+    user_precision=4
     #++++++++++++++++++++++++++++++++++++++++++++
     # DATA IMPORT
 
@@ -119,6 +120,8 @@ def app():
 
     settings_expander=st.sidebar.beta_expander('Settings')
     with settings_expander:
+        #st.caption("**Precision**")
+        #user_precision=st.number_input('Number of digits after the decimal point',min_value=0,max_value=10,step=1,value=4)
         st.caption("**Help**")
         sett_hints = st.checkbox('Show learning hints', value=False)
         st.caption("**Appearance**")
@@ -249,8 +252,14 @@ def app():
             df_summary = fc.data_summary(df) 
             if st.checkbox("Show raw data", value = False, key = session_state.id):      
             # st.dataframe(df.style.apply(lambda x: ["background-color: #ffe5e5" if (not pd.isna(df_summary_mq_full.loc["1%-Q"][i]) and df_summary_vt_cat[i] == "numeric" and (v <= df_summary_mq_full.loc["1%-Q"][i] or v >= df_summary_mq_full.loc["99%-Q"][i]) or pd.isna(v)) else "" for i, v in enumerate(x)], axis = 1))
+                
                 st.write(df)
+                
+                  
+                
                 st.write("Data shape: ", n_rows,  " rows and ", n_cols, " columns")
+                st.write("") 
+                st.write("") 
                 #st.info("** Note that NAs and numerical values below/ above the 1%/ 99% quantile are highlighted.") 
             if df[df.duplicated()].shape[0] > 0 or df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] > 0:
                 check_nasAnddupl=st.checkbox("Show duplicates and NAs info", value = False, key = session_state.id) 
@@ -280,7 +289,7 @@ def app():
                     st.info(str(fc.learning_hints("de_summary_statistics")))
 
             # Download link for exploration statistics
-                        
+                       
             output = BytesIO()
             excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
             df_summary["Variable types"].to_excel(excel_file, sheet_name="variable_info")
@@ -311,50 +320,50 @@ def app():
             n_rows_wNAs = df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0]
             if n_rows_wNAs > 0:
                 a1, a2, a3 = st.beta_columns(3)
-            else: a1, a2 = st.beta_columns(2)
+            else: a1, a3 = st.beta_columns(2)
             
             sb_DM_dImp_num = None 
             sb_DM_dImp_other = None
-            if n_rows_wNAs > 0:
-                with a1:
-                    #--------------------------------------------------------------------------------------
-                    # DATA CLEANING
-
-                    st.markdown("**Data cleaning**")
-
-                    # Delete rows
-                    sb_DM_delRows = st.multiselect("Select rows to delete ", df.index, key = session_state.id)
-                    df = df.loc[~df.index.isin(sb_DM_delRows)]
-
-                    # Delete columns
-                    sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
-                    df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
-
-                    # Delete duplicates if any exist
-                    if df[df.duplicated()].shape[0] > 0:
-                        sb_DM_delDup = st.selectbox("Delete duplicate rows ", ["No", "Yes"], key = session_state.id)
-                        if sb_DM_delDup == "Yes":
-                            n_rows_dup = df[df.duplicated()].shape[0]
-                            df = df.drop_duplicates()
-                    elif df[df.duplicated()].shape[0] == 0:   
-                        sb_DM_delDup = "No"    
-                        
-                    # Delete rows with NA if any exist
-                    n_rows_wNAs = df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0]
-                    if n_rows_wNAs > 0:
-                        sb_DM_delRows_wNA = st.selectbox("Delete rows with NAs ", ["No", "Yes"], key = session_state.id)
-                        if sb_DM_delRows_wNA == "Yes": 
-                            df = df.dropna()
-                    elif n_rows_wNAs == 0: 
-                        sb_DM_delRows_wNA = "No"   
-
-                    # Filter data
-                    st.markdown("**Data filtering**")
-                    filter_var = st.selectbox('Filter your data by a variable...', list('-')+ list(df.columns), key = session_state.id)
-                    if filter_var !='-':
-                        filter_vals=st.selectbox('Filter your data by a value...', (df[filter_var]).unique(), key = session_state.id)
-                        df =df[df[filter_var]==filter_vals]
             
+            with a1:
+                #--------------------------------------------------------------------------------------
+                # DATA CLEANING
+
+                st.markdown("**Data cleaning**")
+
+                # Delete rows
+                sb_DM_delRows = st.multiselect("Select rows to delete ", df.index, key = session_state.id)
+                df = df.loc[~df.index.isin(sb_DM_delRows)]
+
+                # Delete columns
+                sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
+                df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
+
+                # Delete duplicates if any exist
+                if df[df.duplicated()].shape[0] > 0:
+                    sb_DM_delDup = st.selectbox("Delete duplicate rows ", ["No", "Yes"], key = session_state.id)
+                    if sb_DM_delDup == "Yes":
+                        n_rows_dup = df[df.duplicated()].shape[0]
+                        df = df.drop_duplicates()
+                elif df[df.duplicated()].shape[0] == 0:   
+                    sb_DM_delDup = "No"    
+                    
+                # Delete rows with NA if any exist
+                n_rows_wNAs = df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0]
+                if n_rows_wNAs > 0:
+                    sb_DM_delRows_wNA = st.selectbox("Delete rows with NAs ", ["No", "Yes"], key = session_state.id)
+                    if sb_DM_delRows_wNA == "Yes": 
+                        df = df.dropna()
+                elif n_rows_wNAs == 0: 
+                    sb_DM_delRows_wNA = "No"   
+
+                # Filter data
+                st.markdown("**Data filtering**")
+                filter_var = st.selectbox('Filter your data by a variable...', list('-')+ list(df.columns), key = session_state.id)
+                if filter_var !='-':
+                    filter_vals=st.selectbox('Filter your data by a value...', (df[filter_var]).unique(), key = session_state.id)
+                    df =df[df[filter_var]==filter_vals]
+            if n_rows_wNAs > 0:
                 with a2:
                     #--------------------------------------------------------------------------------------
                     # DATA IMPUTATION
@@ -373,327 +382,221 @@ def app():
                         st.markdown("**Data imputation**")
                         st.write("")
                         st.info("No NAs in data set!")
-                
-                with a3:
-                    #--------------------------------------------------------------------------------------
-                    # DATA TRANSFORMATION
+            
+            with a3:
+                #--------------------------------------------------------------------------------------
+                # DATA TRANSFORMATION
 
-                    st.markdown("**Data transformation**")
-                    # Select columns for different transformation types
-                    transform_options = df.select_dtypes([np.number]).columns
-                    numCat_options = df.columns
-                    sb_DM_dTrans_log = st.multiselect("Select columns to transform with log ", transform_options, key = session_state.id)
-                    if sb_DM_dTrans_log is not None: 
-                        df = fc.var_transform_log(df, sb_DM_dTrans_log)
-                    sb_DM_dTrans_sqrt = st.multiselect("Select columns to transform with sqrt ", transform_options, key = session_state.id)
-                    if sb_DM_dTrans_sqrt is not None: 
-                        df = fc.var_transform_sqrt(df, sb_DM_dTrans_sqrt)
-                    sb_DM_dTrans_square = st.multiselect("Select columns for squaring ", transform_options, key = session_state.id)
-                    if sb_DM_dTrans_square is not None: 
-                        df = fc.var_transform_square(df, sb_DM_dTrans_square)
-                    sb_DM_dTrans_stand = st.multiselect("Select columns for standardization ", transform_options, key = session_state.id)
-                    if sb_DM_dTrans_stand is not None: 
-                        df = fc.var_transform_stand(df, sb_DM_dTrans_stand)
-                    sb_DM_dTrans_norm = st.multiselect("Select columns for normalization ", transform_options, key = session_state.id)
-                    if sb_DM_dTrans_norm is not None: 
-                        df = fc.var_transform_norm(df, sb_DM_dTrans_norm)
-                    sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = session_state.id)
-                    if sb_DM_dTrans_numCat:
-                        if not df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist(): 
-                            sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = session_state.id)
-                            if sb_DM_dTrans_numCat_sel:
-                                for var in sb_DM_dTrans_numCat_sel:
-                                    if df[var].unique().size > 5: 
-                                        st.error("ERROR: Selected variable has too many categories (>5): " + str(var))
-                                        return
-                                    else:
-                                        manual_cats = pd.DataFrame(index = range(0, df[var].unique().size), columns=["Value", "Cat"])
-                                        text = "Category for "
-                                        # Save manually selected categories
-                                        for i in range(0, df[var].unique().size):
-                                            text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
-                                            man_cat = st.number_input(text1, value = 0, min_value=0, key = session_state.id)
-                                            manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
-                                            manual_cats.loc[i]["Cat"] = man_cat
-                                        
-                                        new_var_name = "numCat_" + var
-                                        new_var = pd.DataFrame(index = df.index, columns = [new_var_name])
-                                        for c in df[var].index:
-                                            if pd.isnull(df[var][c]) == True:
-                                                new_var.loc[c, new_var_name] = np.nan
-                                            elif pd.isnull(df[var][c]) == False:
-                                                new_var.loc[c, new_var_name] = int(manual_cats[manual_cats["Value"] == df[var][c]]["Cat"])
-                                        df[new_var_name] = new_var.astype('int64')
-                                    # Exclude columns with manual categorization from standard categorization
-                                    numCat_wo_manCat = [var for var in sb_DM_dTrans_numCat if var not in sb_DM_dTrans_numCat_sel]
-                                    df = fc.var_transform_numCat(df, numCat_wo_manCat)
-                            else:
-                                df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
+                st.markdown("**Data transformation**")
+                # Select columns for different transformation types
+                transform_options = df.select_dtypes([np.number]).columns
+                numCat_options = df.columns
+                sb_DM_dTrans_log = st.multiselect("Select columns to transform with log ", transform_options, key = session_state.id)
+                if sb_DM_dTrans_log is not None: 
+                    df = fc.var_transform_log(df, sb_DM_dTrans_log)
+                sb_DM_dTrans_sqrt = st.multiselect("Select columns to transform with sqrt ", transform_options, key = session_state.id)
+                if sb_DM_dTrans_sqrt is not None: 
+                    df = fc.var_transform_sqrt(df, sb_DM_dTrans_sqrt)
+                sb_DM_dTrans_square = st.multiselect("Select columns for squaring ", transform_options, key = session_state.id)
+                if sb_DM_dTrans_square is not None: 
+                    df = fc.var_transform_square(df, sb_DM_dTrans_square)
+                sb_DM_dTrans_stand = st.multiselect("Select columns for standardization ", transform_options, key = session_state.id)
+                if sb_DM_dTrans_stand is not None: 
+                    df = fc.var_transform_stand(df, sb_DM_dTrans_stand)
+                sb_DM_dTrans_norm = st.multiselect("Select columns for normalization ", transform_options, key = session_state.id)
+                if sb_DM_dTrans_norm is not None: 
+                    df = fc.var_transform_norm(df, sb_DM_dTrans_norm)
+                sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = session_state.id)
+                if sb_DM_dTrans_numCat:
+                    if not df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist(): 
+                        sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = session_state.id)
+                        if sb_DM_dTrans_numCat_sel:
+                            for var in sb_DM_dTrans_numCat_sel:
+                                if df[var].unique().size > 5: 
+                                    st.error("ERROR: Selected variable has too many categories (>5): " + str(var))
+                                    return
+                                else:
+                                    manual_cats = pd.DataFrame(index = range(0, df[var].unique().size), columns=["Value", "Cat"])
+                                    text = "Category for "
+                                    # Save manually selected categories
+                                    for i in range(0, df[var].unique().size):
+                                        text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
+                                        man_cat = st.number_input(text1, value = 0, min_value=0, key = session_state.id)
+                                        manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
+                                        manual_cats.loc[i]["Cat"] = man_cat
+                                    
+                                    new_var_name = "numCat_" + var
+                                    new_var = pd.DataFrame(index = df.index, columns = [new_var_name])
+                                    for c in df[var].index:
+                                        if pd.isnull(df[var][c]) == True:
+                                            new_var.loc[c, new_var_name] = np.nan
+                                        elif pd.isnull(df[var][c]) == False:
+                                            new_var.loc[c, new_var_name] = int(manual_cats[manual_cats["Value"] == df[var][c]]["Cat"])
+                                    df[new_var_name] = new_var.astype('int64')
+                                # Exclude columns with manual categorization from standard categorization
+                                numCat_wo_manCat = [var for var in sb_DM_dTrans_numCat if var not in sb_DM_dTrans_numCat_sel]
+                                df = fc.var_transform_numCat(df, numCat_wo_manCat)
                         else:
-                            col_with_na = df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist()
-                            st.error("ERROR: Please select columns without NAs: " + ', '.join(map(str,col_with_na)))
-                            return
+                            df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
                     else:
-                        sb_DM_dTrans_numCat = None
-                    sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = session_state.id)
-                    if sb_DM_dTrans_mult != 0: 
-                        multiplication_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_mult), columns=["Var1", "Var2"])
-                        text = "Multiplication pair"
-                        for i in range(0, sb_DM_dTrans_mult):
-                            text1 = text + " " + str(i+1)
-                            text2 = text + " " + str(i+1) + " "
-                            mult_var1 = st.selectbox(text1, transform_options, key = session_state.id)
-                            mult_var2 = st.selectbox(text2, transform_options, key = session_state.id)
-                            multiplication_pairs.loc[i]["Var1"] = mult_var1
-                            multiplication_pairs.loc[i]["Var2"] = mult_var2
-                            fc.var_transform_mult(df, mult_var1, mult_var2)
-                    sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, key = session_state.id)
-                    if sb_DM_dTrans_div != 0:
-                        division_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_div), columns=["Var1", "Var2"]) 
-                        text = "Division pair"
-                        for i in range(0, sb_DM_dTrans_div):
-                            text1 = text + " " + str(i+1) + " (numerator)"
-                            text2 = text + " " + str(i+1) + " (denominator)"
-                            div_var1 = st.selectbox(text1, transform_options, key = session_state.id)
-                            div_var2 = st.selectbox(text2, transform_options, key = session_state.id)
-                            division_pairs.loc[i]["Var1"] = div_var1
-                            division_pairs.loc[i]["Var2"] = div_var2
-                            fc.var_transform_div(df, div_var1, div_var2)
-            else:
-                with a1:
-                    #--------------------------------------------------------------------------------------
-                    # DATA CLEANING
+                        col_with_na = df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist()
+                        st.error("ERROR: Please select columns without NAs: " + ', '.join(map(str,col_with_na)))
+                        return
+                else:
+                    sb_DM_dTrans_numCat = None
+                sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = session_state.id)
+                if sb_DM_dTrans_mult != 0: 
+                    multiplication_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_mult), columns=["Var1", "Var2"])
+                    text = "Multiplication pair"
+                    for i in range(0, sb_DM_dTrans_mult):
+                        text1 = text + " " + str(i+1)
+                        text2 = text + " " + str(i+1) + " "
+                        mult_var1 = st.selectbox(text1, transform_options, key = session_state.id)
+                        mult_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                        multiplication_pairs.loc[i]["Var1"] = mult_var1
+                        multiplication_pairs.loc[i]["Var2"] = mult_var2
+                        fc.var_transform_mult(df, mult_var1, mult_var2)
+                sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, key = session_state.id)
+                if sb_DM_dTrans_div != 0:
+                    division_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_div), columns=["Var1", "Var2"]) 
+                    text = "Division pair"
+                    for i in range(0, sb_DM_dTrans_div):
+                        text1 = text + " " + str(i+1) + " (numerator)"
+                        text2 = text + " " + str(i+1) + " (denominator)"
+                        div_var1 = st.selectbox(text1, transform_options, key = session_state.id)
+                        div_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                        division_pairs.loc[i]["Var1"] = div_var1
+                        division_pairs.loc[i]["Var2"] = div_var2
+                        fc.var_transform_div(df, div_var1, div_var2)
 
-                    st.markdown("**Data cleaning**")
-
-                    # Delete rows
-                    sb_DM_delRows = st.multiselect("Select rows to delete ", df.index, key = session_state.id)
-                    df = df.loc[~df.index.isin(sb_DM_delRows)]
-
-                    # Delete columns
-                    sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
-                    df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
-
-                    # Delete duplicates if any exist
-                    if df[df.duplicated()].shape[0] > 0:
-                        sb_DM_delDup = st.selectbox("Delete duplicate rows ", ["No", "Yes"], key = session_state.id)
-                        if sb_DM_delDup == "Yes":
-                            n_rows_dup = df[df.duplicated()].shape[0]
-                            df = df.drop_duplicates()
-                    elif df[df.duplicated()].shape[0] == 0:   
-                        sb_DM_delDup = "No"    
-                        
-                    # Delete rows with NA if any exist
-                    n_rows_wNAs = df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0]
-                    if n_rows_wNAs > 0:
-                        sb_DM_delRows_wNA = st.selectbox("Delete rows with NAs ", ["No", "Yes"], key = session_state.id)
-                        if sb_DM_delRows_wNA == "Yes": 
-                            df = df.dropna()
-                    elif n_rows_wNAs == 0: 
-                        sb_DM_delRows_wNA = "No"   
-
-                    # Filter data
-                    st.markdown("**Data filtering**")
+                univariate_transfrom=st.checkbox("Transfrom data in Excel?", value=False)
+                if univariate_transfrom==True:
+                    st.info("Press the button to open your data in Excel. Don't forget to save your result as a csv or a txt file!")
+                    # Download link for exploration statistics
+                    output = BytesIO()
+                    excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                    df.to_excel(excel_file, sheet_name="data")    
+                    excel_file.save()
+                    excel_file = output.getvalue()
+                    b64 = base64.b64encode(excel_file)
+                    dl_file_name = "Univariate_data_transfromation.xlsx"
+                    st.markdown(
+                        f"""
+                    <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Transfrom your data in Excel</a>
+                    """,
+                    unsafe_allow_html=True)
+                    st.write("")  
                     
-                    filter_var=st.selectbox('Filter your data by a variable...',  list('-')+ list(df.columns), key = session_state.id)
-                    if filter_var !='-':
-                        filter_vals=st.selectbox('Filter your data by a value...', (df[filter_var]).unique(), key = session_state.id)
-                        df =df[df[filter_var]==filter_vals]
-                        
-                with a2:
-                    #--------------------------------------------------------------------------------------
-                    # DATA TRANSFORMATION
-
-                    st.markdown("**Data transformation**")
-                    # Select columns for different transformation types
-                    transform_options = df.select_dtypes([np.number]).columns
-                    numCat_options = df.columns
-                    sb_DM_dTrans_log = st.multiselect("Select columns to transform with log ", transform_options, key = session_state.id)
-                    if sb_DM_dTrans_log is not None: 
-                        df = fc.var_transform_log(df, sb_DM_dTrans_log)
-                    sb_DM_dTrans_sqrt = st.multiselect("Select columns to transform with sqrt ", transform_options, key = session_state.id)
-                    if sb_DM_dTrans_sqrt is not None: 
-                        df = fc.var_transform_sqrt(df, sb_DM_dTrans_sqrt)
-                    sb_DM_dTrans_square = st.multiselect("Select columns for squaring ", transform_options, key = session_state.id)
-                    if sb_DM_dTrans_square is not None: 
-                        df = fc.var_transform_square(df, sb_DM_dTrans_square)
-                    sb_DM_dTrans_stand = st.multiselect("Select columns for standardization ", transform_options, key = session_state.id)
-                    if sb_DM_dTrans_stand is not None: 
-                        df = fc.var_transform_stand(df, sb_DM_dTrans_stand)
-                    sb_DM_dTrans_norm = st.multiselect("Select columns for normalization ", transform_options, key = session_state.id)
-                    if sb_DM_dTrans_norm is not None: 
-                        df = fc.var_transform_norm(df, sb_DM_dTrans_norm)
-                    sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = session_state.id)
-                    if sb_DM_dTrans_numCat:
-                        if not df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist(): 
-                            sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = session_state.id)
-                            if sb_DM_dTrans_numCat_sel:
-                                for var in sb_DM_dTrans_numCat_sel:
-                                    if df[var].unique().size > 5: 
-                                        st.error("ERROR: Selected variable has too many categories (>5): " + str(var))
-                                        return
-                                    else:
-                                        manual_cats = pd.DataFrame(index = range(0, df[var].unique().size), columns=["Value", "Cat"])
-                                        text = "Category for "
-                                        # Save manually selected categories
-                                        for i in range(0, df[var].unique().size):
-                                            text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
-                                            man_cat = st.number_input(text1, value = 0, min_value=0, key = session_state.id)
-                                            manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
-                                            manual_cats.loc[i]["Cat"] = man_cat
-                                        
-                                        new_var_name = "numCat_" + var
-                                        new_var = pd.DataFrame(index = df.index, columns = [new_var_name])
-                                        for c in df[var].index:
-                                            if pd.isnull(df[var][c]) == True:
-                                                new_var.loc[c, new_var_name] = np.nan
-                                            elif pd.isnull(df[var][c]) == False:
-                                                new_var.loc[c, new_var_name] = int(manual_cats[manual_cats["Value"] == df[var][c]]["Cat"])
-                                        df[new_var_name] = new_var.astype('int64')
-                                    # Exclude columns with manual categorization from standard categorization
-                                    numCat_wo_manCat = [var for var in sb_DM_dTrans_numCat if var not in sb_DM_dTrans_numCat_sel]
-                                    df = fc.var_transform_numCat(df, numCat_wo_manCat)
-                            else:
-                                df = fc.var_transform_numCat(df, sb_DM_dTrans_numCat)
-                        else:
-                            col_with_na = df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist()
-                            st.error("ERROR: Please select columns without NAs: " + ', '.join(map(str,col_with_na)))
-                            return
-                    else:
-                        sb_DM_dTrans_numCat = None
-                    sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = session_state.id)
-                    if sb_DM_dTrans_mult != 0: 
-                        multiplication_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_mult), columns=["Var1", "Var2"])
-                        text = "Multiplication pair"
-                        for i in range(0, sb_DM_dTrans_mult):
-                            text1 = text + " " + str(i+1)
-                            text2 = text + " " + str(i+1) + " "
-                            mult_var1 = st.selectbox(text1, transform_options, key = session_state.id)
-                            mult_var2 = st.selectbox(text2, transform_options, key = session_state.id)
-                            multiplication_pairs.loc[i]["Var1"] = mult_var1
-                            multiplication_pairs.loc[i]["Var2"] = mult_var2
-                            fc.var_transform_mult(df, mult_var1, mult_var2)
-                    sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, key = session_state.id)
-                    if sb_DM_dTrans_div != 0:
-                        division_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_div), columns=["Var1", "Var2"]) 
-                        text = "Division pair"
-                        for i in range(0, sb_DM_dTrans_div):
-                            text1 = text + " " + str(i+1) + " (numerator)"
-                            text2 = text + " " + str(i+1) + " (denominator)"
-                            div_var1 = st.selectbox(text1, transform_options, key = session_state.id)
-                            div_var2 = st.selectbox(text2, transform_options, key = session_state.id)
-                            division_pairs.loc[i]["Var1"] = div_var1
-                            division_pairs.loc[i]["Var2"] = div_var2
-                            fc.var_transform_div(df, div_var1, div_var2)
+            #--------------------------------------------------------------------------------------
+            # PROCESSING SUMMARY
+            
+            if st.checkbox('Show a summary of my data processing preferences ', value = False, key = session_state.id): 
+                st.markdown("Summary of data changes:")
 
                 #--------------------------------------------------------------------------------------
-                # PROCESSING SUMMARY
+                # DATA CLEANING
+
+                # Rows
+                if len(sb_DM_delRows) > 1:
+                    st.write("-", len(sb_DM_delRows), " rows were manually deleted:", ', '.join(map(str,sb_DM_delRows)))
+                elif len(sb_DM_delRows) == 1:
+                    st.write("-",len(sb_DM_delRows), " row was manually deleted:", str(sb_DM_delRows[0]))
+                elif len(sb_DM_delRows) == 0:
+                    st.write("- No row was manually deleted!")
+                # Columns
+                if len(sb_DM_delCols) > 1:
+                    st.write("-", len(sb_DM_delCols), " columns were manually deleted:", ', '.join(sb_DM_delCols))
+                elif len(sb_DM_delCols) == 1:
+                    st.write("-",len(sb_DM_delCols), " column was manually deleted:", str(sb_DM_delCols[0]))
+                elif len(sb_DM_delCols) == 0:
+                    st.write("- No column was manually deleted!")
+                # Duplicates
+                if sb_DM_delDup == "Yes":
+                    if n_rows_dup > 1:
+                        st.write("-", n_rows_dup, " duplicate rows were deleted!")
+                    elif n_rows_dup == 1:
+                        st.write("-", n_rows_dup, "duplicate row was deleted!")
+                else:
+                    st.write("- No duplicate row was deleted!")
+                # NAs
+                if sb_DM_delRows_wNA == "Yes":
+                    if n_rows_wNAs > 1:
+                        st.write("-", n_rows_wNAs, "rows with NAs were deleted!")
+                    elif n_rows_wNAs == 1:
+                        st.write("-", n_rows - n_rows_wNAs, "row with NAs was deleted!")
+                else:
+                    st.write("- No row with NAs was deleted!")
+                # Filter
+                if filter_var != "-":
+                    st.write("-", " Data filtered by:", str(filter_var) , " > " , str(filter_vals))
+                    
+                #--------------------------------------------------------------------------------------
+                # DATA IMPUTATION
+
+                if sb_DM_delRows_wNA == "No" and n_rows_wNAs > 0:
+                    st.write("- Data imputation method for numeric variables:", sb_DM_dImp_num)
+                    st.write("- Data imputation method for other variable types:", sb_DM_dImp_other)
+
+                #--------------------------------------------------------------------------------------
+                # DATA TRANSFORMATION
+
+                # log
+                if len(sb_DM_dTrans_log) > 1:
+                    st.write("-", len(sb_DM_dTrans_log), " columns were log-transformed:", ', '.join(sb_DM_dTrans_log))
+                elif len(sb_DM_dTrans_log) == 1:
+                    st.write("-",len(sb_DM_dTrans_log), " column was log-transformed:", sb_DM_dTrans_log[0])
+                elif len(sb_DM_dTrans_log) == 0:
+                    st.write("- No column was log-transformed!")
+                # sqrt
+                if len(sb_DM_dTrans_sqrt) > 1:
+                    st.write("-", len(sb_DM_dTrans_sqrt), " columns were sqrt-transformed:", ', '.join(sb_DM_dTrans_sqrt))
+                elif len(sb_DM_dTrans_sqrt) == 1:
+                    st.write("-",len(sb_DM_dTrans_sqrt), " column was sqrt-transformed:", sb_DM_dTrans_sqrt[0])
+                elif len(sb_DM_dTrans_sqrt) == 0:
+                    st.write("- No column was sqrt-transformed!")
+                # square
+                if len(sb_DM_dTrans_square) > 1:
+                    st.write("-", len(sb_DM_dTrans_square), " columns were squared:", ', '.join(sb_DM_dTrans_square))
+                elif len(sb_DM_dTrans_square) == 1:
+                    st.write("-",len(sb_DM_dTrans_square), " column was squared:", sb_DM_dTrans_square[0])
+                elif len(sb_DM_dTrans_square) == 0:
+                    st.write("- No column was squared!")
+                # standardize
+                if len(sb_DM_dTrans_stand) > 1:
+                    st.write("-", len(sb_DM_dTrans_stand), " columns were standardized:", ', '.join(sb_DM_dTrans_stand))
+                elif len(sb_DM_dTrans_stand) == 1:
+                    st.write("-",len(sb_DM_dTrans_stand), " column was standardized:", sb_DM_dTrans_stand[0])
+                elif len(sb_DM_dTrans_stand) == 0:
+                    st.write("- No column was standardized!")
+                # normalize
+                if len(sb_DM_dTrans_norm) > 1:
+                    st.write("-", len(sb_DM_dTrans_norm), " columns were normalized:", ', '.join(sb_DM_dTrans_norm))
+                elif len(sb_DM_dTrans_norm) == 1:
+                    st.write("-",len(sb_DM_dTrans_norm), " column was normalized:", sb_DM_dTrans_norm[0])
+                elif len(sb_DM_dTrans_norm) == 0:
+                    st.write("- No column was normalized!")
+                # numeric category
+                if sb_DM_dTrans_numCat is not None:
+                    if len(sb_DM_dTrans_numCat) > 1:
+                        st.write("-", len(sb_DM_dTrans_numCat), " columns were transformed to numeric categories:", ', '.join(sb_DM_dTrans_numCat))
+                    elif len(sb_DM_dTrans_numCat) == 1:
+                        st.write("-",len(sb_DM_dTrans_numCat), " column was transformed to numeric categories:", sb_DM_dTrans_numCat[0])
+                elif sb_DM_dTrans_numCat is None:
+                    st.write("- No column was transformed to numeric categories!")
+                # multiplication
+                if sb_DM_dTrans_mult != 0:
+                    st.write("-", "Number of variable multiplications: ", sb_DM_dTrans_mult)
+                elif sb_DM_dTrans_mult == 0:
+                    st.write("- No variables were multiplied!")
+                # division
+                if sb_DM_dTrans_div != 0:
+                    st.write("-", "Number of variable divisions: ", sb_DM_dTrans_div)
+                elif sb_DM_dTrans_div == 0:
+                    st.write("- No variables were divided!")
+                st.write("")
+                st.write("")
+
                 
-                if st.checkbox('Show a summary of my data processing preferences ', value = False, key = session_state.id): 
-                    st.markdown("Summary of data changes:")
-
-                    #--------------------------------------------------------------------------------------
-                    # DATA CLEANING
-
-                    # Rows
-                    if len(sb_DM_delRows) > 1:
-                        st.write("-", len(sb_DM_delRows), " rows were manually deleted:", ', '.join(map(str,sb_DM_delRows)))
-                    elif len(sb_DM_delRows) == 1:
-                        st.write("-",len(sb_DM_delRows), " row was manually deleted:", str(sb_DM_delRows[0]))
-                    elif len(sb_DM_delRows) == 0:
-                        st.write("- No row was manually deleted!")
-                    # Columns
-                    if len(sb_DM_delCols) > 1:
-                        st.write("-", len(sb_DM_delCols), " columns were manually deleted:", ', '.join(sb_DM_delCols))
-                    elif len(sb_DM_delCols) == 1:
-                        st.write("-",len(sb_DM_delCols), " column was manually deleted:", str(sb_DM_delCols[0]))
-                    elif len(sb_DM_delCols) == 0:
-                        st.write("- No column was manually deleted!")
-                    # Duplicates
-                    if sb_DM_delDup == "Yes":
-                        if n_rows_dup > 1:
-                            st.write("-", n_rows_dup, " duplicate rows were deleted!")
-                        elif n_rows_dup == 1:
-                            st.write("-", n_rows_dup, "duplicate row was deleted!")
-                    else:
-                        st.write("- No duplicate row was deleted!")
-                    # NAs
-                    if sb_DM_delRows_wNA == "Yes":
-                        if n_rows_wNAs > 1:
-                            st.write("-", n_rows_wNAs, "rows with NAs were deleted!")
-                        elif n_rows_wNAs == 1:
-                            st.write("-", n_rows - n_rows_wNAs, "row with NAs was deleted!")
-                    else:
-                        st.write("- No row with NAs was deleted!")
-                    # Filter
-                    if filter_var != "-":
-                        st.write("-", " Data filtered by:", str(filter_var) , " > " , str(filter_vals))
-                        
-                    #--------------------------------------------------------------------------------------
-                    # DATA IMPUTATION
-
-                    if sb_DM_delRows_wNA == "No" and n_rows_wNAs > 0:
-                        st.write("- Data imputation method for numeric variables:", sb_DM_dImp_num)
-                        st.write("- Data imputation method for other variable types:", sb_DM_dImp_other)
-
-                    #--------------------------------------------------------------------------------------
-                    # DATA TRANSFORMATION
-
-                    # log
-                    if len(sb_DM_dTrans_log) > 1:
-                        st.write("-", len(sb_DM_dTrans_log), " columns were log-transformed:", ', '.join(sb_DM_dTrans_log))
-                    elif len(sb_DM_dTrans_log) == 1:
-                        st.write("-",len(sb_DM_dTrans_log), " column was log-transformed:", sb_DM_dTrans_log[0])
-                    elif len(sb_DM_dTrans_log) == 0:
-                        st.write("- No column was log-transformed!")
-                    # sqrt
-                    if len(sb_DM_dTrans_sqrt) > 1:
-                        st.write("-", len(sb_DM_dTrans_sqrt), " columns were sqrt-transformed:", ', '.join(sb_DM_dTrans_sqrt))
-                    elif len(sb_DM_dTrans_sqrt) == 1:
-                        st.write("-",len(sb_DM_dTrans_sqrt), " column was sqrt-transformed:", sb_DM_dTrans_sqrt[0])
-                    elif len(sb_DM_dTrans_sqrt) == 0:
-                        st.write("- No column was sqrt-transformed!")
-                    # square
-                    if len(sb_DM_dTrans_square) > 1:
-                        st.write("-", len(sb_DM_dTrans_square), " columns were squared:", ', '.join(sb_DM_dTrans_square))
-                    elif len(sb_DM_dTrans_square) == 1:
-                        st.write("-",len(sb_DM_dTrans_square), " column was squared:", sb_DM_dTrans_square[0])
-                    elif len(sb_DM_dTrans_square) == 0:
-                        st.write("- No column was squared!")
-                    # standardize
-                    if len(sb_DM_dTrans_stand) > 1:
-                        st.write("-", len(sb_DM_dTrans_stand), " columns were standardized:", ', '.join(sb_DM_dTrans_stand))
-                    elif len(sb_DM_dTrans_stand) == 1:
-                        st.write("-",len(sb_DM_dTrans_stand), " column was standardized:", sb_DM_dTrans_stand[0])
-                    elif len(sb_DM_dTrans_stand) == 0:
-                        st.write("- No column was standardized!")
-                    # normalize
-                    if len(sb_DM_dTrans_norm) > 1:
-                        st.write("-", len(sb_DM_dTrans_norm), " columns were normalized:", ', '.join(sb_DM_dTrans_norm))
-                    elif len(sb_DM_dTrans_norm) == 1:
-                        st.write("-",len(sb_DM_dTrans_norm), " column was normalized:", sb_DM_dTrans_norm[0])
-                    elif len(sb_DM_dTrans_norm) == 0:
-                        st.write("- No column was normalized!")
-                    # numeric category
-                    if df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] == 0:
-                        if len(sb_DM_dTrans_numCat) > 1:
-                            st.write("-", len(sb_DM_dTrans_numCat), " columns were transformed to numeric categories:", ', '.join(sb_DM_dTrans_numCat))
-                        elif len(sb_DM_dTrans_numCat) == 1:
-                            st.write("-",len(sb_DM_dTrans_numCat), " column was transformed to numeric categories:", sb_DM_dTrans_numCat[0])
-                        elif len(sb_DM_dTrans_numCat) == 0:
-                            st.write("- No column was transformed to numeric categories!")
-                    # multiplication
-                    if sb_DM_dTrans_mult != 0:
-                        st.write("-", "Number of variable multiplications: ", sb_DM_dTrans_mult)
-                    elif sb_DM_dTrans_mult == 0:
-                        st.write("- No variables were multiplied!")
-                    # division
-                    if sb_DM_dTrans_div != 0:
-                        st.write("-", "Number of variable divisions: ", sb_DM_dTrans_div)
-                    elif sb_DM_dTrans_div == 0:
-                        st.write("- No variables were divided!")
-                    st.write("")
-                    st.write("")
             
         #------------------------------------------------------------------------------------------
         
@@ -923,7 +826,7 @@ def app():
                     df_freqanal['Abs. freq.']= n
                     fa_val=n/sum(n)
                     df_freqanal['Rel. freq.']=fa_val
-                    df_freqanal['Rel. freq.']=pd.Series(["{0:.2f}%".format(fa_val * 100) for fa_val in df_freqanal['Rel. freq.']], index = df_freqanal.index)
+                    #df_freqanal['Rel. freq.']=pd.Series(["{0:.2f}%".format(fa_val * 100) for fa_val in df_freqanal['Rel. freq.']], index = df_freqanal.index)
                     pd_s=pd.Series(n)
                     #calculate cumulative frequencies
                     cum_freq=pd_s.cumsum()/sum(pd_s)
@@ -1000,7 +903,7 @@ def app():
 
                 #show frequency table
                 st.subheader("Frequency table")
-                st.table(df_freqanal)
+                st.table(df_freqanal.style.set_precision(user_precision))
 
                 # xls-File download link:
                 output = BytesIO()
@@ -1091,7 +994,7 @@ def app():
                         anova_summary=pd.concat([df_grouped.count(),df_grouped.mean(),df_grouped.var()], axis=1)
                         anova_summary.columns={"count", "mean" , "variance"}
                         st.subheader("Groups summary:")
-                        st.table(anova_summary)
+                        st.table(anova_summary.style.set_precision(user_precision))
 
                         anova_table=pd.DataFrame({
                             "Deviance": [sqe_stat.values[0], sqr_stat.values[0], sq_tot.values[0]],
@@ -1102,7 +1005,7 @@ def app():
                             index=["Between groups", "Within groups", "Total"],)
                         
                         st.subheader("ANOVA")
-                        st.table(anova_table)
+                        st.table(anova_table.style.set_precision(user_precision))
 
                         #Anova (OLS)
                         codes, uniques = pd.factorize(df[clas_var])
@@ -1214,7 +1117,7 @@ def app():
                         if df[group_var].dtypes=="int64" or df[group_var].dtypes=="float64": 
                             a4,a5=st.beta_columns(2)
                             with a4: 
-                                test_recl=st.selectbox('First group is where values are ...', options=['greather','greather or equal','smaller','smaller or equal', 'equal','between'], key = session_state.id)
+                                test_recl=st.selectbox('First group is where values are ...', options=['greater','greater or equal','smaller','smaller or equal', 'equal','between'], key = session_state.id)
                            
                             with a5:
                                 if test_recl=='between':
@@ -1227,10 +1130,10 @@ def app():
                                     test_recl_thr_1=st.number_input('Specify the value',format="%.8f", key = session_state.id)
                                     
                                      #reclassify values:
-                                    if test_recl=='greather':
+                                    if test_recl=='greater':
                                         df['test_class'] = np.where((df[group_var] > test_recl_thr_1),1,0) 
                                         
-                                    elif test_recl=='greather or equal':
+                                    elif test_recl=='greater or equal':
                                         df['test_class'] = np.where((df[group_var] >= test_recl_thr_1),1,0) 
                                         
                                     elif test_recl=='smaller':
@@ -1274,8 +1177,8 @@ def app():
                         st.write('Sollwert/population mean = ' + str(test_sollwert))
                         st.write('Population variance = ' + str(test_variance))
                         st.write('Sample size = ' + str(len(test_dataset)))
-                        st.write('Sample mean = ' + str(test_dataset.mean().round(4)))
-                        st.write('Sample std = ' + str(test_dataset.std().round(4)))
+                        st.write('Sample mean = ' + str(test_dataset.mean().round(user_precision)))
+                        st.write('Sample std. = ' + str(test_dataset.std().round(user_precision)))
                        
                         z_val=(test_dataset.mean()-test_sollwert)/(np.sqrt(test_variance)/np.sqrt(len(test_dataset)))
                         p_value_one_sided = scipy.stats.norm.sf(abs(z_val)) 
@@ -1288,9 +1191,9 @@ def app():
                             st.write("")
                             st.write("")
                             st.write("")
-                            st.write('z = ' + str(z_val.round(4)))
-                            st.write('p-value (one sided) = ' + str(p_value_one_sided.round(4)))
-                            st.write('p-value (two sided) = ' + str(p_value_two_sided.round(4))) 
+                            st.write('z = ' + str(z_val.round(user_precision)))
+                            st.write('p-value (one sided) = ' + str(p_value_one_sided.round(user_precision)))
+                            st.write('p-value (two sided) = ' + str(p_value_two_sided.round(user_precision))) 
 
                         with a5:
                             st.write("")
@@ -1354,8 +1257,8 @@ def app():
                         st.write('Investigated variable: ' + test_var)
                         st.write('Sollwert/population mean = ' + str(test_sollwert))                        
                         st.write('Sample size = ' + str(len(test_dataset)))
-                        st.write('Sample mean = ' + str(test_dataset.mean().round(4)))
-                        st.write('Sample std. = ' + str(test_dataset.std().round(4)))
+                        st.write('Sample mean = ' + str(test_dataset.mean().round(user_precision)))
+                        st.write('Sample std. = ' + str(test_dataset.std().round(user_precision)))
                         n_sqr=np.sqrt(len(test_dataset))
                             
                         a4,a5=st.beta_columns(2)
@@ -1366,13 +1269,13 @@ def app():
                             st.write("")
                             st.write("")
                             t_val=(test_dataset.mean()-test_sollwert)/(test_dataset.std()/n_sqr)
-                            st.write('t = ' + str(t_val.round(4)))
+                            st.write('t = ' + str(t_val.round(user_precision)))
                             test_dof=len(test_dataset)-1
                             st.write('DOF = ' + str(test_dof))
                             p_value_one_sided = scipy.stats.t.sf(abs(t_val),len(test_dataset)-1) 
-                            st.write('p-value (one sided) = ' + str(p_value_one_sided.round(4)))
+                            st.write('p-value (one sided) = ' + str(p_value_one_sided.round(user_precision)))
                             p_value_two_sided = scipy.stats.t.sf(abs(t_val),len(test_dataset)-1)*2                         
-                            st.write('p-value (two sided) = ' + str(p_value_two_sided.round(4))) 
+                            st.write('p-value (two sided) = ' + str(p_value_two_sided.round(user_precision))) 
 
                             t_stats = pd.DataFrame(index = ["Tested variable", "Sollwert",  "n", "sample mean","Sample std", "t", "DOF","p-value - one sided","p-value - two sided"], columns = ["t-test"])
                             t_stats.loc["Tested variable"]=test_var
@@ -1451,13 +1354,13 @@ def app():
                         with a4:
                             st.write('**1. sample**')
                             st.write('Sample size = ' + str(len(test_sample_0)))
-                            st.write('Mean = ' + str(test_sample_0[test_var].mean()))
-                            st.write('Std. = ' + str(test_sample_0[test_var].std()))
+                            st.write('Mean = ' + str(test_sample_0[test_var].mean().round(user_precision)))
+                            st.write('Std. = ' + str(test_sample_0[test_var].std().round(user_precision)))
                         with a5:
                             st.write('**2. sample**')
                             st.write('Sample size = ' + str(len(test_sample_1)))
-                            st.write('Mean = ' + str(test_sample_1[test_var].mean()))
-                            st.write('Std. = ' + str(test_sample_1[test_var].std()))
+                            st.write('Mean = ' + str(test_sample_1[test_var].mean().round(user_precision)))
+                            st.write('Std. = ' + str(test_sample_1[test_var].std().round(user_precision)))
                         
                         st.write("") 
                         st.write("") 
@@ -1475,17 +1378,17 @@ def app():
                             (t_val, p_value_greater)=scipy.stats.ttest_ind(test_sample_0.loc[:,test_var].values,test_sample_1[test_var],equal_var=equal_var_bool, alternative='greater')
                             (t_val, p_value_two_sided)=scipy.stats.ttest_ind(test_sample_0.loc[:,test_var].values,test_sample_1[test_var],equal_var=equal_var_bool, alternative='two-sided')
                             
-                            st.write('t = ' + str(t_val.round(4))) 
+                            st.write('t = ' + str(t_val.round(user_precision))) 
                             if test_variance_ass=="equal variance":                      
                                 test_dof=test_sample_0[test_var].size+test_sample_1[test_var].size-2    
                                 
                             else:    
                                 test_dof = (test_sample_0[test_var].var()/test_sample_0[test_var].size + test_sample_1[test_var].var()/test_sample_1[test_var].size)**2 / ((test_sample_0[test_var].var()/test_sample_0[test_var].size)**2 / (test_sample_0[test_var].size-1) + (test_sample_1[test_var].var()/test_sample_1[test_var].size)**2 / (test_sample_1[test_var].size-1))
-                                test_dof =test_dof.round(4)
+                                test_dof =test_dof.round(user_precision)
                             st.write('DOF = ' + str(test_dof))
-                            st.write('$H_{1}: \mu < \mu_{0}$ p-value = ' + str(p_value_less.round(4)))
-                            st.write('$H_{1}: \mu > \mu_{0}$ p-value = ' + str(p_value_greater.round(4))) 
-                            st.write('$H_{1}: \mu\, {=}\mathllap{/\,}\, \mu_{0}$ p-value = ' + str(p_value_two_sided.round(4))) 
+                            st.write('$H_{1}: \mu < \mu_{0}$ p-value = ' + str(p_value_less.round(user_precision)))
+                            st.write('$H_{1}: \mu > \mu_{0}$ p-value = ' + str(p_value_greater.round(user_precision))) 
+                            st.write('$H_{1}: \mu\, {=}\mathllap{/\,}\, \mu_{0}$ p-value = ' + str(p_value_two_sided.round(user_precision))) 
 
                         # plot pdf
                                              
@@ -1592,16 +1495,17 @@ def app():
                 if len(ft_data)>4 and len(ft_data)<500:
                     iniBins=10*math.ceil(((len(ft_data))**0.5)/10)
                 
-                ft_data_output=st.checkbox("Include data from distribution fitting in the output file", value=False)
+                
                 # Number of classes in the empirical distribution
                 Nobins =iniBins
-                ft_showOptions=st.checkbox("Additional settings?", value = False, key = session_state.id)
+                ft_showOptions=st.checkbox("Additional settings", value = False, key = session_state.id)
                 if ft_showOptions:                         
                     st.info('Sample value range for the variable "' +str(ft_var) + '":  \n min=' + str(min(df[ft_var]))+ '  \n max=' + str(max(df[ft_var])))
                     ft_low=st.number_input('Start fitting from the "' + str(ft_var) + '" value?')
                     ft_up=st.number_input('End fitting at the "' + str(ft_var) + '" value?')
                     Nobins = st.number_input('Number of classes for your histogram?',value=iniBins)
-                                    
+                
+                ft_data_output=st.checkbox("Include data from distribution fitting in the output file", value=False)                    
         
                 st.write("")
                 run_fitting = st.button("Press to start the distribution fitting...")  
@@ -1623,7 +1527,8 @@ def app():
                     #table output
                     st.success('Distribution fitting done!')
                     st.subheader("Goodness-of-fit results")
-                    st.table(results[['SSD', 'Chi-squared','DOF', 'p-value','Distribution']])
+                    ft_results=results[['SSD', 'Chi-squared','DOF', 'p-value','Distribution']]
+                    st.table(ft_results.style.set_precision(user_precision))
                     
                     
                     if sum(results['p-value']>0.05)>0:
@@ -1635,12 +1540,12 @@ def app():
                     rel_freq_comp['Upper limit']= xupper
                     rel_freq_comp['Class mean']=x_mid
                     rel_freq_comp['Rel. freq. (emp.)']= rel_freq
-                    rel_freq_comp['Rel. freq. (emp.)'] = pd.Series(["{0:.2f}%".format(val * 100) for val in rel_freq_comp['Rel. freq. (emp.)']], index = rel_freq_comp.index)
+                    #rel_freq_comp['Rel. freq. (emp.)'] = pd.Series(["{0:.2f}%".format(val * 100) for val in rel_freq_comp['Rel. freq. (emp.)']], index = rel_freq_comp.index)
                     
                     rel_freq_comp['Rel. freq. ('+best_name +')']= best_prob
-                    rel_freq_comp['Rel. freq. ('+best_name +')'] = pd.Series(["{0:.2f}%".format(val * 100) for val in rel_freq_comp['Rel. freq. ('+best_name +')']], index = rel_freq_comp.index)
+                    #rel_freq_comp['Rel. freq. ('+best_name +')'] = pd.Series(["{0:.2f}%".format(val * 100) for val in rel_freq_comp['Rel. freq. ('+best_name +')']], index = rel_freq_comp.index)
                 
-                    st.table(rel_freq_comp)
+                    st.table(rel_freq_comp.style.set_precision(user_precision))
                             
                     # Plot results:
                     st.subheader("A comparision of relative frequencies (empirical vs. theoretical)")
@@ -1778,7 +1683,7 @@ def app():
                 st.altair_chart(correlation_plot, use_container_width = True)
 
                 st.subheader("Correlation table")
-                st.table(df_cor.corr(method=sel_method))
+                st.table((df_cor.corr(method=sel_method)).style.set_precision(user_precision))
 
                 # xls-File download link:
                 output = BytesIO()
@@ -1898,16 +1803,16 @@ def app():
                             for reg_technique in ra_tech:                            
                                 mlr_reg_inf, mlr_reg_stats, mlr_reg_anova, mlr_reg_coef,X_data, Y_data, Y_pred = fc.regression_models(X_ini, Y_ini, expl_var,reg_technique,poly_order)
                                 # Model comparison
-                                model_comparison.loc["R²"][reg_technique] = np.round_((mlr_reg_stats.loc["R²"]).Value,decimals=4)
-                                model_comparison.loc["Adj. R²"][reg_technique] = np.round_((mlr_reg_stats.loc["Adj. R²"]).Value,decimals=4) 
-                                model_comparison.loc["Log-likelihood"][reg_technique] = np.round_((mlr_reg_stats.loc["Log-likelihood"]).Value,decimals=4) 
+                                model_comparison.loc["R²"][reg_technique] = np.round_((mlr_reg_stats.loc["R²"]).Value,decimals=user_precision)
+                                model_comparison.loc["Adj. R²"][reg_technique] = np.round_((mlr_reg_stats.loc["Adj. R²"]).Value,decimals=user_precision) 
+                                model_comparison.loc["Log-likelihood"][reg_technique] = np.round_((mlr_reg_stats.loc["Log-likelihood"]).Value,decimals=user_precision) 
                                 #model_comparison.loc["% VE"][reg_technique] =  r2_score(Y_data, Y_pred)
-                                model_comparison.loc["MSE"][reg_technique] = np.round_(mean_squared_error(Y_data, Y_pred, squared = True),decimals=4)
-                                model_comparison.loc["RMSE"][reg_technique] = np.round_(mean_squared_error(Y_data, Y_pred, squared = False),decimals=4)
-                                model_comparison.loc["MAE"][reg_technique] = np.round_(mean_absolute_error(Y_data, Y_pred),decimals=4)
-                                model_comparison.loc["MaxErr"][reg_technique] = np.round_(max_error(Y_data, Y_pred),decimals=4)
-                                model_comparison.loc["EVRS"][reg_technique] = np.round_(explained_variance_score(Y_data, Y_pred),decimals=4)
-                                model_comparison.loc["SSR"][reg_technique] = np.round_(((Y_data-Y_pred)**2).sum(),decimals=4)
+                                model_comparison.loc["MSE"][reg_technique] = np.round_(mean_squared_error(Y_data, Y_pred, squared = True),decimals=user_precision)
+                                model_comparison.loc["RMSE"][reg_technique] = np.round_(mean_squared_error(Y_data, Y_pred, squared = False),decimals=user_precision)
+                                model_comparison.loc["MAE"][reg_technique] = np.round_(mean_absolute_error(Y_data, Y_pred),decimals=user_precision)
+                                model_comparison.loc["MaxErr"][reg_technique] = np.round_(max_error(Y_data, Y_pred),decimals=user_precision)
+                                model_comparison.loc["EVRS"][reg_technique] = np.round_(explained_variance_score(Y_data, Y_pred),decimals=user_precision)
+                                model_comparison.loc["SSR"][reg_technique] = np.round_(((Y_data-Y_pred)**2).sum(),decimals=user_precision)
 
 
 
@@ -1964,8 +1869,8 @@ def app():
 
                                 if ra_detailed_output:
                                     #st.table(mlr_reg_stats)
-                                    st.table(mlr_reg_anova)
-                                    st.table(mlr_reg_coef.round(decimals=4))
+                                    st.table(mlr_reg_anova.style.set_precision(user_precision))
+                                    st.table(mlr_reg_coef.style.set_precision(user_precision))
  
                                     #write output to xls file
                                     mlr_reg_anova.to_excel(excel_file, sheet_name="Anova_" + reg_technique)
@@ -2076,14 +1981,14 @@ def app():
                             st.table(pd.DataFrame(data={'min': [min(df[cont_numerical[0]])], 'max': [max(df[cont_numerical[0]])]},index=['range']))
                             low0=st.number_input(str(cont_numerical[0]) + ': 1st class should start at?')
                             up0=st.number_input(str(cont_numerical[0]) + ': Max limit for your classes?')
-                            noclass0= st.number_input(str(cont_numerical[0]) + ': Number of classes?')
+                            noclass0= st.number_input(str(cont_numerical[0]) + ': Number of classes?',step=1)
                         
                         with a5:
                             st.subheader(str(cont_numerical[1]))
                             st.table(pd.DataFrame(data={'min': [min(df[cont_numerical[1]])], 'max': [max(df[cont_numerical[1]])]},index=['range']))
                             low1=st.number_input(str(cont_numerical[1]) + ': 1st class should start at?')
                             up1=st.number_input(str(cont_numerical[1]) + ': Max limit for your classes?')
-                            noclass1= st.number_input(str(cont_numerical[1]) + ': Number of classes?')
+                            noclass1= st.number_input(str(cont_numerical[1]) + ': Number of classes?',step=1)
                         
                     elif len(cont_numerical)==1 and len(cont_categs)==1:
                         data_reclas=1
@@ -2141,7 +2046,7 @@ def app():
                     if data_reclas==2:
                         step0=(up0-low0)/noclass0
                         lim_ser = pd.Series(np.arange(low0, up0, step0)) 
-                        lim_ser=lim_ser.round(4) 
+                        lim_ser=lim_ser.round(user_precision) 
 
                         for k in range(len(lim_ser)-1):
                             df.loc[(df[cont_numerical[0]]>lim_ser[k]) & (df[cont_numerical[0]] <= lim_ser[k+1]), cont_numerical[0]] = lim_ser[k]
@@ -2155,7 +2060,7 @@ def app():
                     elif data_reclas==1:
                         step0=(up0-low0)/noclass0
                         lim_ser = pd.Series(np.arange(low0, up0, step0)) 
-                        lim_ser=lim_ser.round(4)                                             
+                        lim_ser=lim_ser.round(user_precision)                                             
                         
                         for k in range(len(lim_ser)-1):
                             
@@ -2175,7 +2080,7 @@ def app():
                     no_vals=bivarite_table.iloc[len(bivarite_table)-1,len(bivarite_table.columns)-1]
                     st.subheader('Contingency table with relative frequencies')
                     cont_rel=bivarite_table/no_vals
-                    st.table(cont_rel)
+                    st.table(cont_rel.style.set_precision(user_precision))
 
                     #xls output:
                     cont_rel.to_excel(excel_file, sheet_name="relative frequencies")
@@ -2183,14 +2088,14 @@ def app():
                     if cont_extra:
                         st.subheader('Contingency table with marginal frequencies ('+ str(ub_sel_var[0])+')')
                         bivarite_table_marg0 =bivarite_table.iloc[:,:].div(bivarite_table.Total, axis=0)
-                        st.table(bivarite_table_marg0)
+                        st.table(bivarite_table_marg0.style.set_precision(user_precision))
 
                         #xls output:
                         bivarite_table_marg0.to_excel(excel_file, sheet_name="marginal"+ ub_sel_var[0][:min(len(ub_sel_var[0]),15)])
 
                         st.subheader('Contingency table with marginal frequencies ('+ str(ub_sel_var[1])+')')
                         bivarite_table_marg1 =bivarite_table.div(bivarite_table.iloc[-1])
-                        st.table(bivarite_table_marg1)
+                        st.table(bivarite_table_marg1.style.set_precision(user_precision))
 
                         #xls output:
                         bivarite_table_marg1.to_excel(excel_file, sheet_name="marginal"+ ub_sel_var[1][:min(len(ub_sel_var[1]),15)])
@@ -2232,31 +2137,31 @@ def app():
                     dfexp.index =bivarite_table.index[0:len(bivarite_table.index)-1]
                     col_names=list(bivarite_table.columns[0:len(bivarite_table.columns)-1])
                     dfexp.columns= col_names
-                    st.table(dfexp)
+                    st.table(dfexp.style.set_precision(user_precision))
 
                     #xls output:
                     dfexp.to_excel(excel_file, sheet_name="expected frequencies")
                             
                     st.subheader('Contingency stats') 
                     st.write('')
-                    st.write('$\chi^2$ = ' + str(stat.round(4)))
-                    st.write('p-value = ' + str(p.round(4)))
+                    st.write('$\chi^2$ = ' + str(stat.round(user_precision)))
+                    st.write('p-value = ' + str(p.round(user_precision)))
 
-                    pearson_coef=(np.sqrt(stat/(stat+len(df)))).round(4)  
+                    pearson_coef=(np.sqrt(stat/(stat+len(df)))).round(user_precision)  
                     st.write('Pearson contingency coefficient $K$ = ' + str(pearson_coef))
 
                     min_kl=min(len(bivarite_table)-1,len(bivarite_table.columns)-1)
-                    K_max=(np.sqrt((min_kl-1)/min_kl)).round(4)
+                    K_max=(np.sqrt((min_kl-1)/min_kl)).round(user_precision)
                     st.write('$K_{max}$ = ' + str(K_max))
                         
-                    pearson_cor=(pearson_coef/K_max).round(4)
+                    pearson_cor=(pearson_coef/K_max).round(user_precision)
                     st.write('Corrected Pearson contingency coefficient $K_{cor}$ = ' + str(pearson_cor))
                     
                     cont_stats = pd.DataFrame(index = ["Chi2", "p-value", "K", "Kmax", "Kcor"], columns = ["stats"])
-                    cont_stats.loc["Chi2"]=stat.round(4)
-                    cont_stats.loc["p-value"]=p.round(4)
-                    cont_stats.loc["K"]=pearson_coef.round(4)
-                    cont_stats.loc["Kmax"]=K_max.round(4)
+                    cont_stats.loc["Chi2"]=stat.round(user_precision)
+                    cont_stats.loc["p-value"]=p.round(user_precision)
+                    cont_stats.loc["K"]=pearson_coef.round(user_precision)
+                    cont_stats.loc["Kmax"]=K_max.round(user_precision)
                     cont_stats.loc["Kcor"]=pearson_cor
 
                     st.write("")    
@@ -2276,7 +2181,7 @@ def app():
                     st.write("")    
                     st.write("") 
                     st.write("") 
-
+                    
 
 
 
