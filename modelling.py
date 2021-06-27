@@ -291,7 +291,7 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
         
         # Different scoring metrics for response variable type
         if response_var_type == "continuous":
-            brt_tuning_results["scoring"] = "R²"
+            brt_tuning_results["scoring"] = "% VE"
         if response_var_type == "binary":
             brt_tuning_results["scoring"] = "AUC ROC"
 
@@ -443,7 +443,6 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
         progress += 1
         my_bar.progress(progress/algs_no)
 
-
     #---------------------------------------------------------------------------------
     # Artificial Neural Networks
     if any(a for a in algorithms if a == "Artificial Neural Networks"):
@@ -459,7 +458,7 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
 
         # Different scoring metrics for response variable type
         if response_var_type == "continuous":
-            ann_tuning_results["scoring"] = "R²"
+            ann_tuning_results["scoring"] = "% VE"
         if response_var_type == "binary":
             ann_tuning_results["scoring"] = "AUC ROC"
 
@@ -492,7 +491,7 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
 
         if hypTune_method == "grid-search" or hypTune_method == "random grid-search":
             mni_seq = create_seq(min_mni, max_mni, step = 5, dec_places = 0)
-            lr_seq = create_seq(min_lr, max_lr, step = 0.001, dec_places = 3)
+            lr_seq = create_seq(min_lr, max_lr, step = 0.0005, dec_places = 4)
             #mom_seq = create_seq(min_mom, max_mom, step = 0.01, dec_places = 2)
             l2reg_seq = create_seq(min_l2reg, max_l2reg, step = 0.00005, dec_places = 5)
             #eps_seq = create_seq(min_eps, max_eps, step = 0.000000005, dec_places = 9)
@@ -755,7 +754,7 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
 #----------------------------------------------------------------------------------------------
 #FUNCTION FOR MODEL VALIDATION RUNS
 #@st.cache(suppress_st_warning = True)
-def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_type, response_var, expl_var, final_hyPara_values, gam_finalPara):
+def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_type, response_var, expl_var, final_hyPara_values, gam_finalPara, MLR_finalPara, LR_finalPara):
     
     # Progress bar
     st.info("Validation progress")
@@ -809,17 +808,27 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
 
                 # Train MLR model
                 if model == "Multiple Linear Regression":
-                    X_test_mlr = sm.add_constant(X_test)
-                    X_train_mlr = sm.add_constant(X_train)
+
+                    # Extract parameters
+                    MLR_intercept = MLR_finalPara["intercept"][0]
+                    MLR_cov_type = MLR_finalPara["covType"][0]
+
+                    if MLR_intercept == "Yes":
+                        X_test_mlr = sm.add_constant(X_test)
+                        X_train_mlr = sm.add_constant(X_train)
+                    if MLR_intercept == "No":
+                        X_test_mlr = X_test
+                        X_train_mlr = X_train
+                    
                     if MLR_model == "OLS":
                         model_mlr = sm.OLS(Y_train, X_train_mlr)
-                    if MLR_model == "GLS":
-                        ols_resid = sm.OLS(Y_train, X_train_mlr).fit().resid
-                        res_fit = sm.OLS(np.array(ols_resid[1:]), np.array(ols_resid[:-1])).fit()
-                        rho = res_fit.params
-                        order = toeplitz(np.arange(X_train_mlr.shape[0]))
-                        sigma = rho**order
-                        model_mlr = sm.GLS(Y_train, X_train_mlr, sigma=sigma)
+                    # if MLR_model == "GLS":
+                    #     ols_resid = sm.OLS(Y_train, X_train_mlr).fit().resid
+                    #     res_fit = sm.OLS(np.array(ols_resid[1:]), np.array(ols_resid[:-1])).fit()
+                    #     rho = res_fit.params
+                    #     order = toeplitz(np.arange(X_train_mlr.shape[0]))
+                    #     sigma = rho**order
+                    #     model_mlr = sm.GLS(Y_train, X_train_mlr, sigma=sigma)
                     
                     # Prediction for Y_test
                     model_mlr_fit = model_mlr.fit()
@@ -828,7 +837,10 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
                     # Y_test_pred = ml_model.predict(X_test)
 
                     # sklearn
-                    ml_model = LinearRegression()
+                    if MLR_intercept == "Yes":
+                        ml_model = LinearRegression(fit_intercept=True)
+                    if MLR_intercept == "No":
+                        ml_model = LinearRegression(fit_intercept=False)
                     ml_model.fit(X_train, Y_train)      
 
                 # Train GAM model
@@ -841,8 +853,11 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
                         nos = int(gam_finalPara["number of splines"][0])
                         so = int(gam_finalPara["spline order"][0])
                         lam = float(gam_finalPara["lambda"][0])
-                    ml_model = LinearGAM(n_splines = nos, spline_order = so, lam = lam).fit(X_train, Y_train)
-                    
+                    if gam_finalPara["intercept"][0] == "Yes":
+                        ml_model = LinearGAM(n_splines = nos, spline_order = so, lam = lam, fit_intercept = True).fit(X_train, Y_train)
+                    if gam_finalPara["intercept"][0] == "No":
+                        ml_model = LinearGAM(n_splines = nos, spline_order = so, lam = lam, fit_intercept = False).fit(X_train, Y_train)
+
                     # Prediction for Y_test
                     Y_test_pred = ml_model.predict(X_test) 
 
@@ -1056,19 +1071,32 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
                     # Train LR model
                     if model == "Logistic Regression":
 
+                        # Extract parameters
+                        LR_intercept = LR_finalPara["intercept"][0]
+                        LR_cov_type = LR_finalPara["covType"][0]
+
                         # Train LR model (statsmodels)
-                        X_train_lr = sm.add_constant(X_train)
+                        if LR_intercept == "Yes":
+                            X_train_lr = sm.add_constant(X_train)
+                        if LR_intercept == "No":
+                            X_train_lr = X_train
                         ml_model = sm.Logit(Y_train, X_train_lr)
                         ml_model_fit = ml_model.fit(method = "ncg", maxiter = 100)
 
                         # Prediction probability for Y_test
-                        X_test_lr = sm.add_constant(X_test)
+                        if LR_intercept == "Yes":
+                            X_test_lr = sm.add_constant(X_test)
+                        if LR_intercept == "No":
+                            X_test_lr = X_test
                         Y_test_pred = 1-pd.DataFrame(ml_model_fit.predict(X_test_lr), columns = ["0"])
                         Y_test_pred["1"] = 1-Y_test_pred
                         Y_test_pred = Y_test_pred.to_numpy()
 
                         # Train LR model (sklearn)
-                        ml_model_sk = LogisticRegression(solver = "newton-cg", penalty = "none", tol = 1e-05)
+                        if LR_intercept == "Yes":
+                            ml_model_sk = LogisticRegression(fit_intercept = True, solver = "newton-cg", penalty = "none", tol = 1e-05)
+                        if LR_intercept == "No":
+                            ml_model_sk = LogisticRegression(fit_intercept = False, solver = "newton-cg", penalty = "none", tol = 1e-05)
                         ml_model_sk.fit(X_train, Y_train)
 
                     # Train GAM model
@@ -1081,8 +1109,11 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
                             nos = int(gam_finalPara["number of splines"][0])
                             so = int(gam_finalPara["spline order"][0])
                             lam = float(gam_finalPara["lambda"][0])
-                        ml_model = LogisticGAM(n_splines = nos, spline_order = so, lam = lam).fit(X_train, Y_train)
-                        
+                        if gam_finalPara["intercept"][0] == "Yes":
+                            ml_model = LogisticGAM(n_splines = nos, spline_order = so, lam = lam, fit_intercept = True).fit(X_train, Y_train)
+                        if gam_finalPara["intercept"][0] == "No":
+                            ml_model = LogisticGAM(n_splines = nos, spline_order = so, lam = lam, fit_intercept = False).fit(X_train, Y_train)
+
                         # Prediction for Y_test
                         Y_test_pred = 1-pd.DataFrame(ml_model.predict_proba(X_test), columns = ["0"])
                         Y_test_pred["1"] = 1-Y_test_pred
@@ -1295,7 +1326,7 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
 #----------------------------------------------------------------------------------------------
 #FUNCTION FOR FULL MODEL
 #@st.cache(suppress_st_warning = True, allow_output_mutation = True)
-def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type, response_var_type, response_var, expl_var, final_hyPara_values, gam_finalPara):
+def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPara, response_var_type, response_var, expl_var, final_hyPara_values, gam_finalPara):
     
     # Progress bar
     st.info("Full model progress")
@@ -1323,25 +1354,35 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
         # Multiple Linear Regression full model
         if any(a for a in algorithms if a == "Multiple Linear Regression"):
 
+            # Extract parameters
+            MLR_intercept = MLR_finalPara["intercept"][0]
+            MLR_cov_type = MLR_finalPara["covType"][0]
+
             # Save results
             mlr_reg_inf = pd.DataFrame(index = ["Dep. variable", "Model", "Method", "No. observations", "DF residuals", "DF model", "Covariance type"], columns = ["Value"])
             mlr_reg_stats = pd.DataFrame(index = ["R²", "Adj. R²", "Mult. corr. coeff.", "Residual SE", "Log-likelihood", "AIC", "BIC"], columns = ["Value"])
             mlr_reg_anova = pd.DataFrame(index = ["Regression", "Residual", "Total"], columns = ["DF", "SS", "MS", "F-statistic", "p-value"])
-            mlr_reg_coef = pd.DataFrame(index = ["const"]+ expl_var, columns = ["coeff", "std err", "t-statistic", "p-value", "lower 95%", "upper 95%"])
+            if MLR_intercept == "Yes":
+                mlr_reg_coef = pd.DataFrame(index = ["const"]+ expl_var, columns = ["coeff", "std err", "t-statistic", "p-value", "lower 95%", "upper 95%"])
+            if MLR_intercept == "No":
+                mlr_reg_coef = pd.DataFrame(index = expl_var, columns = ["coeff", "std err", "t-statistic", "p-value", "lower 95%", "upper 95%"])
             mlr_reg_hetTest = pd.DataFrame(index = ["test statistic", "p-value"], columns = ["Breusch-Pagan test", "White test (without int.)", "White test (with int.)"])
             mlr_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
 
             # Train MLR model (statsmodels)
-            X_data_mlr = sm.add_constant(X_data)
+            if MLR_intercept == "Yes":
+                X_data_mlr = sm.add_constant(X_data)
+            if MLR_intercept == "No":
+                X_data_mlr = X_data
             if MLR_model == "OLS":
                 full_model_mlr = sm.OLS(Y_data, X_data_mlr)
-            if MLR_model == "GLS":
-                ols_resid = sm.OLS(Y_data, X_data_mlr).fit().resid
-                res_fit = sm.OLS(np.array(ols_resid[1:]), np.array(ols_resid[:-1])).fit()
-                rho = res_fit.params
-                order = toeplitz(np.arange(data.shape[0]))
-                sigma = rho**order
-                full_model_mlr = sm.GLS(Y_data, X_data_mlr, sigma=sigma)
+            # if MLR_model == "GLS":
+            #     ols_resid = sm.OLS(Y_data, X_data_mlr).fit().resid
+            #     res_fit = sm.OLS(np.array(ols_resid[1:]), np.array(ols_resid[:-1])).fit()
+            #     rho = res_fit.params
+            #     order = toeplitz(np.arange(data.shape[0]))
+            #     sigma = rho**order
+            #     full_model_mlr = sm.GLS(Y_data, X_data_mlr, sigma=sigma)
             if MLR_cov_type == "non-robust":
                 full_model_fit = full_model_mlr.fit()
             else:
@@ -1349,12 +1390,18 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
             Y_pred = full_model_fit.predict(X_data_mlr)
             Y_pred = Y_pred.to_numpy()
             if data_new.empty == False:
-                X_data_new_mlr = sm.add_constant(X_data_new)
+                if MLR_intercept == "Yes":
+                    X_data_new_mlr = sm.add_constant(X_data_new)
+                if MLR_intercept == "No":
+                    X_data_new_mlr = X_data_new
                 Y_pred_new = full_model_fit.predict(X_data_new_mlr)
                 Y_pred_new = Y_pred_new.to_numpy()
 
             # Train MLR model (sklearn)
-            full_model_mlr_sk = LinearRegression()
+            if MLR_intercept == "Yes":
+                full_model_mlr_sk = LinearRegression(fit_intercept=True)
+            if MLR_intercept == "No":
+                full_model_mlr_sk = LinearRegression(fit_intercept=False)    
             full_model_mlr_sk.fit(X_data, Y_data)
             # Y_pred = full_model_mlr_sk.predict(X_data)
 
@@ -1392,37 +1439,41 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
             mlr_reg_anova.loc["Total"]["F-statistic"] = ""
             mlr_reg_anova.loc["Total"]["p-value"] = ""
             # Coefficients
-            for c in ["const"]+ expl_var:
-                mlr_reg_coef.loc[c]["coeff"] = full_model_fit.params[(["const"]+ expl_var).index(c)]
-                mlr_reg_coef.loc[c]["std err"] = full_model_fit.bse[(["const"]+ expl_var).index(c)]
-                mlr_reg_coef.loc[c]["t-statistic"] = full_model_fit.tvalues[(["const"]+ expl_var).index(c)]
-                mlr_reg_coef.loc[c]["p-value"] = full_model_fit.pvalues[(["const"]+ expl_var).index(c)]
+            if MLR_intercept == "Yes":
+                coef_list = ["const"]+ expl_var
+            if MLR_intercept == "No":
+                coef_list = expl_var
+            for c in coef_list:
+                mlr_reg_coef.loc[c]["coeff"] = full_model_fit.params[coef_list.index(c)]
+                mlr_reg_coef.loc[c]["std err"] = full_model_fit.bse[coef_list.index(c)]
+                mlr_reg_coef.loc[c]["t-statistic"] = full_model_fit.tvalues[coef_list.index(c)]
+                mlr_reg_coef.loc[c]["p-value"] = full_model_fit.pvalues[coef_list.index(c)]
                 if MLR_cov_type == "non-robust":
                     mlr_reg_coef.loc[c]["lower 95%"] = full_model_fit.conf_int(alpha = 0.05).loc[c][0]
                     mlr_reg_coef.loc[c]["upper 95%"] = full_model_fit.conf_int(alpha = 0.05).loc[c][1]
                 else:
-                    mlr_reg_coef.loc[c]["lower 95%"] = full_model_fit.conf_int(alpha = 0.05)[(["const"]+ expl_var).index(c)][0]
-                    mlr_reg_coef.loc[c]["upper 95%"] = full_model_fit.conf_int(alpha = 0.05)[(["const"]+ expl_var).index(c)][1]
-
-            # Breusch-Pagan heteroscedasticity test
-            bp_result = sm.stats.diagnostic.het_breuschpagan(full_model_fit.resid, full_model_fit.model.exog) 
-            mlr_reg_hetTest.loc["test statistic"]["Breusch-Pagan test"] = bp_result[0]
-            mlr_reg_hetTest.loc["p-value"]["Breusch-Pagan test"] = bp_result[1]
-            # White heteroscedasticity test with interaction
-            white_int_result = sm.stats.diagnostic.het_white(full_model_fit.resid, full_model_fit.model.exog)
-            mlr_reg_hetTest.loc["test statistic"]["White test (with int.)"] = white_int_result[0]
-            mlr_reg_hetTest.loc["p-value"]["White test (with int.)"] = white_int_result[1]
-            # White heteroscedasticity test without interaction
-            X_data_mlr_white = X_data_mlr
-            for i in expl_var: 
-                X_data_mlr_white[i+ "_squared"] = X_data_mlr_white[i]**2
-            white = sm.OLS(full_model_fit.resid**2, X_data_mlr_white)
-            del X_data_mlr_white
-            white_fit = white.fit()
-            white_statistic = white_fit.rsquared*data.shape[0]
-            white_p_value = stats.chi2.sf(white_statistic,len(white_fit.model.exog_names)-1)
-            mlr_reg_hetTest.loc["test statistic"]["White test (without int.)"] = white_statistic
-            mlr_reg_hetTest.loc["p-value"]["White test (without int.)"] = white_p_value
+                    mlr_reg_coef.loc[c]["lower 95%"] = full_model_fit.conf_int(alpha = 0.05)[coef_list.index(c)][0]
+                    mlr_reg_coef.loc[c]["upper 95%"] = full_model_fit.conf_int(alpha = 0.05)[coef_list.index(c)][1]
+            if MLR_intercept == "Yes":
+                # Breusch-Pagan heteroscedasticity test
+                bp_result = sm.stats.diagnostic.het_breuschpagan(full_model_fit.resid, full_model_fit.model.exog) 
+                mlr_reg_hetTest.loc["test statistic"]["Breusch-Pagan test"] = bp_result[0]
+                mlr_reg_hetTest.loc["p-value"]["Breusch-Pagan test"] = bp_result[1]
+                # White heteroscedasticity test with interaction
+                white_int_result = sm.stats.diagnostic.het_white(full_model_fit.resid, full_model_fit.model.exog)
+                mlr_reg_hetTest.loc["test statistic"]["White test (with int.)"] = white_int_result[0]
+                mlr_reg_hetTest.loc["p-value"]["White test (with int.)"] = white_int_result[1]
+                # White heteroscedasticity test without interaction
+                X_data_mlr_white = X_data_mlr
+                for i in expl_var: 
+                    X_data_mlr_white[i+ "_squared"] = X_data_mlr_white[i]**2
+                white = sm.OLS(full_model_fit.resid**2, X_data_mlr_white)
+                del X_data_mlr_white
+                white_fit = white.fit()
+                white_statistic = white_fit.rsquared*data.shape[0]
+                white_p_value = stats.chi2.sf(white_statistic,len(white_fit.model.exog_names)-1)
+                mlr_reg_hetTest.loc["test statistic"]["White test (without int.)"] = white_statistic
+                mlr_reg_hetTest.loc["p-value"]["White test (without int.)"] = white_p_value
 
             # Variable importance (via permutation, order important)
             scoring_function = make_scorer(r2_score, greater_is_better = True)
@@ -1462,9 +1513,12 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
         if any(a for a in algorithms if a == "Generalized Additive Models"):
 
             # Save results
-            gam_reg_inf = pd.DataFrame(index = ["Distribution", "Link function", "Terms", "Features", "No. observations", "Effective DF"], columns = ["Value"])
+            gam_reg_inf = pd.DataFrame(index = ["Distribution", "Link function", "Terms", "Features", "No. observations", "Effective DF", ], columns = ["Value"])
             gam_reg_stats = pd.DataFrame(index = ["Log-likelihood", "AIC", "AICc", "GCV", "Scale", "Pseudo R²"], columns = ["Value"])
-            gam_reg_featSign = pd.DataFrame(index = expl_var + ["const"], columns = ["feature function", "coeff", "lambda", "rank", "edof", "p-value"])
+            if gam_finalPara["intercept"][0] == "Yes":
+                gam_reg_featSign = pd.DataFrame(index = expl_var + ["const"], columns = ["feature function", "coeff", "lambda", "rank", "edof", "p-value"])
+            if gam_finalPara["intercept"][0] == "No":
+                gam_reg_featSign = pd.DataFrame(index = expl_var, columns = ["feature function", "lambda", "rank", "edof", "p-value"])
             gam_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
             
             # Train GAM model
@@ -1476,7 +1530,11 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
                 nos = int(gam_finalPara["number of splines"][0])
                 so = int(gam_finalPara["spline order"][0])
                 lam = float(gam_finalPara["lambda"][0])
-            gam = LinearGAM(n_splines = nos, spline_order = so, lam = lam).fit(X_data, Y_data)
+            if gam_finalPara["intercept"][0] == "Yes":
+                gam = LinearGAM(n_splines = nos, spline_order = so, lam = lam, fit_intercept = True).fit(X_data, Y_data)
+            if gam_finalPara["intercept"][0] == "No":
+                gam = LinearGAM(n_splines = nos, spline_order = so, lam = lam, fit_intercept = False).fit(X_data, Y_data)
+
             Y_pred = gam.predict(X_data)
             if data_new.empty == False:
                 Y_pred_new = gam.predict(X_data_new)
@@ -1499,11 +1557,15 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
             # Feature significance
             index_save_start = 0
             index_save_end = 0
-            for c in expl_var + ["const"]:
+            if gam_finalPara["intercept"][0] == "Yes":
+                coef_list = expl_var + ["const"]
+            if gam_finalPara["intercept"][0] == "No":
+                coef_list = expl_var 
+            for c in coef_list:
                 if c != "const":
                     gam_reg_featSign.loc[c]["feature function"] = "s(" + str(c) + ")"
-                    gam_reg_featSign.loc[c]["lambda"] = gam.lam[(expl_var+ ["const"]).index(c)]
-                    gam_reg_featSign.loc[c]["rank"] = gam.n_splines[(expl_var+ ["const"]).index(c)]
+                    gam_reg_featSign.loc[c]["lambda"] = gam.lam[coef_list.index(c)]
+                    gam_reg_featSign.loc[c]["rank"] = gam.n_splines[coef_list.index(c)]
                 else:
                     gam_reg_featSign.loc[c]["feature function"] = "intercept"
                     gam_reg_featSign.loc[c]["coeff"] = gam.coef_[-1]
@@ -1511,7 +1573,7 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
                 index_save_end = index_save_start + gam_reg_featSign.loc[c]["rank"]
                 gam_reg_featSign.loc[c]["edof"] = round(sum(gam.statistics_["edof_per_coef"][index_save_start:index_save_end]),2)
                 index_save_start = index_save_end
-                gam_reg_featSign.loc[c]["p-value"] = str(gam.statistics_["p_values"][(expl_var+ ["const"]).index(c)])
+                gam_reg_featSign.loc[c]["p-value"] = str(gam.statistics_["p_values"][coef_list.index(c)])
             # Variable importance (via permutation, order important)
             scoring_function = make_scorer(r2_score, greater_is_better = True)
             gam_varImp = permutation_importance(gam , X_data, Y_data, n_repeats = 10, random_state = 0, scoring = scoring_function)
@@ -1810,34 +1872,61 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
         # Multiple Linear Regression full model
         if any(a for a in algorithms if a == "Multiple Linear Regression"):
             
+            # Extract parameters
+            MLR_intercept = MLR_finalPara["intercept"][0]
+            MLR_cov_type = MLR_finalPara["covType"][0]
+
             # Save results
             mlr_reg_inf = pd.DataFrame(index = ["Dep. variable", "Model", "Method", "No. observations", "DF residuals", "DF model", "Covariance type"], columns = ["Value"])
             mlr_reg_stats = pd.DataFrame(index = ["R²", "Adj. R²", "Mult. corr. coeff.", "Residual SE", "Log-likelihood", "AIC", "BIC"], columns = ["Value"])
             mlr_reg_anova = pd.DataFrame(index = ["Regression", "Residual", "Total"], columns = ["DF", "SS", "MS", "F-statistic", "p-value"])
-            mlr_reg_coef = pd.DataFrame(index = ["const"]+ expl_var, columns = ["coeff", "std err", "t-statistic", "p-value", "lower 95%", "upper 95%"])
+            if MLR_intercept == "Yes":
+                mlr_reg_coef = pd.DataFrame(index = ["const"]+ expl_var, columns = ["coeff", "std err", "t-statistic", "p-value", "lower 95%", "upper 95%"])
+            if MLR_intercept == "No":
+                mlr_reg_coef = pd.DataFrame(index = expl_var, columns = ["coeff", "std err", "t-statistic", "p-value", "lower 95%", "upper 95%"])
             mlr_reg_hetTest = pd.DataFrame(index = ["test statistic", "p-value"], columns = ["Breusch-Pagan test", "White test (without int.)", "White test (with int.)"])
             mlr_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
 
             # Train MLR model (statsmodels)
-            X_data_mlr = sm.add_constant(X_data)
-            full_model_mlr = sm.OLS(Y_data, X_data_mlr)
+            if MLR_intercept == "Yes":
+                X_data_mlr = sm.add_constant(X_data)
+            if MLR_intercept == "No":
+                X_data_mlr = X_data
+            if MLR_model == "OLS":
+                full_model_mlr = sm.OLS(Y_data, X_data_mlr)
+            # if MLR_model == "GLS":
+            #     ols_resid = sm.OLS(Y_data, X_data_mlr).fit().resid
+            #     res_fit = sm.OLS(np.array(ols_resid[1:]), np.array(ols_resid[:-1])).fit()
+            #     rho = res_fit.params
+            #     order = toeplitz(np.arange(data.shape[0]))
+            #     sigma = rho**order
+            #     full_model_mlr = sm.GLS(Y_data, X_data_mlr, sigma=sigma)
             if MLR_cov_type == "non-robust":
                 full_model_fit = full_model_mlr.fit()
             else:
                 full_model_fit = full_model_mlr.fit().get_robustcov_results(cov_type = MLR_cov_type)
+            Y_pred = full_model_fit.predict(X_data_mlr)
+            Y_pred = Y_pred.to_numpy()
+            if data_new.empty == False:
+                if MLR_intercept == "Yes":
+                    X_data_new_mlr = sm.add_constant(X_data_new)
+                if MLR_intercept == "No":
+                    X_data_new_mlr = X_data_new
+                Y_pred_new = full_model_fit.predict(X_data_new_mlr)
+                Y_pred_new = Y_pred_new.to_numpy()
 
             # Train MLR model (sklearn)
-            full_model_mlr_sk = LinearRegression()
+            if MLR_intercept == "Yes":
+                full_model_mlr_sk = LinearRegression(fit_intercept=True)
+            if MLR_intercept == "No":
+                full_model_mlr_sk = LinearRegression(fit_intercept=False)    
             full_model_mlr_sk.fit(X_data, Y_data)
-            Y_pred = full_model_mlr_sk.predict(X_data)
-            if data_new.empty == False:
-                Y_pred_new = full_model_mlr_sk.predict(X_data_new)
-
+            # Y_pred = full_model_mlr_sk.predict(X_data)
 
             # Extract essential results from model
             # Information
             mlr_reg_inf.loc["Dep. variable"] = full_model_fit.model.endog_names
-            mlr_reg_inf.loc["Model"] = "OLS"
+            mlr_reg_inf.loc["Model"] = MLR_model
             mlr_reg_inf.loc["Method"] = "Least squares"
             mlr_reg_inf.loc["No. observations"] = full_model_fit.model.nobs
             mlr_reg_inf.loc["DF residuals"] = full_model_fit.df_resid
@@ -1868,36 +1957,41 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
             mlr_reg_anova.loc["Total"]["F-statistic"] = ""
             mlr_reg_anova.loc["Total"]["p-value"] = ""
             # Coefficients
-            for c in ["const"]+ expl_var:
-                mlr_reg_coef.loc[c]["coeff"] = full_model_fit.params[(["const"]+ expl_var).index(c)]
-                mlr_reg_coef.loc[c]["std err"] = full_model_fit.bse[(["const"]+ expl_var).index(c)]
-                mlr_reg_coef.loc[c]["t-statistic"] = full_model_fit.tvalues[(["const"]+ expl_var).index(c)]
-                mlr_reg_coef.loc[c]["p-value"] = full_model_fit.pvalues[(["const"]+ expl_var).index(c)]
+            if MLR_intercept == "Yes":
+                coef_list = ["const"]+ expl_var
+            if MLR_intercept == "No":
+                coef_list = expl_var
+            for c in coef_list:
+                mlr_reg_coef.loc[c]["coeff"] = full_model_fit.params[coef_list.index(c)]
+                mlr_reg_coef.loc[c]["std err"] = full_model_fit.bse[coef_list.index(c)]
+                mlr_reg_coef.loc[c]["t-statistic"] = full_model_fit.tvalues[coef_list.index(c)]
+                mlr_reg_coef.loc[c]["p-value"] = full_model_fit.pvalues[coef_list.index(c)]
                 if MLR_cov_type == "non-robust":
                     mlr_reg_coef.loc[c]["lower 95%"] = full_model_fit.conf_int(alpha = 0.05).loc[c][0]
                     mlr_reg_coef.loc[c]["upper 95%"] = full_model_fit.conf_int(alpha = 0.05).loc[c][1]
                 else:
-                    mlr_reg_coef.loc[c]["lower 95%"] = full_model_fit.conf_int(alpha = 0.05)[(["const"]+ expl_var).index(c)][0]
-                    mlr_reg_coef.loc[c]["upper 95%"] = full_model_fit.conf_int(alpha = 0.05)[(["const"]+ expl_var).index(c)][1]
-            # Breusch-Pagan heteroscedasticity test
-            bp_result = sm.stats.diagnostic.het_breuschpagan(full_model_fit.resid, full_model_fit.model.exog) 
-            mlr_reg_hetTest.loc["test statistic"]["Breusch-Pagan test"] = bp_result[0]
-            mlr_reg_hetTest.loc["p-value"]["Breusch-Pagan test"] = bp_result[1]
-            # White heteroscedasticity test with interaction
-            white_int_result = sm.stats.diagnostic.het_white(full_model_fit.resid, full_model_fit.model.exog)
-            mlr_reg_hetTest.loc["test statistic"]["White test (with int.)"] = white_int_result[0]
-            mlr_reg_hetTest.loc["p-value"]["White test (with int.)"] = white_int_result[1]
-            # White heteroscedasticity test without interaction
-            X_data_mlr_white = X_data_mlr
-            for i in expl_var: 
-                X_data_mlr_white[i+ "_squared"] = X_data_mlr_white[i]**2
-            white = sm.OLS(full_model_fit.resid**2, X_data_mlr_white)
-            del X_data_mlr_white
-            white_fit = white.fit()
-            white_statistic = white_fit.rsquared*data.shape[0]
-            white_p_value = stats.chi2.sf(white_statistic,len(white_fit.model.exog_names)-1)
-            mlr_reg_hetTest.loc["test statistic"]["White test (without int.)"] = white_statistic
-            mlr_reg_hetTest.loc["p-value"]["White test (without int.)"] = white_p_value
+                    mlr_reg_coef.loc[c]["lower 95%"] = full_model_fit.conf_int(alpha = 0.05)[coef_list.index(c)][0]
+                    mlr_reg_coef.loc[c]["upper 95%"] = full_model_fit.conf_int(alpha = 0.05)[coef_list.index(c)][1]
+            if MLR_intercept == "Yes":
+                # Breusch-Pagan heteroscedasticity test
+                bp_result = sm.stats.diagnostic.het_breuschpagan(full_model_fit.resid, full_model_fit.model.exog) 
+                mlr_reg_hetTest.loc["test statistic"]["Breusch-Pagan test"] = bp_result[0]
+                mlr_reg_hetTest.loc["p-value"]["Breusch-Pagan test"] = bp_result[1]
+                # White heteroscedasticity test with interaction
+                white_int_result = sm.stats.diagnostic.het_white(full_model_fit.resid, full_model_fit.model.exog)
+                mlr_reg_hetTest.loc["test statistic"]["White test (with int.)"] = white_int_result[0]
+                mlr_reg_hetTest.loc["p-value"]["White test (with int.)"] = white_int_result[1]
+                # White heteroscedasticity test without interaction
+                X_data_mlr_white = X_data_mlr
+                for i in expl_var: 
+                    X_data_mlr_white[i+ "_squared"] = X_data_mlr_white[i]**2
+                white = sm.OLS(full_model_fit.resid**2, X_data_mlr_white)
+                del X_data_mlr_white
+                white_fit = white.fit()
+                white_statistic = white_fit.rsquared*data.shape[0]
+                white_p_value = stats.chi2.sf(white_statistic,len(white_fit.model.exog_names)-1)
+                mlr_reg_hetTest.loc["test statistic"]["White test (without int.)"] = white_statistic
+                mlr_reg_hetTest.loc["p-value"]["White test (without int.)"] = white_p_value
 
             # Variable importance (via permutation, order important)
             scoring_function = make_scorer(r2_score, greater_is_better = True)
@@ -1928,15 +2022,25 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
 
         # Logistic Regression full model
         if any(a for a in algorithms if a == "Logistic Regression"):
+
+            # Extract parameters
+            LR_intercept = LR_finalPara["intercept"][0]
+            LR_cov_type = LR_finalPara["covType"][0]
             
             # Save results
             lr_reg_inf = pd.DataFrame(index = ["Dep. variable", "Model", "Method", "No. observations", "DF residuals", "DF model", "Converged", "Iterations", "Covariance type"], columns = ["Value"])
             lr_reg_stats = pd.DataFrame(index = ["AUC ROC", "Pseudo R²", "Log-Likelihood", "LL-Null", "Residual deviance", "Null deviance", "LLR", "LLR p-value", "AIC", "BIC"], columns = ["Value"])
-            lr_reg_coef = pd.DataFrame(index = ["const"]+ expl_var, columns = ["coeff", "std err", "t-statistic", "p-value", "lower 95%", "upper 95%"])
+            if LR_intercept == "Yes":
+                lr_reg_coef = pd.DataFrame(index = ["const"]+ expl_var, columns = ["coeff", "std err", "t-statistic", "p-value", "lower 95%", "upper 95%"])
+            if LR_intercept == "No":
+                lr_reg_coef = pd.DataFrame(index = expl_var, columns = ["coeff", "std err", "t-statistic", "p-value", "lower 95%", "upper 95%"])
             lr_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
 
             # Train LR model (statsmodels)
-            X_data_lr = sm.add_constant(X_data)
+            if LR_intercept == "Yes":
+                X_data_lr = sm.add_constant(X_data)
+            if LR_intercept == "No":
+                X_data_lr = X_data
             full_model_lr = sm.Logit(Y_data, X_data_lr)
             if LR_cov_type == "non-robust":
                 full_model_fit = full_model_lr.fit(method = "ncg", maxiter = 100)
@@ -1946,13 +2050,19 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
             Y_pred["1"] = 1-Y_pred
             Y_pred = Y_pred.to_numpy()
             if data_new.empty == False:
-                X_data_new_lr = sm.add_constant(X_data_new)
+                if LR_intercept == "Yes":
+                    X_data_new_lr = sm.add_constant(X_data_new)
+                if LR_intercept == "No":
+                    X_data_new_lr = X_data_new
                 Y_pred_new = 1-pd.DataFrame(full_model_fit.predict(X_data_new_lr), columns = ["0"])
                 Y_pred_new["1"] = 1-Y_pred_new
                 Y_pred_new = Y_pred_new.to_numpy()
 
             # Train LR model (sklearn)
-            full_model_lr_sk = LogisticRegression(solver = "newton-cg", penalty = "none", tol = 1e-05)
+            if LR_intercept == "Yes":
+                full_model_lr_sk = LogisticRegression(fit_intercept = True, solver = "newton-cg", penalty = "none", tol = 1e-05)
+            if LR_intercept == "No":
+                full_model_lr_sk = LogisticRegression(fit_intercept = False, solver = "newton-cg", penalty = "none", tol = 1e-05)
             full_model_lr_sk.fit(X_data, Y_data)
             # Y_pred = full_model_lr_sk.predict_proba(X_data)
 
@@ -1979,7 +2089,11 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
             lr_reg_stats.loc["AIC"] = full_model_fit.aic
             lr_reg_stats.loc["BIC"] = full_model_fit.bic
             # Coefficients
-            for c in ["const"]+ expl_var:
+            if LR_intercept == "Yes":
+                coef_list = ["const"]+ expl_var
+            if LR_intercept == "No":
+                coef_list = expl_var
+            for c in coef_list:
                 lr_reg_coef.loc[c]["coeff"] = full_model_fit.params[c]
                 lr_reg_coef.loc[c]["std err"] = full_model_fit.bse[c]
                 lr_reg_coef.loc[c]["t-statistic"] = full_model_fit.tvalues[c]
@@ -2059,7 +2173,10 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
             # Save results
             gam_reg_inf = pd.DataFrame(index = ["Distribution", "Link function", "Terms", "Features", "No. observations", "Effective DF"], columns = ["Value"])
             gam_reg_stats = pd.DataFrame(index = ["Log-likelihood", "AIC", "AICc", "UBRE", "Scale", "Pseudo R²", "AUC ROC"], columns = ["Value"])
-            gam_reg_featSign = pd.DataFrame(index = expl_var + ["const"], columns = ["feature function", "coeff", "lambda", "rank", "edof", "p-value"])
+            if gam_finalPara["intercept"][0] == "Yes":
+                gam_reg_featSign = pd.DataFrame(index = expl_var + ["const"], columns = ["feature function", "coeff", "lambda", "rank", "edof", "p-value"])
+            if gam_finalPara["intercept"][0] == "No":
+                gam_reg_featSign = pd.DataFrame(index = expl_var, columns = ["feature function", "lambda", "rank", "edof", "p-value"])
             gam_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
             
             # Train GAM model
@@ -2071,7 +2188,10 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
                 nos = int(gam_finalPara["number of splines"][0])
                 so = int(gam_finalPara["spline order"][0])
                 lam = float(gam_finalPara["lambda"][0])
-            gam = LogisticGAM(n_splines = nos, spline_order = so, lam = lam).fit(X_data, Y_data)
+            if gam_finalPara["intercept"][0] == "Yes":
+                gam = LogisticGAM(n_splines = nos, spline_order = so, lam = lam, fit_intercept = True).fit(X_data, Y_data)
+            if gam_finalPara["intercept"][0] == "No":
+                gam = LogisticGAM(n_splines = nos, spline_order = so, lam = lam, fit_intercept = False).fit(X_data, Y_data)
             Y_pred = gam.predict_proba(X_data)
             if data_new.empty == False:
                 Y_pred_new = gam.predict_proba(X_data_new)
@@ -2095,11 +2215,15 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
             # Feature significance
             index_save_start = 0
             index_save_end = 0
-            for c in expl_var + ["const"]:
+            if gam_finalPara["intercept"][0] == "Yes":
+                coef_list = expl_var + ["const"]
+            if gam_finalPara["intercept"][0] == "No":
+                coef_list = expl_var 
+            for c in coef_list:
                 if c != "const":
                     gam_reg_featSign.loc[c]["feature function"] = "s(" + str(c) + ")"
-                    gam_reg_featSign.loc[c]["lambda"] = gam.lam[(expl_var+ ["const"]).index(c)]
-                    gam_reg_featSign.loc[c]["rank"] = gam.n_splines[(expl_var+ ["const"]).index(c)]
+                    gam_reg_featSign.loc[c]["lambda"] = gam.lam[coef_list.index(c)]
+                    gam_reg_featSign.loc[c]["rank"] = gam.n_splines[coef_list.index(c)]
                 else:
                     gam_reg_featSign.loc[c]["feature function"] = "intercept"
                     gam_reg_featSign.loc[c]["coeff"] = gam.coef_[-1]
@@ -2107,7 +2231,7 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_cov_type, LR_cov_type,
                 index_save_end = index_save_start + gam_reg_featSign.loc[c]["rank"]
                 gam_reg_featSign.loc[c]["edof"] = round(sum(gam.statistics_["edof_per_coef"][index_save_start:index_save_end]),2)
                 index_save_start = index_save_end
-                gam_reg_featSign.loc[c]["p-value"] = str(gam.statistics_["p_values"][(expl_var+ ["const"]).index(c)])
+                gam_reg_featSign.loc[c]["p-value"] = str(gam.statistics_["p_values"][coef_list.index(c)])
             # Variable importance (via permutation, order important)
             scoring_function = make_scorer(roc_auc_score, greater_is_better = True)
             gam_varImp = permutation_importance(gam , X_data, Y_data, n_repeats = 10, random_state = 0, scoring = scoring_function)

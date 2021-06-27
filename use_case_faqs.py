@@ -45,7 +45,6 @@ def app():
         <p>
         """, unsafe_allow_html=True)
         
-    
     general_questions_container = st.beta_container()
     with general_questions_container:
         st.subheader("General questions")
@@ -65,7 +64,9 @@ def app():
             st.write("Estimations for the standard error of coefficients and consequently for the statistical tests rely on the fulfillment of certain model assumptions. These are violated if heteroskedasticity is present for linear modelling methods. In order to derive more reliable conclusions from statistical tests, robust covariance matrices are used.")
         with st.beta_expander("What to do if heteroskedasticity is present?"):
             st.write("If heteroskedasticity is present in e.g. Multiple Linear Regression models, assumptions for the best linear unbiased estimator (BLUE) are violated. To reduce heteroskedasticity you can try to either transform the dependent variable (e.g. with log) or re-define the dependent variable (e.g. as a rate). For more reliable statistical tests, make sure to use estimators for a robust covariance matrix.")
-        
+        with st.beta_expander("Why are the new data not loading correctly?"):
+            st.write("For the upload of new data in 'Multivariate Data' or 'Panel data' the same upload settings are used as for the original data. Please make sure that the data characteristics match.")
+    
     uniBivariate_questions_container = st.beta_container()
     with uniBivariate_questions_container:
         st.subheader("Uni- and bivariate data")
@@ -84,13 +85,15 @@ def app():
     with multivariate_questions_container:
         st.subheader("Multivariate data")
         with st.beta_expander("Which python libraries are used for the multivariate data models?"):
-            st.write("Models are based on [sklearn] (https://scikit-learn.org/stable/) and [statsmodels] (https://www.statsmodels.org/stable/index.html).")
+            st.write("Models are based on [sklearn] (https://scikit-learn.org/stable/), [statsmodels] (https://www.statsmodels.org/stable/index.html) and [pygam] (https://pygam.readthedocs.io/en/latest/index.html).")
         with st.beta_expander("Which models can be tuned?"):
-            st.write("Hyperparameter ranges can only be specified for Boosted Regression Trees and Artificial Neural Networks.")
+            st.write("Hyperparameter ranges can only be specified for Random Forest, Boosted Regression Trees and Artificial Neural Networks.")
         with st.beta_expander("How are models tuned?"):
             st.markdown("Based on the selected search method, several parameter combinations are tested to achieve the best possible performance of the model. To determine the best hyperparameter combination, the models are trained with 80% of the data using (stratified, if binary) cross-validation. After determining the best model either by using R² (continuous) or AUC (binary) from the cross-validation, the model is tested on unseen data, which consist of the remaining 20% of the data.")
         with st.beta_expander("Are models trained with transformed data?"):
             st.write("No, except for Artificial Neural Networks. Artificial Neural Networks are sensitive to different scales of the data. Therefore, the data is re-scaled by standardization, such that the mean is 0 and the variance is 1. In case of testing during hyperparameter-tuning or model validation, the same scaling is applied to the test data set.")
+        with st.beta_expander("Why is the hyperparameter 'maximum number of features' not shown for Random Forest in hyperparameter-tuning?"):
+            st.write("The hyperparameter is not shown when only one explanatory variable is included. If this is the case, the hyperparameter is automatically set to 1.")
         with st.beta_expander("How many hidden layers can be included in Artificial Neural Networks?"):
             st.write("Currently, the number of hidden layers is restriced to three layers.")
         with st.beta_expander("Why do I get an assertion error when clicking on run models?"):
@@ -99,6 +102,8 @@ def app():
             st.write("A loss curve is only provided for stochastic solvers, i.e. if in hyperparameter tuning lbfgs was selected as solver, no loss curve is shown.")
         with st.beta_expander("Why is there no partial dependence plot for some variables?"):
             st.write("If no curve for certain variables is shown, please check the names of the variables. Make sure that variable names do not contain any dots, e.g. my.variable, rather use my_variable.")
+        with st.beta_expander("How can I specify specific hyperparameters without tuning?"):
+            st.write("If you want to use specific final hyperparameters for Random Forest, Boosted Regression Trees or Artificial Neural Networks without a hyperparameter search, you can select grid-search in hyperparameter tuning and restrict the range in the setting for the specific hyperparameter to one value only.")
 
     panel_questions_container = st.beta_container()
     with panel_questions_container:

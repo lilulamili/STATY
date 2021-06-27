@@ -130,6 +130,9 @@ def theme_func_dark():
     .element-container > div > div > h2 {{
         color: white;
     }}
+    .stNumberInput > label {{
+        color: white;
+    }}
     .row-widget > label {{
         color: white;
     }}
@@ -868,12 +871,14 @@ def data_summary(data):
 
     # Main quantiles
     df_summary_mq_full = get_mainq(data)
-    df_summary_mq = pd.DataFrame(index = ["min","10%-Q", "25%-Q", "75%-Q","90%-Q", "max"], columns = list(data))
+    df_summary_mq = pd.DataFrame(index = ["min", "1%-Q", "10%-Q", "25%-Q", "75%-Q","90%-Q", "99%-Q", "max"], columns = list(data))
     df_summary_mq.loc["min"] = df_summary_mq_full.loc["min"]
+    df_summary_mq.loc["1%-Q"] = df_summary_mq_full.loc["1%-Q"]
     df_summary_mq.loc["10%-Q"] = df_summary_mq_full.loc["10%-Q"]
     df_summary_mq.loc["25%-Q"] = df_summary_mq_full.loc["25%-Q"]
     df_summary_mq.loc["75%-Q"] = df_summary_mq_full.loc["75%-Q"]
     df_summary_mq.loc["90%-Q"] = df_summary_mq_full.loc["90%-Q"]
+    df_summary_mq.loc["99%-Q"] = df_summary_mq_full.loc["99%-Q"]
     df_summary_mq.loc["max"] = df_summary_mq_full.loc["max"]
 
     # Combine dataframes
@@ -883,7 +888,7 @@ def data_summary(data):
     summary_collection["Measures of dispersion"] = df_summary_mod
     summary_collection["Measures of shape"] = df_summary_mos
     summary_collection["Main quantiles"] = df_summary_mq
-    summary_collection["ALL"]=pd.concat([df_summary_ct,df_summary_mod,df_summary_mos,df_summary_mq])
+    summary_collection["ALL"] = pd.concat([df_summary_ct,df_summary_mod,df_summary_mos,df_summary_mq])
     return summary_collection
 
 #------------------------------------------------------------------------------------------
@@ -1452,6 +1457,148 @@ def learning_hints(name):
 
     # continuous variables
 
+    # Generalized Additive Models
+    #----------------------------
+
+    # Modelling - GAM - Regression statistics
+    if name == "mod_md_GAM_regStat":
+        # All options
+        learning_hint_options = [
+        "How is the Pseudo R² defined?",
+        "What are the Akaike Information Criterion (AIC) and the second-order AIC (AICc) used for?",
+        "Is a higher log-likelihood better than a lower one?",
+        "What does the generalized cross-validation (GCV) score tell you?",
+        "What does the scale score tell you?",
+        "How would you interpret the performance of the model?",
+        "What is a link function?",
+        "What are effective degrees of freedom (Effective DF)?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - GAM - Feature significance
+    if name == "mod_md_GAM_featSig":
+        # All options
+        learning_hint_options = [
+        "What is the lambda value for each explanatory variable?",
+        "What is the final number of splines used?",
+        "How are the effective degrees of freedom distributed among the explanatory variables?",
+        "Which splines are statistically significant?",
+        "How can effective degrees of freedom (edof) be interpreted for each explanatory variable?",
+        "How can the lambda value be interpreted for each explanatory variable?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+    
+    # Modelling - GAM - Variable importance
+    if name == "mod_md_GAM_varImp":
+        # All options
+        learning_hint_options = [
+        "Which variable is the most important?",
+        "Would it make sense to exclude a variable in the model?",
+        "What do the values for variable importance tell you?",
+        "Which variable importance shows a high variance?",
+        "Can the variable importance be logically explained?",
+        "Is there a difference between the two methods used for determining variable importance?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - GAM - Partial Dependence Plots
+    if name == "mod_md_GAM_partDep":
+        # All options
+        learning_hint_options = [
+        "Is there a connection between the range of the partial dependence curve and the variable importance?",
+        "How can the influence of each explanatory variable on the dependent variable be described?",
+        "What can be said about parts of the curve with lower observation density?",
+        "Is the partial dependence curve reliable along the whole gradient of the respective explanatory variable?",
+        "May different influence directions be possible for certain ranges of the explanatory variables?",
+        "Is there a rational explanation for the identified influence directions?",
+        "Do certain partial dependence curves behave differently than expected?",
+        "How would you assess the 95% confidence interval across the gradients of the explanatory variables?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+     # Modelling - GAM - Observed/Residuals vs Fitted
+    if name == "mod_md_GAM_obsResVsFit":
+        # All options
+        learning_hint_options = [
+        "Are there any observations that might be outliers?",
+        "Can be concluded that the variances of the residuals/ errors are equal?",
+        "Which predictions deviate the furthest from the corresponding observations?",
+        "Is a trend observable for the residuals?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Random Forest
+    #--------------
+
+    # Modelling - RF - Regression statistics
+    if name == "mod_md_RF_regStat":
+        # All options
+        learning_hint_options = [
+        "What does the residual standard error tell you?",
+        "What is the aim of the loss function least squares?",
+        "How is the mean squared error determined?",
+        "How would you interpret the out-of-bag (OOB) score?",
+        "How would you interpret the performance of the model?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - RF - Variable importance
+    if name == "mod_md_RF_varImp":
+        # All options
+        learning_hint_options = [
+        "Which variable is the most important?",
+        "Would it make sense to exclude a variable in the model?",
+        "What do the values for variable importance tell you?",
+        "Which variable importance shows a high variance?",
+        "Can the variable importance be logically explained?",
+        "Is there a difference between the two methods used for determining variable importance?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - RF - Partial Dependence Plots
+    if name == "mod_md_RF_partDep":
+        # All options
+        learning_hint_options = [
+        "Is there a connection between the range of the partial dependence curve and the variable importance?",
+        "How can the influence of each explanatory variable on the dependent variable be described?",
+        "What can be said about parts of the curve with lower observation density?",
+        "Is the partial dependence curve reliable along the whole gradient of the respective explanatory variable?",
+        "May different influence directions be possible for certain ranges of the explanatory variables?",
+        "Is there a rational explanation for the identified influence directions?",
+        "Do certain partial dependence curves behave differently than expected?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - RF - Observed/Residuals vs Fitted
+    if name == "mod_md_RF_obsResVsFit":
+        # All options
+        learning_hint_options = [
+        "Are there any observations that might be outliers?",
+        "Can be concluded that the variances of the residuals/ errors are equal?",
+        "Which predictions deviate the furthest from the corresponding observations?",
+        "Is a trend observable for the residuals?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+
     # Boosted Regression Trees
     #-------------------------
 
@@ -1691,6 +1838,153 @@ def learning_hints(name):
         "How can the influence of each single explanatory variable on the dependent variable be described?",
         "Is there a rational explanation for the identified influence directions?",
         "Do certain partial probability curves behave differently than expected?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Generalized Additive Models
+    #----------------------------
+
+    # Modelling - GAM - Regression statistics
+    if name == "mod_md_GAM_regStat_bin":
+        # All options
+        learning_hint_options = [
+        "What does the AUC ROC tell you?",
+        "How is the Pseudo R² defined?",
+        "What are the Akaike Information Criterion (AIC) and the second-order AIC (AICc) used for?",
+        "Is a higher log-likelihood better than a lower one?",
+        "What does the un-biased risk estimator (UBRE) score tell you?",
+        "What does the scale score tell you?",
+        "How would you interpret the performance of the model?",
+        "What is a link function?",
+        "What are effective degrees of freedom (Effective DF)?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - GAM - Feature significance
+    if name == "mod_md_GAM_featSig_bin":
+        # All options
+        learning_hint_options = [
+        "What is the lambda value for each explanatory variable?",
+        "What is the final number of splines used?",
+        "How are the effective degrees of freedom distributed among the explanatory variables?",
+        "Which splines are statistically significant?",
+        "How can effective degrees of freedom (edof) be interpreted for each explanatory variable?",
+        "How can the lambda value be interpreted for each explanatory variable?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - GAM - Variable importance
+    if name == "mod_md_GAM_varImp_bin":
+        # All options
+        learning_hint_options = [
+        "Which variable is the most important?",
+        "Would it make sense to exclude a variable in the model?",
+        "What do the values for variable importance tell you?",
+        "Which variable importance shows a high variance?",
+        "Can the variable importance be logically explained?",
+        "Is there a difference between the two methods used for determining variable importance?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+    
+    # Modelling - GAM - Threshold/AUC
+    if name == "mod_md_GAM_thresAUC":
+        # All options
+        learning_hint_options = [
+        "What threshold was determined to seperate the two categories?",
+        "How is the threshold for seperating the two categories determined?",
+        "How would you interpret the AUC value?",
+        "For which AUC value do we have a random model?",
+        "Why is it better for the ROC curve to be close to the upper left corner?",
+        "How is the ROC curve created?",
+        "Are the two categories well seperated by the determined threshold?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - GAM - Partial Dependence Plots
+    if name == "mod_md_GAM_partDep_bin":
+        # All options
+        learning_hint_options = [
+        "Is there a connection between the range of the partial dependence curve and the variable importance?",
+        "How can the influence of each explanatory variable on the dependent variable be described?",
+        "What can be said about parts of the curve with lower observation density?",
+        "Is the partial dependence curve reliable along the whole gradient of the respective explanatory variable?",
+        "May different influence directions be possible for certain ranges of the explanatory variables?",
+        "Is there a rational explanation for the identified influence directions?",
+        "Do certain partial dependence curves behave differently than expected?",
+        "How would you assess the 95% confidence interval across the gradients of the explanatory variables?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Random Forest
+    #--------------
+
+    # Modelling - RF - Regression statistics
+    if name == "mod_md_RF_regStat_bin":
+        # All options
+        learning_hint_options = [
+        "What does the AUC ROC tell you?",
+        "What does the AUC PRC tell you?",
+        "How would you interpret the out-of-bag (OOB) score?",
+        "How would you interpret the performance of the model?"  
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - RF - Variable importance
+    if name == "mod_md_RF_varImp_bin":
+        # All options
+        learning_hint_options = [
+        "Which variable is the most important?",
+        "Would it make sense to exclude a variable in the model?",
+        "What do the values for variable importance tell you?",
+        "Which variable importance shows a high variance?",
+        "Can the variable importance be logically explained?",
+        "Is there a difference between the two methods used for determining variable importance?"  
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+    
+    # Modelling - RF - Threshold/AUC
+    if name == "mod_md_RF_thresAUC":
+        # All options
+        learning_hint_options = [
+        "What threshold was determined to seperate the two categories?",
+        "How is the threshold for seperating the two categories determined?",
+        "How would you interpret the AUC value?",
+        "For which AUC value do we have a random model?",
+        "Why is it better for the ROC curve to be close to the upper left corner?",
+        "How is the ROC curve created?",
+        "Are the two categories well seperated by the determined threshold?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - RF - Partial Dependence Plots
+    if name == "mod_md_RF_partDep_bin":
+        # All options
+        learning_hint_options = [
+        "Is there a connection between the range of the partial dependence curve and the variable importance?",
+        "How can the influence of each explanatory variable on the dependent variable be described?",
+        "What can be said about parts of the curve with lower observation density?",
+        "Is the partial dependence curve reliable along the whole gradient of the respective explanatory variable?",
+        "May different influence directions be possible for certain ranges of the explanatory variables?",
+        "Is there a rational explanation for the identified influence directions?",
+        "Do certain partial dependence curves behave differently than expected?" 
         ]
         # Randomly select an option
         random_hint = randint(0, len(learning_hint_options)-1)
@@ -2091,6 +2385,36 @@ def learning_hints(name):
 
     # HYPERPARAMETER-TUNING (Multivariate Data)
     #------------------------------------------
+
+    # Random Forest
+    #--------------
+
+    # Modelling - Hyperparameter-tuning - Final hyperparameters
+    if name == "mod_md_hypeTune_RF_finPara":
+        # All options
+        learning_hint_options = [
+        "What does the specific maximum tree depth mean?",
+        "What role does a single tree play in the model?"
+        "Are interactions of the explanatory variables incorporated into the model?",
+        "What does the specific sample rate mean?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+    
+    # Modelling - Hyperparameter-tuning - Tuning details
+    if name == "mod_md_hypeTune_RF_details":
+        # All options
+        learning_hint_options = [
+        "How would you assess the test data score?", 
+        "Is there a big difference between the mean cv score and the test data score?",
+        "Did the score vary stronlgy among cross-validation runs?",
+        "How does the test data score compare to the full model?",
+        "How does the mean cv score compare to the full model?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
 
     # Boosted Regression Trees
     #--------------------------
