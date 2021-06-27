@@ -154,7 +154,7 @@ def app():
     
 
     #++++++++++++++++++++++++++++++++++++++++++++
-    # DATA EXPLORATION & VISUALIZATION
+    # INITIAL DATA ANALYSIS & VISUALIZATION
 
     data_title_container = st.beta_container()
     with data_title_container:
@@ -170,7 +170,7 @@ def app():
 
     data_exploration_container = st.beta_container()
     with data_exploration_container:
-        st.header("**Data exploration**")
+        st.header("**Initial data analysis**")
         
         #------------------------------------------------------------------------------------------
 
@@ -180,7 +180,7 @@ def app():
         # Main panel for data summary (pre)
         #----------------------------------
 
-        dev_expander_raw = st.beta_expander("Explore raw data", expanded = False)
+        dev_expander_raw = st.beta_expander("Raw data analysis", expanded = False)
         with dev_expander_raw:
             # Default data description:
             if uploaded_data == None:
