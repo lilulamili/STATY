@@ -133,7 +133,7 @@ def app():
     #------------------------------------------------------------------------------------------
 
     #++++++++++++++++++++++++++++++++++++++++++++
-    # DATA EXPLORATION & VISUALISATION
+    # DATA PREPROCESSING & VISUALISATION
 
     st.header("**Time series data**")
     st.markdown("Let STATY do the data cleaning, variable transformations, visualisations and deliver you the stats you need. Specify your data processing preferences and start exploring your data stories right below... ")
@@ -147,7 +147,7 @@ def app():
 
     data_exploration_container = st.beta_container()
     with data_exploration_container:
-        st.header("**Data exploration**")
+        st.header("**Data screening and processing**")
         #------------------------------------------------------------------------------------------
 
         #++++++++++++++++++++++
@@ -206,6 +206,23 @@ def app():
             if st.checkbox('Show summary statistics (raw data)', value = False, key = session_state.id ): 
                 #st.write(df_summary["ALL"])
                 df_datasumstat=df_summary["ALL"]
+
+                # Download link for summary statistics
+                output = BytesIO()
+                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                df_summary["Variable types"].to_excel(excel_file, sheet_name="variable_info")
+                df_summary["ALL"].to_excel(excel_file, sheet_name="summary_statistics")
+                excel_file.save()
+                excel_file = output.getvalue()
+                b64 = base64.b64encode(excel_file)
+                dl_file_name = "Summary statistics__" + df_name + ".xlsx"
+                st.markdown(
+                    f"""
+                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download summary statistics</a>
+                """,
+                unsafe_allow_html=True)
+                st.write("")
+
                 #dfStyler = df_datasumstat.style.set_properties(**{'text-align': 'left'}).set_table_styles([dict(selector = 'th', props=[('text-align', 'left')])]) 
                 a7, a8 = st.beta_columns(2)
                 with a7:
@@ -526,9 +543,27 @@ def app():
                     # Show summary statistics (cleaned and transformed data)
                     if st.checkbox('Show summary statistics (cleaned and transformed data) ', value = False, key = session_state.id):
                         st.write(df_summary_post["ALL"])
+
+                        # Download link for cleaned data statistics
+                        output = BytesIO()
+                        excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                        df.to_excel(excel_file, sheet_name="cleaned_data")
+                        df_summary_post["Variable types"].to_excel(excel_file, sheet_name="cleaned_variable_info")
+                        df_summary_post["ALL"].to_excel(excel_file, sheet_name="cleaned_summary_statistics")
+                        excel_file.save()
+                        excel_file = output.getvalue()
+                        b64 = base64.b64encode(excel_file)
+                        dl_file_name = "Cleaned data summary statistics_ts_" + df_name + ".xlsx"
+                        st.markdown(
+                            f"""
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download cleaned data summary statistics</a>
+                        """,
+                        unsafe_allow_html=True)
+                        st.write("")
+
                         if fc.get_mode(df).loc["n_unique"].any():
                             st.caption("** Mode is not unique.")  
-                else: st.error("ERROR: No data available for Data Exploration!") 
+                else: st.error("ERROR: No data available for preprocessing!") 
             
     
     #--------------------------------------------------
@@ -1224,7 +1259,7 @@ def app():
                         st.write("")                        
 
 
-                    # Download link for exploration statistics
+                    # Download link
                     output = BytesIO()
                     excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                     ts_results_html = ts_results.summary().as_html()
