@@ -472,7 +472,7 @@ def app():
                 univariate_transfrom=st.checkbox("Transfrom data in Excel?", value=False)
                 if univariate_transfrom==True:
                     st.info("Press the button to open your data in Excel. Don't forget to save your result as a csv or a txt file!")
-                    # Download link for exploration statistics
+                    # Data download link 
                     output = BytesIO()
                     excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                     df.to_excel(excel_file, sheet_name="data")    
@@ -638,28 +638,31 @@ def app():
                     # Show summary statistics (cleaned and transformed data)
                     if st.checkbox('Show summary statistics (cleaned and transformed data) ', value = False, key = session_state.id):
                         st.write(df_summary_post["ALL"])
+                        
+                        # Download link for cleaned data summary statistics
+                        output = BytesIO()
+                        excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                        df.to_excel(excel_file, sheet_name="cleaned_data")
+                        df_summary_post["Variable types"].to_excel(excel_file, sheet_name="cleaned_variable_info")
+                        df_summary_post["ALL"].to_excel(excel_file, sheet_name="cleaned_summary_statistics")
+                        excel_file.save()
+                        excel_file = output.getvalue()
+                        b64 = base64.b64encode(excel_file)
+                        dl_file_name = "Cleaned data summary statistics_univariate_" + df_name + ".xlsx"
+                        st.markdown(
+                            f"""
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download cleaned data summary statistics</a>
+                        """,
+                        unsafe_allow_html=True)
+                        st.write("")  
+                
                         if fc.get_mode(df).loc["n_unique"].any():
                             st.caption("** Mode is not unique.") 
                         if sett_hints:
                             st.info(str(fc.learning_hints("de_summary_statistics")))     
                 else: st.error("ERROR: No data available for Data Exploration!") 
 
-                # Download link for cleaned exploration statistics
-                output = BytesIO()
-                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
-                df.to_excel(excel_file, sheet_name="cleaned_data")
-                df_summary_post["Variable types"].to_excel(excel_file, sheet_name="cleaned_variable_info")
-                df_summary_post["ALL"].to_excel(excel_file, sheet_name="cleaned_summary_statistics")
-                excel_file.save()
-                excel_file = output.getvalue()
-                b64 = base64.b64encode(excel_file)
-                dl_file_name = "Cleaned data and exploration statistics_univariate_" + df_name + ".xlsx"
-                st.markdown(
-                    f"""
-                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download cleaned data and exploration statistics</a>
-                """,
-                unsafe_allow_html=True)
-                st.write("")    
+                  
     #------------------------------------------------------------------------------------------
     
     data_visualization_container = st.beta_container()
