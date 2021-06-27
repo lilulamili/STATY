@@ -170,7 +170,7 @@ def app():
 
     data_exploration_container = st.beta_container()
     with data_exploration_container:
-        st.header("**Initial data analysis**")
+        st.header("**Data screening and processing**")
         
         #------------------------------------------------------------------------------------------
 
