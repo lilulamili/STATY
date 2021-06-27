@@ -288,21 +288,21 @@ def app():
                 if sett_hints:
                     st.info(str(fc.learning_hints("de_summary_statistics")))
 
-            # Download link for exploration statistics
-                       
-            output = BytesIO()
-            excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
-            df_summary["Variable types"].to_excel(excel_file, sheet_name="variable_info")
-            df_summary["ALL"].to_excel(excel_file, sheet_name="summary_statistics")
-            excel_file.save()
-            excel_file = output.getvalue()
-            b64 = base64.b64encode(excel_file)
-            dl_file_name = "Exploration statistics_univariate_" + df_name + ".xlsx"
-            st.markdown(
-                f"""
-            <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download exploration statistics</a>
-            """,
-            unsafe_allow_html=True)
+                # Download link for summary statistics
+
+                output = BytesIO()
+                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                df_summary["Variable types"].to_excel(excel_file, sheet_name="variable_info")
+                df_summary["ALL"].to_excel(excel_file, sheet_name="summary_statistics")
+                excel_file.save()
+                excel_file = output.getvalue()
+                b64 = base64.b64encode(excel_file)
+                dl_file_name = "Exploration statistics_univariate_" + df_name + ".xlsx"
+                st.markdown(
+                    f"""
+                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download summary statistics</a>
+                """,
+                unsafe_allow_html=True)
         
         
         #++++++++++++++++++++++
