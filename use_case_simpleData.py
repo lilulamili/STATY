@@ -180,7 +180,7 @@ def app():
         # Main panel for data summary (pre)
         #----------------------------------
 
-        dev_expander_raw = st.beta_expander("Raw data analysis", expanded = False)
+        dev_expander_raw = st.beta_expander("Explore raw data", expanded = False)
         with dev_expander_raw:
             # Default data description:
             if uploaded_data == None:
