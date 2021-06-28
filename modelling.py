@@ -1789,7 +1789,8 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             "learning_rate_init": ann_final_para["learning rate"][0],
             #"learning_rate": ann_final_para["learning rate schedule"][0],
             #"momentum": ann_final_para["momentum"][0],
-            "alpha": ann_final_para["L² regularization"][0]
+            "alpha": ann_final_para["L² regularization"][0],
+            "random_state": 0
             #"epsilon": ann_final_para["epsilon"][0]
             }
             full_model_ann_sk = MLPRegressor(**params)
