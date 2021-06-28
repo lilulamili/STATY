@@ -104,19 +104,6 @@ def app():
     #Basic data info
     n_rows = df.shape[0]
     n_cols = df.shape[1]  
-    # df_name = "WHR_2021"
-    # if uploaded_data is not None:
-    #     df_name = list(uploaded_data.name.split(".")[:-1])
-    #     if len(df_name) > 1:
-    #         new_name = ""
-    #         for i in range(0, len(df_name)):
-    #             if i < len(df_name)-1:
-    #                 new_name += df_name[i]+"_"
-    #             if i == len(df_name)-1:
-    #                 new_name += df_name[i]
-    #         df_name = new_name
-    #     else:
-    #         df_name = df_name[0]
 
     #++++++++++++++++++++++++++++++++++++++++++++
     # SETTINGS
@@ -191,7 +178,7 @@ def app():
         # Main panel for data summary (pre)
         #----------------------------------
 
-        dev_expander_dsPre = st.beta_expander("Explore raw data ", expanded = False)
+        dev_expander_dsPre = st.beta_expander("Explore raw data info and stats ", expanded = False)
         with dev_expander_dsPre:
 
             # Default data description:
@@ -306,12 +293,15 @@ def app():
         with dev_expander_dm_sb:
             
             n_rows_wNAs = df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0]
+            n_rows_wNAs_pre_processing = "No"
             if n_rows_wNAs > 0:
+                n_rows_wNAs_pre_processing = "Yes"
                 a1, a2, a3 = st.beta_columns(3)
             else: a1, a3 = st.beta_columns(2)
             
             sb_DM_dImp_num = None 
             sb_DM_dImp_other = None
+            sb_DM_delRows=None
             
             with a1:
                 #--------------------------------------------------------------------------------------
@@ -320,8 +310,45 @@ def app():
                 st.markdown("**Data cleaning**")
 
                 # Delete rows
-                sb_DM_delRows = st.multiselect("Select rows to delete ", df.index, key = session_state.id)
-                df = df.loc[~df.index.isin(sb_DM_delRows)]
+                delRows =st.selectbox('Delete rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = session_state.id)
+                if delRows!='-':                                
+                    if delRows=='between':
+                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                        if (row_1 + 1) < row_2 :
+                            sb_DM_delRows=df.index[(df.index > row_1) & (df.index < row_2)]
+                        elif (row_1 + 1) == row_2 : 
+                            st.warning("WARNING: No row is deleted!")
+                        elif row_1 == row_2 : 
+                            st.warning("WARNING: No row is deleted!")
+                        elif row_1 > row_2 :
+                            st.error("ERROR: Lower limit must be smaller than upper limit!")  
+                            return                   
+                    elif delRows=='equal':
+                        sb_DM_delRows = st.multiselect("to...", df.index, key = session_state.id)
+                    else:
+                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = session_state.id)                    
+                        if delRows=='greater':
+                            sb_DM_delRows=df.index[df.index > row_1]
+                            if row_1 == len(df)-1:
+                                st.warning("WARNING: No row is deleted!") 
+                        elif delRows=='greater or equal':
+                            sb_DM_delRows=df.index[df.index >= row_1]
+                            if row_1 == 0:
+                                st.error("ERROR: All rows are deleted!")
+                                return
+                        elif delRows=='smaller':
+                            sb_DM_delRows=df.index[df.index < row_1]
+                            if row_1 == 0:
+                                st.warning("WARNING: No row is deleted!") 
+                        elif delRows=='smaller or equal':
+                            sb_DM_delRows=df.index[df.index <= row_1]
+                            if row_1 == len(df)-1:
+                                st.error("ERROR: All rows are deleted!")
+                                return
+                    if sb_DM_delRows is not None:
+                        df = df.loc[~df.index.isin(sb_DM_delRows)]
+                        no_delRows=n_rows-df.shape[0]
 
                 # Delete columns
                 sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
@@ -345,8 +372,60 @@ def app():
                 elif n_rows_wNAs == 0: 
                     sb_DM_delRows_wNA = "No"   
 
-            if n_rows_wNAs > 0:
-                with a2:
+                # Filter data
+                st.markdown("**Data filtering**")
+                filter_var = st.selectbox('Filter your data by a variable...', list('-')+ list(df.columns), key = session_state.id)
+                if filter_var !='-':
+                    
+                    if df[filter_var].dtypes=="int64" or df[filter_var].dtypes=="float64": 
+                        if df[filter_var].dtypes=="float64":
+                            filter_format="%.8f"
+                        else:
+                            filter_format=None
+
+                        user_filter=st.selectbox('Select values that are ...', options=['greater','greater or equal','smaller','smaller or equal', 'equal','between'], key = session_state.id)
+                                                
+                        if user_filter=='between':
+                            filter_1=st.number_input('Lower limit is', format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = session_state.id)
+                            filter_2=st.number_input('Upper limit is', format=filter_format, value=df[filter_var].max(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = session_state.id)
+                            #reclassify values:
+                            if filter_1 < filter_2 :
+                                df = df[(df[filter_var] > filter_1) & (df[filter_var] < filter_2)] 
+                                if len(df) == 0:
+                                   st.error("ERROR: No data available for the selected limits!")  
+                                   return        
+                            elif filter_1 >= filter_2 :
+                                st.error("ERROR: Lower limit must be smaller than upper limit!")  
+                                return                    
+                        elif user_filter=='equal':                            
+                            filter_1=st.multiselect('to... ', options=df[filter_var].values, key = session_state.id)
+                            if len(filter_1)>0:
+                                df = df.loc[df[filter_var].isin(filter_1)]
+
+                        else:
+                            filter_1=st.number_input('than... ',format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = session_state.id)
+                            #reclassify values:
+                            if user_filter=='greater':
+                                df = df[df[filter_var] > filter_1]
+                            elif user_filter=='greater or equal':
+                                df = df[df[filter_var] >= filter_1]        
+                            elif user_filter=='smaller':
+                                df= df[df[filter_var]< filter_1] 
+                            elif user_filter=='smaller or equal':
+                                df = df[df[filter_var] <= filter_1]
+                
+                            if len(df) == 0:
+                                st.error("ERROR: No data available for the selected value!")
+                                return 
+                            elif len(df) == n_rows:
+                                st.warning("WARNING: Data are not filtered for this value!")         
+                    else:                  
+                        filter_1=st.multiselect('Filter your data by a value...', (df[filter_var]).unique(), key = session_state.id)
+                        if len(filter_1)>0:
+                            df = df.loc[df[filter_var].isin(filter_1)]
+                
+            if n_rows_wNAs_pre_processing == "Yes":
+                with a2: 
                     #--------------------------------------------------------------------------------------
                     # DATA IMPUTATION
 
@@ -360,7 +439,7 @@ def app():
                             # Other variables
                             sb_DM_dImp_other = st.selectbox("Imputation method for other variables ", ["Mode", "Random value"], key = session_state.id)
                             df = fc.data_impute(df, sb_DM_dImp_num, sb_DM_dImp_other)
-                    else: 
+                    else:
                         st.markdown("**Data imputation**")
                         st.write("")
                         st.info("No NAs in data set!")
@@ -396,14 +475,14 @@ def app():
                             for var in sb_DM_dTrans_numCat_sel:
                                 if df[var].unique().size > 5: 
                                     st.error("ERROR: Selected variable has too many categories (>5): " + str(var))
-                                    return 
+                                    return
                                 else:
                                     manual_cats = pd.DataFrame(index = range(0, df[var].unique().size), columns=["Value", "Cat"])
                                     text = "Category for "
                                     # Save manually selected categories
                                     for i in range(0, df[var].unique().size):
                                         text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
-                                        man_cat = st.number_input(text1, value = 0,  min_value=0, key = session_state.id)
+                                        man_cat = st.number_input(text1, value = 0, min_value=0, key = session_state.id)
                                         manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
                                         manual_cats.loc[i]["Cat"] = man_cat
                                     
@@ -451,6 +530,24 @@ def app():
                         division_pairs.loc[i]["Var2"] = div_var2
                         fc.var_transform_div(df, div_var1, div_var2)
 
+                data_transfrom=st.checkbox("Transfrom data in Excel?", value=False)
+                if data_transfrom==True:
+                    st.info("Press the button to open your data in Excel. Don't forget to save your result as a csv or a txt file!")
+                    # Download link for summary statistics
+                    output = BytesIO()
+                    excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                    df.to_excel(excel_file, sheet_name="data")    
+                    excel_file.save()
+                    excel_file = output.getvalue()
+                    b64 = base64.b64encode(excel_file)
+                    dl_file_name = "Data_transformation__" + df_name + ".xlsx"
+                    st.markdown(
+                        f"""
+                    <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Transfrom your data in Excel</a>
+                    """,
+                    unsafe_allow_html=True)
+                    st.write("")   
+                    
             #--------------------------------------------------------------------------------------
             # PROCESSING SUMMARY
             
@@ -461,19 +558,22 @@ def app():
                 # DATA CLEANING
 
                 # Rows
-                if len(sb_DM_delRows) > 1:
-                    st.write("-", len(sb_DM_delRows), " rows were manually deleted:", ', '.join(map(str,sb_DM_delRows)))
-                elif len(sb_DM_delRows) == 1:
-                    st.write("-",len(sb_DM_delRows), " row was manually deleted:", str(sb_DM_delRows[0]))
-                elif len(sb_DM_delRows) == 0:
-                    st.write("- No row was manually deleted!")
+                if sb_DM_delRows is not None and delRows!='-' :
+                    if no_delRows > 1:
+                        st.write("-", no_delRows, " rows were deleted!")
+                    elif no_delRows == 1:
+                        st.write("-",no_delRows, " row was deleted!")
+                    elif no_delRows == 0:
+                        st.write("- No row was deleted!")
+                else:
+                    st.write("- No row was deleted!")
                 # Columns
                 if len(sb_DM_delCols) > 1:
-                    st.write("-", len(sb_DM_delCols), " columns were manually deleted:", ', '.join(sb_DM_delCols))
+                    st.write("-", len(sb_DM_delCols), " columns were deleted:", ', '.join(sb_DM_delCols))
                 elif len(sb_DM_delCols) == 1:
-                    st.write("-",len(sb_DM_delCols), " column was manually deleted:", str(sb_DM_delCols[0]))
+                    st.write("-",len(sb_DM_delCols), " column was deleted:", str(sb_DM_delCols[0]))
                 elif len(sb_DM_delCols) == 0:
-                    st.write("- No column was manually deleted!")
+                    st.write("- No column was deleted!")
                 # Duplicates
                 if sb_DM_delDup == "Yes":
                     if n_rows_dup > 1:
@@ -490,7 +590,25 @@ def app():
                         st.write("-", n_rows - n_rows_wNAs, "row with NAs was deleted!")
                 else:
                     st.write("- No row with NAs was deleted!")
-                
+                # Filter
+                if filter_var != "-":
+                    if df[filter_var].dtypes=="int64" or df[filter_var].dtypes=="float64":
+                        if isinstance(filter_1, list):
+                            if len(filter_1) == 0:
+                                st.write("-", " Data was not filtered!")
+                            elif len(filter_1) > 0:
+                                st.write("-", " Data filtered by:", str(filter_var))
+                        elif filter_1 is not None:
+                            st.write("-", " Data filtered by:", str(filter_var))
+                        else:
+                            st.write("-", " Data was not filtered!")
+                    elif len(filter_1)>0:
+                        st.write("-", " Data filtered by:", str(filter_var))
+                    elif len(filter_1) == 0:
+                        st.write("-", " Data was not filtered!")
+                else:
+                    st.write("-", " Data was not filtered!")
+                    
                 #--------------------------------------------------------------------------------------
                 # DATA IMPUTATION
 
@@ -555,7 +673,7 @@ def app():
                 elif sb_DM_dTrans_div == 0:
                     st.write("- No variables were divided!")
                 st.write("")
-                st.write("")
+                st.write("")   
         
         #------------------------------------------------------------------------------------------
         
@@ -563,8 +681,8 @@ def app():
         # UPDATED DATA SUMMARY   
 
         # Show only if changes were made
-        if  any(v for v in [sb_DM_delRows, sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or sb_DM_dTrans_mult != 0 or sb_DM_dTrans_div != 0:
-            dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed data ", expanded = False)
+        if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or sb_DM_dTrans_mult != 0 or sb_DM_dTrans_div != 0 or filter_var != "-" or delRows!='-':
+            dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed data info and stats ", expanded = False)
             with dev_expander_dsPost:
                 if df.shape[1] > 0 and df.shape[0] > 0:
 
@@ -620,9 +738,7 @@ def app():
                         if sett_hints:
                             st.info(str(fc.learning_hints("de_summary_statistics")))  
                 else: st.error("ERROR: No data available for preprocessing!") 
-
-                
-            
+     
     #------------------------------------------------------------------------------------------
     
     #++++++++++++++++++++++
@@ -841,40 +957,43 @@ def app():
                         if any(a for a in sb_ML_alg if a == "Multiple Linear Regression") and response_var_type == "binary":
                             st.warning("WARNING: For Multiple Linear Regression only the full model output will be determined.")
 
-                        # MLR covariance type setting
+                        st.markdown("**Model-specific settings**")
+                        # Multiple Linear Regression settings
                         if any(a for a in sb_ML_alg if a == "Multiple Linear Regression"):
-                            st.markdown("**Multiple Linear Regression settings**")
                             MLR_finalPara = pd.DataFrame(index = ["value"], columns = ["intercept", "covType"])
                             MLR_intercept = "Yes"
                             MLR_cov_type = "non-robust"
                             MLR_finalPara["intercept"] = MLR_intercept
                             MLR_finalPara["covType"] = MLR_cov_type
                             if st.checkbox("Adjust settings for Multiple Linear Regression"):
-                                MLR_intercept = st.selectbox("Include intercept", ["Yes", "No"])
-                                MLR_cov_type = st.selectbox("Covariance type", ["non-robust", "HC0", "HC1", "HC2", "HC3"])
-                                MLR_finalPara = pd.DataFrame(index = ["value"], columns = ["intercept", "covType"])
+                                col1, col2 = st.beta_columns(2)
+                                with col1:
+                                    MLR_intercept = st.selectbox("Include intercept", ["Yes", "No"])
+                                with col2:
+                                    MLR_cov_type = st.selectbox("Covariance type", ["non-robust", "HC0", "HC1", "HC2", "HC3"])
                                 MLR_finalPara["intercept"] = MLR_intercept
                                 MLR_finalPara["covType"] = MLR_cov_type
+                                st.write("") 
 
-                        # LR covariance type setting
+                        # Logistic Regression settings
                         if any(a for a in sb_ML_alg if a == "Logistic Regression"):
-                            st.markdown("**Logistic Regression settings**")
                             LR_finalPara = pd.DataFrame(index = ["value"], columns = ["intercept", "covType"])
                             LR_intercept = "Yes"
                             LR_cov_type = "non-robust"
                             LR_finalPara["intercept"] = LR_intercept
                             LR_finalPara["covType"] = LR_cov_type
                             if st.checkbox("Adjust settings for Logistic Regression"):
-                                LR_intercept = st.selectbox("Include intercept   ", ["Yes", "No"])
-                                LR_cov_type = st.selectbox("Covariance type", ["non-robust", "HC0"])
-                                LR_finalPara = pd.DataFrame(index = ["value"], columns = ["intercept", "covType"])
+                                col1, col2 = st.beta_columns(2)
+                                with col1:
+                                    LR_intercept = st.selectbox("Include intercept   ", ["Yes", "No"])
+                                with col2:
+                                    LR_cov_type = st.selectbox("Covariance type", ["non-robust", "HC0"])
                                 LR_finalPara["intercept"] = LR_intercept
                                 LR_finalPara["covType"] = LR_cov_type
+                                st.write("") 
                         
                         # Generalized Additive Models settings
                         if any(a for a in sb_ML_alg if a == "Generalized Additive Models"):
-                            st.markdown("**Generalized Additive Models settings**")
-                            # Generalized Additive Models default settings
                             gam_finalPara = pd.DataFrame(index = ["value"], columns = ["intercept", "number of splines", "spline order", "lambda"])
                             gam_finalPara["intercept"] = "Yes"
                             gam_finalPara["number of splines"] = 20
@@ -883,9 +1002,12 @@ def app():
                             gam_lam_search = "No"
                             if st.checkbox("Adjust settings for Generalized Additive Models"):
                                 gam_finalPara = pd.DataFrame(index = ["value"], columns = ["intercept", "number of splines", "spline order", "lambda"])
-                                gam_intercept = st.selectbox("Include intercept ", ["Yes", "No"])
+                                col1, col2 = st.beta_columns(2)
+                                with col1:
+                                    gam_intercept = st.selectbox("Include intercept ", ["Yes", "No"])
                                 gam_finalPara["intercept"] = gam_intercept
-                                gam_lam_search = st.selectbox("Search for lambda ", ["No", "Yes"])
+                                with col2:
+                                    gam_lam_search = st.selectbox("Search for lambda ", ["No", "Yes"])
                                 if gam_lam_search == "Yes":
                                     ls_col1, ls_col2, ls_col3 = st.beta_columns(3)
                                     with ls_col1:
@@ -929,7 +1051,102 @@ def app():
                                     
                                 gam_finalPara.at["value", "number of splines"] = gam_nos_values
                                 gam_finalPara.at["value","spline order"] = gam_so_values  
-                                gam_finalPara.at["value","lambda"] = gam_lam_values                                    
+                                gam_finalPara.at["value","lambda"] = gam_lam_values
+                                st.write("")  
+
+                        # Save hyperparameter values for machine learning methods
+                        final_hyPara_values = {}
+
+                        # Random Forest settings
+                        if any(a for a in sb_ML_alg if a == "Random Forest"):
+                            rf_finalPara = pd.DataFrame(index = ["value"], columns = ["number of trees", "maximum tree depth", "maximum number of features", "sample rate"])
+                            rf_finalPara["number of trees"] = [100]
+                            rf_finalPara["maximum tree depth"] = [None]
+                            rf_finalPara["maximum number of features"] = [len(expl_var)]
+                            rf_finalPara["sample rate"] = [0.99]
+                            final_hyPara_values["rf"] = rf_finalPara
+                            if st.checkbox("Adjust settings for Random Forest "):  
+                                col1, col2 = st.beta_columns(2)
+                                col3, col4 = st.beta_columns(2)
+                                with col1:
+                                    rf_finalPara["number of trees"] = st.number_input("Number of trees", value=100, step=1, min_value=1) 
+                                with col3:
+                                    rf_mtd_sel = st.selectbox("Specify maximum tree depth ", ["No", "Yes"])
+                                    if rf_mtd_sel == "No":
+                                        rf_finalPara["maximum tree depth"] = [None]
+                                    if rf_mtd_sel == "Yes":
+                                        rf_finalPara["maximum tree depth"] = st.slider("Maximum tree depth ", value=20, step=1, min_value=1, max_value=50)
+                                if len(expl_var) >1:
+                                    with col4:
+                                        rf_finalPara["maximum number of features"] = st.slider("Maximum number of features ", value=len(expl_var), step=1, min_value=1, max_value=len(expl_var))
+                                    with col2:
+                                        rf_finalPara["sample rate"] = st.slider("Sample rate ", value=0.99, step=0.01, min_value=0.1, max_value=0.99)
+                                else:
+                                    with col2:
+                                         rf_finalPara["sample rate"] = st.slider("Sample rate ", value=0.99, step=0.01, min_value=0.1, max_value=0.99)
+                                final_hyPara_values["rf"] = rf_finalPara 
+                                st.write("") 
+
+                        # Boosted Regression Trees settings 
+                        if any(a for a in sb_ML_alg if a == "Boosted Regression Trees"):
+                            brt_finalPara = pd.DataFrame(index = ["value"], columns = ["number of trees", "learning rate", "maximum tree depth", "sample rate"])
+                            brt_finalPara["number of trees"] = [100]
+                            brt_finalPara["learning rate"] = [0.1]
+                            brt_finalPara["maximum tree depth"] = [3]
+                            brt_finalPara["sample rate"] = [1]
+                            final_hyPara_values["brt"] = brt_finalPara
+                            if st.checkbox("Adjust settings for Boosted Regression Trees "):
+                                col1, col2 = st.beta_columns(2)
+                                col3, col4 = st.beta_columns(2)
+                                with col1:
+                                    brt_finalPara["number of trees"] = st.number_input("Number of trees ", value=100, step=1, min_value=1) 
+                                with col2:
+                                    brt_finalPara["learning rate"] = st.slider("Learning rate ", value=0.1, min_value=0.001, max_value=0.1 , step=1e-3, format="%.3f")
+                                with col3:
+                                    brt_finalPara["maximum tree depth"] = st.slider("Maximum tree depth ", value=3, step=1, min_value=1, max_value=30)
+                                with col4:
+                                    brt_finalPara["sample rate"] = st.slider("Sample rate ", value=1.0, step=0.01, min_value=0.5, max_value=1.0)
+                                final_hyPara_values["brt"] = brt_finalPara
+                                st.write("")  
+
+                        # Artificial Neural Networks settings 
+                        if any(a for a in sb_ML_alg if a == "Artificial Neural Networks"):
+                            ann_finalPara = pd.DataFrame(index = ["value"], columns = ["weight optimization solver", "maximum number of iterations", "activation function", "hidden layer sizes", "learning rate", "L² regularization"])
+                            ann_finalPara["weight optimization solver"] = ["adam"]
+                            ann_finalPara["maximum number of iterations"] = [200]
+                            ann_finalPara["activation function"] = ["relu"]
+                            ann_finalPara["hidden layer sizes"] = [(100,)]
+                            ann_finalPara["learning rate"] = [0.001]
+                            ann_finalPara["L² regularization"] = [0.0001]
+                            final_hyPara_values["ann"] = ann_finalPara
+                            if st.checkbox("Adjust settings for Artificial Neural Networks "): 
+                                col1, col2 = st.beta_columns(2)
+                                col3, col4 = st.beta_columns(2)
+                                col5, col6 = st.beta_columns(2)
+                                with col1:
+                                    ann_finalPara["weight optimization solver"] = st.selectbox("Weight optimization solver ", ["adam"])
+                                with col2:
+                                    ann_finalPara["activation function"] = st.selectbox("Activation function ", ["relu", "identity", "logistic", "tanh"])
+                                with col3:
+                                    ann_finalPara["maximum number of iterations"] = st.slider("Maximum number of iterations ", value=200, step=1, min_value=10, max_value=1000) 
+                                with col4:
+                                    ann_finalPara["learning rate"] = st.slider("Learning rate  ", 0.0001, 0.01, 0.002, step=1e-4, format="%.4f")
+                                with col5:
+                                    number_hidden_layers = st.selectbox("Number of hidden layers", [1, 2, 3])
+                                    if number_hidden_layers == 1:
+                                        number_nodes1 = st.slider("Number of nodes in hidden layer", 5, 500, 100)
+                                        ann_finalPara["hidden layer sizes"] = [(number_nodes1,)]
+                                    if number_hidden_layers == 2:
+                                        number_nodes1 = st.slider("Number of neurons in first hidden layer", 5, 500, 100)
+                                        number_nodes2 = st.slider("Number of neurons in second hidden layer", 5, 500, 100)
+                                        ann_finalPara["hidden layer sizes"] = [(number_nodes1,number_nodes2,)]
+                                    if number_hidden_layers == 3:
+                                        number_nodes1 = st.slider("Number of neurons in first hidden layer", 5, 500, 100)
+                                        number_nodes2 = st.slider("Number of neurons in second hidden layer", 5, 500, 100)
+                                        number_nodes3 = st.slider("Number of neurons in third hidden layer", 5, 500, 100)
+                                        ann_finalPara["hidden layer sizes"] = [(number_nodes1,number_nodes2,number_nodes3,)]
+                                with col6:
+                                    ann_finalPara["L² regularization"] = st.slider("L² regularization  ", 0.00001, 0.001, 0.0001, step=1e-5, format="%.5f")                                
 
                         #--------------------------------------------------------------------------------------
                         # HYPERPARAMETER TUNING SETTINGS
@@ -943,42 +1160,11 @@ def app():
                                 do_hypTune = st.selectbox("Use hyperparameter-tuning", ["No", "Yes"])
                             
                                 # Save hyperparameter values for all algorithms
-                                final_hyPara_values = {}
                                 hyPara_values = {}
                                 
                                 # No hyperparameter-tuning
                                 if do_hypTune == "No":
                                     do_hypTune_no = "Default hyperparameter values are used!"
-
-                                    # Random Forest default settings
-                                    if any(a for a in sb_ML_alg if a == "Random Forest"):
-                                        rf_finalPara = pd.DataFrame(index = ["value"], columns = ["number of trees", "maximum tree depth", "maximum number of features", "sample rate"])
-                                        rf_finalPara["number of trees"] = [100]
-                                        rf_finalPara["maximum tree depth"] = [None]
-                                        rf_finalPara["maximum number of features"] = [len(expl_var)]
-                                        rf_finalPara["sample rate"] = [0.99]
-                                        final_hyPara_values["rf"] = rf_finalPara
-                                    # Boosted Regression Trees default settings
-                                    if any(a for a in sb_ML_alg if a == "Boosted Regression Trees"):
-                                        brt_finalPara = pd.DataFrame(index = ["value"], columns = ["number of trees", "learning rate", "maximum tree depth", "sample rate"])
-                                        brt_finalPara["number of trees"] = [100]
-                                        brt_finalPara["learning rate"] = [0.1]
-                                        brt_finalPara["maximum tree depth"] = [3]
-                                        brt_finalPara["sample rate"] = [1]
-                                        final_hyPara_values["brt"] = brt_finalPara
-                                    # Artificial Neural Networks default settings
-                                    if any(a for a in sb_ML_alg if a == "Artificial Neural Networks"):
-                                        ann_finalPara = pd.DataFrame(index = ["value"], columns = ["weight optimization solver", "maximum number of iterations", "activation function", "hidden layer sizes", "learning rate", "L² regularization"])#, "learning rate schedule", "momentum", "L² regularization", "epsilon"])
-                                        ann_finalPara["weight optimization solver"] = ["adam"]
-                                        ann_finalPara["maximum number of iterations"] = [200]
-                                        ann_finalPara["activation function"] = ["relu"]
-                                        ann_finalPara["hidden layer sizes"] = [(100,)]
-                                        ann_finalPara["learning rate"] = [0.001]
-                                        #ann_finalPara["learning rate schedule"] = ["constant"]
-                                        #ann_finalPara["momentum"] = [0.9]
-                                        ann_finalPara["L² regularization"] = [0.0001]
-                                        #ann_finalPara["epsilon"] = [1e-8]
-                                        final_hyPara_values["ann"] = ann_finalPara
 
                                 # Hyperparameter-tuning 
                                 elif do_hypTune == "Yes":
@@ -986,113 +1172,119 @@ def app():
                                     
                                     # Further general settings
                                     hypTune_method = st.selectbox("Hyperparameter-search method", ["random grid-search", "grid-search", "Bayes optimization", "sequential model-based optimization"])
-                                    hypTune_nCV = st.slider("Select number for n-fold cross-validation", 2, 10, 5)
+                                    col1, col2 = st.beta_columns(2)
+                                    with col1:
+                                        hypTune_nCV = st.slider("Select number for n-fold cross-validation", 2, 10, 5)
 
                                     if hypTune_method == "random grid-search" or hypTune_method == "Bayes optimization" or hypTune_method == "sequential model-based optimization":
-                                        hypTune_iter = st.slider("Select number of iterations for search", 20, 1000, 20)
+                                        with col2:
+                                            hypTune_iter = st.slider("Select number of iterations for search", 20, 1000, 20)
                                     else:
                                         hypTune_iter = False
 
+                                    st.markdown("**Model-specific tuning settings**")
                                     # Random Forest settings
                                     if any(a for a in sb_ML_alg if a == "Random Forest"):
-                                        st.markdown("**Random Forest settings**")
                                         rf_tunePara = pd.DataFrame(index = ["min", "max"], columns = ["number of trees", "maximum tree depth", "maximum number of features", "sample rate"])
                                         rf_tunePara["number of trees"] = [50, 500]
                                         rf_tunePara["maximum tree depth"] = [None, None]
                                         rf_tunePara["maximum number of features"] = [1, len(expl_var)]
                                         rf_tunePara["sample rate"] = [0.8, 0.99]
                                         hyPara_values["rf"] = rf_tunePara
-                                        if st.checkbox("Adjust settings for Random Forest"):
-                                            rf_tunePara["number of trees"] = st.slider("Range for number of trees ", 50, 1000, [50, 500])
-                                            rf_mtd_choice = st.selectbox("Specify maximum tree depth", ["No", "Yes"])
-                                            if rf_mtd_choice == "Yes":
-                                                rf_tunePara["maximum tree depth"] = st.slider("Range for maximum tree depth ", 1, 50, [2, 10])
-                                            else:
-                                                rf_tunePara["maximum tree depth"] = [None, None]
-                                            if len(expl_var) > 1:
-                                                rf_tunePara["maximum number of features"] = st.slider("Range for maximum number of features", 1, len(expl_var), [1, len(expl_var)])
-                                            else:
-                                                rf_tunePara["maximum number of features"] = [1,1]
-                                            rf_tunePara["sample rate"] = st.slider("Range for sample rate ", 0.5, 0.99, [0.8, 0.99])
+                                        if st.checkbox("Adjust tuning settings for Random Forest"):
+                                            col1, col2 = st.beta_columns(2)
+                                            col3, col4 = st.beta_columns(2)
+                                            with col1:
+                                                rf_tunePara["number of trees"] = st.slider("Range for number of trees ", 50, 1000, [50, 500])
+                                            with col3:
+                                                rf_mtd_choice = st.selectbox("Specify maximum tree depth", ["No", "Yes"])
+                                                if rf_mtd_choice == "Yes":
+                                                    rf_tunePara["maximum tree depth"] = st.slider("Range for maximum tree depth ", 1, 50, [2, 10])
+                                                else:
+                                                    rf_tunePara["maximum tree depth"] = [None, None]
+                                            with col4:
+                                                if len(expl_var) > 1:
+                                                    rf_tunePara["maximum number of features"] = st.slider("Range for maximum number of features", 1, len(expl_var), [1, len(expl_var)])
+                                                else:
+                                                    rf_tunePara["maximum number of features"] = [1,1]
+                                            with col2:
+                                                rf_tunePara["sample rate"] = st.slider("Range for sample rate ", 0.5, 0.99, [0.8, 0.99])
                                             hyPara_values["rf"] = rf_tunePara
 
                                     # Boosted Regression Trees settings
                                     if any(a for a in sb_ML_alg if a == "Boosted Regression Trees"):
-                                        st.markdown("**Boosted Regression Trees settings**")
                                         brt_tunePara = pd.DataFrame(index = ["min", "max"], columns = ["number of trees", "learning rate", "maximum tree depth", "sample rate"])
                                         brt_tunePara["number of trees"] = [50, 500]
                                         brt_tunePara["learning rate"] = [0.001, 0.010]
-                                        #brt_tunePara["learning rate"] = brt_tunePara["learning rate"]/1000
                                         brt_tunePara["maximum tree depth"] = [2, 10]
                                         brt_tunePara["sample rate"] = [0.8, 1.0]
                                         hyPara_values["brt"] = brt_tunePara
-                                        if st.checkbox("Adjust settings for Boosted Regression Trees"):
-                                            brt_tunePara["number of trees"] = st.slider("Range for number of trees", 50, 1000, [50, 500])
-                                            brt_tunePara["learning rate"] = st.slider("Range for learning rate", 0.001, 0.1, [0.001, 0.01], step=1e-3, format="%.3f") 
-                                            #brt_tunePara["learning rate"] = brt_tunePara["learning rate"]/1000
-                                            brt_tunePara["maximum tree depth"] = st.slider("Range for maximum tree depth", 1, 30, [2, 10])
-                                            brt_tunePara["sample rate"] = st.slider("Range for sample rate", 0.5, 1.0, [0.8, 1.0])
+                                        if st.checkbox("Adjust tuning settings for Boosted Regression Trees"):
+                                            col1, col2 = st.beta_columns(2)
+                                            col3, col4 = st.beta_columns(2)
+                                            with col1:
+                                                brt_tunePara["number of trees"] = st.slider("Range for number of trees", 50, 1000, [50, 500])
+                                            with col2:
+                                                brt_tunePara["learning rate"] = st.slider("Range for learning rate", 0.001, 0.1, [0.001, 0.02], step=1e-3, format="%.3f") 
+                                            with col3:
+                                                brt_tunePara["maximum tree depth"] = st.slider("Range for maximum tree depth", 1, 30, [2, 10])
+                                            with col4:
+                                                brt_tunePara["sample rate"] = st.slider("Range for sample rate", 0.5, 1.0, [0.8, 1.0])
                                             hyPara_values["brt"] = brt_tunePara
 
                                     # Artificial Neural Networks settings
                                     if any(a for a in sb_ML_alg if a == "Artificial Neural Networks"):
-                                        st.markdown("**Artificial Neural Networks settings**")
                                         ann_tunePara = pd.DataFrame(index = ["min", "max"], columns = ["weight optimization solver", "maximum number of iterations", "activation function", "number of hidden layers", "nodes per hidden layer", "learning rate","L² regularization"])# "learning rate schedule", "momentum", "epsilon"])
                                         ann_tunePara["weight optimization solver"] = list([["adam"], "NA"])
                                         ann_tunePara["maximum number of iterations"] = [100, 200]
                                         ann_tunePara["activation function"] = list([["relu"], "NA"])
                                         ann_tunePara["number of hidden layers"] = list([1, "NA"])
                                         ann_tunePara["nodes per hidden layer"] = [50, 100]
-                                        ann_tunePara["learning rate"] = [0.0001, 0.001]
-                                        #ann_tunePara["learning rate"] = ann_tunePara["learning rate"]/10000
-                                        #ann_tunePara["learning rate schedule"] = list([["constant"], "NA"])
-                                        #ann_tunePara["momentum"] = [0.85, 0.9]
+                                        ann_tunePara["learning rate"] = [0.0001, 0.002]
                                         ann_tunePara["L² regularization"] = [0.00001, 0.0001]
-                                        #ann_tunePara["L² regularization"] = ann_tunePara["L² regularization"]/100000
-                                        #ann_tunePara["epsilon"] = [5, 10]
-                                        #ann_tunePara["epsilon"] = ann_tunePara["epsilon"]/1000000000
                                         hyPara_values["ann"] = ann_tunePara
-                                        if st.checkbox("Adjust settings for Artificial Neural Networks"):
-                                            weight_opt_list = st.multiselect("Weight optimization solver", ["lbfgs", "adam"], ["adam"])
-                                            if len(weight_opt_list) == 0:
-                                                weight_opt_list = ["adam"]
-                                                st.error("Default value used: adam")
-                                            ann_tunePara["weight optimization solver"] = list([weight_opt_list, "NA"])
-                                            ann_tunePara["maximum number of iterations"] = st.slider("Maximum number of iterations (epochs)", 10, 1000, [100, 200])
-                                            act_func_list = st.multiselect("Activation function", ["identity", "logistic", "tanh", "relu"], ["relu"])
-                                            if len(act_func_list) == 0:
-                                                act_func_list = ["relu"]
-                                                st.error("Default value used: relu")
-                                            ann_tunePara["activation function"] = list([act_func_list, "NA"])
-                                            number_hidden_layers = st.selectbox("Number of hidden layers", [1, 2, 3])
-                                            ann_tunePara["number of hidden layers"]  = list([number_hidden_layers, "NA"])
-                                            # Cases for hidden layers
-                                            if number_hidden_layers == 1:
-                                                ann_tunePara["nodes per hidden layer"] = st.slider("Number of nodes in hidden layer", 5, 500, [50, 100])
-                                            if number_hidden_layers == 2:
-                                                number_nodes1 = st.slider("Number of neurons in first hidden layer", 5, 500, [50, 100])
-                                                number_nodes2 = st.slider("Number of neurons in second hidden layer", 5, 500, [50, 100])
-                                                min_nodes = list([number_nodes1[0], number_nodes2[0]])
-                                                max_nodes = list([number_nodes1[1], number_nodes2[1]])
-                                                ann_tunePara["nodes per hidden layer"] = list([min_nodes, max_nodes])
-                                            if number_hidden_layers == 3:
-                                                number_nodes1 = st.slider("Number of neurons in first hidden layer", 5, 500, [50, 100])
-                                                number_nodes2 = st.slider("Number of neurons in second hidden layer", 5, 500, [50, 100])
-                                                number_nodes3 = st.slider("Number of neurons in third hidden layer", 5, 500, [50, 100])
-                                                min_nodes = list([number_nodes1[0], number_nodes2[0], number_nodes3[0]])
-                                                max_nodes = list([number_nodes1[1], number_nodes2[1], number_nodes3[1]])
-                                                ann_tunePara["nodes per hidden layer"] = list([min_nodes, max_nodes])
-                                            ann_tunePara["learning rate"] = st.slider("Range for learning rate", 0.0001, 0.01, [0.0001, 0.001], step=1e-4, format="%.4f")
-                                            #ann_tunePara["learning rate"] = ann_tunePara["learning rate"]/10000
-                                            #learn_rate_list = st.multiselect("Learning rate schedule for weight updates", ["constant", "invscaling", "adaptive"], ["constant"])
-                                            #ann_tunePara["learning rate schedule"] = list([learn_rate_list, "NA"])
-                                            #if any(a for a in weight_opt_list if a == "sgd"):
-                                            #    ann_tunePara["momentum"] = st.slider("Momentum for gradient descent update", 0.0, 1.0, [0.85, 0.9]) 
-                                            ann_tunePara["L² regularization"] = st.slider("L² regularization parameter", 0.0, 0.001, [0.00001, 0.0001], step=1e-5, format="%.5f")
-                                            #ann_tunePara["L² regularization"] = ann_tunePara["L² regularization"]/100000
-                                            # if any(a for a in weight_opt_list if a == "adam"):
-                                            #     ann_tunePara["epsilon"] = st.slider("Value for numerical stability in adam (scale = 10e-10)", 0, 100, [5, 10])
-                                            #     ann_tunePara["epsilon"] = ann_tunePara["epsilon"]/1000000000 
+                                        if st.checkbox("Adjust tuning settings for Artificial Neural Networks"):
+                                            col1, col2 = st.beta_columns(2)
+                                            col3, col4 = st.beta_columns(2)
+                                            col5, col6 = st.beta_columns(2)
+                                            with col1:
+                                                weight_opt_list = st.selectbox("Weight optimization solver  ", ["adam"])
+                                                if len(weight_opt_list) == 0:
+                                                    weight_opt_list = ["adam"]
+                                                    st.warning("WARNING: Default value used 'adam'")
+                                                ann_tunePara["weight optimization solver"] = list([[weight_opt_list], "NA"])
+                                            with col2:
+                                                ann_tunePara["maximum number of iterations"] = st.slider("Maximum number of iterations (epochs) ", 10, 1000, [100, 200])
+                                            with col3:
+                                                act_func_list = st.multiselect("Activation function ", ["identity", "logistic", "tanh", "relu"], ["relu"])
+                                                if len(act_func_list) == 0:
+                                                    act_func_list = ["relu"]
+                                                    st.warning("WARNING: Default value used 'relu'")
+                                                ann_tunePara["activation function"] = list([act_func_list, "NA"])
+                                            with col5:
+                                                number_hidden_layers = st.selectbox("Number of hidden layers ", [1, 2, 3])
+                                                ann_tunePara["number of hidden layers"]  = list([number_hidden_layers, "NA"])
+                                                # Cases for hidden layers
+                                                if number_hidden_layers == 1:
+                                                    ann_tunePara["nodes per hidden layer"] = st.slider("Number of nodes in hidden layer ", 5, 500, [50, 100])
+                                                if number_hidden_layers == 2:
+                                                    number_nodes1 = st.slider("Number of neurons in first hidden layer ", 5, 500, [50, 100])
+                                                    number_nodes2 = st.slider("Number of neurons in second hidden layer ", 5, 500, [50, 100])
+                                                    min_nodes = list([number_nodes1[0], number_nodes2[0]])
+                                                    max_nodes = list([number_nodes1[1], number_nodes2[1]])
+                                                    ann_tunePara["nodes per hidden layer"] = list([min_nodes, max_nodes])
+                                                if number_hidden_layers == 3:
+                                                    number_nodes1 = st.slider("Number of neurons in first hidden layer ", 5, 500, [50, 100])
+                                                    number_nodes2 = st.slider("Number of neurons in second hidden layer ", 5, 500, [50, 100])
+                                                    number_nodes3 = st.slider("Number of neurons in third hidden layer ", 5, 500, [50, 100])
+                                                    min_nodes = list([number_nodes1[0], number_nodes2[0], number_nodes3[0]])
+                                                    max_nodes = list([number_nodes1[1], number_nodes2[1], number_nodes3[1]])
+                                                    ann_tunePara["nodes per hidden layer"] = list([min_nodes, max_nodes])
+                                            with col6:
+                                                if weight_opt_list == "adam": 
+                                                    ann_tunePara["learning rate"] = st.slider("Range for learning rate ", 0.0001, 0.01, [0.0001, 0.002], step=1e-4, format="%.4f")
+                                            with col4:
+                                                ann_tunePara["L² regularization"] = st.slider("L² regularization parameter ", 0.0, 0.001, [0.00001, 0.0002], step=1e-5, format="%.5f")
                                             hyPara_values["ann"] = ann_tunePara
                                     
                             #--------------------------------------------------------------------------------------
@@ -1102,11 +1294,14 @@ def app():
                             do_modval= st.selectbox("Use model validation", ["No", "Yes"])
 
                             if do_modval == "Yes":
-                                # Select training/ test ratio 
-                                train_frac = st.slider("Select training data size", 0.5, 0.95, 0.8)
+                                col1, col2 = st.beta_columns(2)
+                                # Select training/ test ratio
+                                with col1: 
+                                    train_frac = st.slider("Select training data size", 0.5, 0.95, 0.8)
 
                                 # Select number for validation runs
-                                val_runs = st.slider("Select number for validation runs", 5, 100, 10)
+                                with col2:
+                                    val_runs = st.slider("Select number for validation runs", 5, 100, 10)
 
                             #--------------------------------------------------------------------------------------
                             # PREDICTION SETTINGS
@@ -1357,6 +1552,7 @@ def app():
                                         st.warning("WARNING: Your new data set includes NAs. Rows with NAs are automatically deleted!")
                                     df_new = df_new[expl_var]
                                 
+                                
                             # Modelling data set
                             df = df[var_list]
 
@@ -1418,7 +1614,7 @@ def app():
                                 # ALGORITHMS
                                 
                                 st.write("Algorithms summary:")
-                                st.write("-",  ', '.join(sb_ML_alg))
+                                st.write("- Models:",  ', '.join(sb_ML_alg))
                                 if any(a for a in sb_ML_alg if a == "Multiple Linear Regression"):
                                     # st.write("- Multiple Linear Regression model: ", MLR_model)
                                     st.write("- Multiple Linear Regression including intercept: ", MLR_intercept)
@@ -1429,6 +1625,15 @@ def app():
                                 if any(a for a in sb_ML_alg if a == "Generalized Additive Models"):
                                     st.write("- Generalized Additive Models parameters: ")
                                     st.write(gam_finalPara)
+                                if any(a for a in sb_ML_alg if a == "Random Forest") and do_hypTune == "No":
+                                    st.write("- Random Forest parameters: ")
+                                    st.write(rf_finalPara)
+                                if any(a for a in sb_ML_alg if a == "Boosted Regression Trees") and do_hypTune == "No":
+                                    st.write("- Boosted Regression Trees parameters: ")
+                                    st.write(brt_finalPara)
+                                if any(a for a in sb_ML_alg if a == "Artificial Neural Networks") and do_hypTune == "No":
+                                    st.write("- Artificial Neural Networks parameters: ")
+                                    st.write(ann_finalPara)
                                 st.write("")
 
                                 #--------------------------------------------------------------------------------------
@@ -1448,17 +1653,17 @@ def app():
                                             st.write("")
                                         # Random Forest summary
                                         if any(a for a in sb_ML_alg if a == "Random Forest"):
-                                            st.write("Random Forest settings summary:")
+                                            st.write("Random Forest tuning settings summary:")
                                             st.write(rf_tunePara)
                                         # Boosted Regression Trees summary
                                         if any(a for a in sb_ML_alg if a == "Boosted Regression Trees"):
-                                            st.write("Boosted Regression Trees settings summary:")
+                                            st.write("Boosted Regression Trees tuning settings summary:")
                                             st.write(brt_tunePara)
                                         # Artificial Neural Networks summary
                                         if any(a for a in sb_ML_alg if a == "Artificial Neural Networks"):
-                                            st.write("Artificial Neural Networks settings summary:")
+                                            st.write("Artificial Neural Networks tuning settings summary:")
                                             st.write(ann_tunePara.style.format({"L² regularization": "{:.5}"}))
-                                            st.caption("** Learning rate is only used in adam")
+                                            #st.caption("** Learning rate is only used in adam")
                                         st.write("")
 
                                 # General settings summary
@@ -1485,6 +1690,12 @@ def app():
                             st.write("")
                             
                             if run_models:
+
+                                # Check if new data available
+                                if do_modprednew == "Yes":
+                                    if new_data_pred is None:
+                                        st.error("ERROR: Please upload new data for additional model predictions or select 'No'!")
+                                        return
 
                                 #Hyperparameter   
                                 if do_hypTune == "Yes":
@@ -1565,9 +1776,6 @@ def app():
                                 if do_modprednew == "Yes":
                                     if new_data_pred is not None:
                                         model_full_results = ml.model_full(df, df_new, sb_ML_alg, MLR_model, MLR_finalPara, LR_finalPara, response_var_type, response_var, expl_var, final_hyPara_values, gam_finalPara)
-                                    else:
-                                        st.error("ERROR: Please upload new data for additional model predictions or select 'No'!")
-                                        return
                                 if do_modprednew == "No":
                                     df_new = pd.DataFrame()
                                     model_full_results = ml.model_full(df, df_new, sb_ML_alg, MLR_model, MLR_finalPara, LR_finalPara, response_var_type, response_var, expl_var, final_hyPara_values, gam_finalPara)
@@ -4045,12 +4253,21 @@ def app():
                 excel_file.save()
                 excel_file = output.getvalue()
                 b64 = base64.b64encode(excel_file)
-                dl_file_name = "Hyperparameter-tuning output__" + df_name + ".xlsx"
-                st.markdown(
-                    f"""
-                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download hyperparameter-tuning output</a>
-                """,
-                unsafe_allow_html=True)
+                if do_hypTune == "Yes":
+                    dl_file_name = "Hyperparameter-tuning output__" + df_name + ".xlsx"
+                    st.markdown(
+                        f"""
+                    <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download hyperparameter-tuning output</a>
+                    """,
+                    unsafe_allow_html=True)
+                if do_hypTune != "Yes":
+                   dl_file_name = "Hyperparameter output__" + df_name + ".xlsx"
+                   st.markdown(
+                        f"""
+                    <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download hyperparameter output</a>
+                    """,
+                    unsafe_allow_html=True)
+                
                 st.write("")
 
 #--------------------------------------------------------------------------------------

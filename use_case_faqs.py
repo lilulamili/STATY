@@ -98,12 +98,10 @@ def app():
             st.write("Currently, the number of hidden layers is restriced to three layers.")
         with st.beta_expander("Why do I get an assertion error when clicking on run models?"):
             st.write("The assertion error probably occurs when Multiple Linear Regression is selected as algorithm. This means that the given matrix provided as an input through the selected variables cannot be solved. A solution might be the transformation of variables.")
-        with st.beta_expander("Why is there no loss curve for Artificial Neural Networks in some cases?"):
-            st.write("A loss curve is only provided for stochastic solvers, i.e. if in hyperparameter tuning lbfgs was selected as solver, no loss curve is shown.")
+        # with st.beta_expander("Why is there no loss curve for Artificial Neural Networks in some cases?"):
+        #     st.write("A loss curve is only provided for stochastic solvers, i.e. if in hyperparameter tuning lbfgs was selected as solver, no loss curve is shown.")
         with st.beta_expander("Why is there no partial dependence plot for some variables?"):
             st.write("If no curve for certain variables is shown, please check the names of the variables. Make sure that variable names do not contain any dots, e.g. my.variable, rather use my_variable.")
-        with st.beta_expander("How can I specify specific hyperparameters without tuning?"):
-            st.write("If you want to use specific final hyperparameters for Random Forest, Boosted Regression Trees or Artificial Neural Networks without a hyperparameter search, you can select grid-search in hyperparameter tuning and restrict the range in the setting for the specific hyperparameter to one value only.")
 
     panel_questions_container = st.beta_container()
     with panel_questions_container:

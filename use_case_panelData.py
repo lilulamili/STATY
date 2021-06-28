@@ -106,19 +106,6 @@ def app():
     #Basic data info
     n_rows = df.shape[0]
     n_cols = df.shape[1]
-    # df_name = "Grunfeld"
-    # if uploaded_data is not None:
-    #     df_name = list(uploaded_data.name.split(".")[:-1])
-    #     if len(df_name) > 1:
-    #         new_name = ""
-    #         for i in range(0, len(df_name)):
-    #             if i < len(df_name)-1:
-    #                 new_name += df_name[i]+"_"
-    #             if i == len(df_name)-1:
-    #                 new_name += df_name[i]
-    #         df_name = new_name
-    #     else:
-    #         df_name = df_name[0] 
 
     #++++++++++++++++++++++++++++++++++++++++++++
     # SETTINGS
@@ -223,7 +210,7 @@ def app():
             # Main panel for data summary (pre)
             #----------------------------------
 
-            dev_expander_dsPre = st.beta_expander("Explore raw panel data", expanded = False)
+            dev_expander_dsPre = st.beta_expander("Explore raw panel data info and stats", expanded = False)
             st.empty()
             with dev_expander_dsPre:
                 # Default data description:
@@ -513,12 +500,15 @@ def app():
             with dev_expander_dm_sb:
                 
                 n_rows_wNAs = df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0]
+                n_rows_wNAs_pre_processing = "No"
                 if n_rows_wNAs > 0:
+                    n_rows_wNAs_pre_processing = "Yes"
                     a1, a2, a3 = st.beta_columns(3)
                 else: a1, a3 = st.beta_columns(2)
 
                 sb_DM_dImp_num = None 
                 sb_DM_dImp_other = None
+                sb_DM_delRows=None
                 group_by_num = None
                 group_by_other = None
                 
@@ -529,8 +519,45 @@ def app():
                     st.markdown("**Data cleaning**")
 
                     # Delete rows
-                    sb_DM_delRows = st.multiselect("Select rows to delete", df.index, key = session_state.id)
-                    df = df.loc[~df.index.isin(sb_DM_delRows)]
+                    delRows =st.selectbox('Delete rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = session_state.id)
+                    if delRows!='-':                                
+                        if delRows=='between':
+                            row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                            row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                            if (row_1 + 1) < row_2 :
+                                sb_DM_delRows=df.index[(df.index > row_1) & (df.index < row_2)]
+                            elif (row_1 + 1) == row_2 : 
+                                st.warning("WARNING: No row is deleted!")
+                            elif row_1 == row_2 : 
+                                st.warning("WARNING: No row is deleted!")
+                            elif row_1 > row_2 :
+                                st.error("ERROR: Lower limit must be smaller than upper limit!")  
+                                return                   
+                        elif delRows=='equal':
+                            sb_DM_delRows = st.multiselect("to...", df.index, key = session_state.id)
+                        else:
+                            row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = session_state.id)                    
+                            if delRows=='greater':
+                                sb_DM_delRows=df.index[df.index > row_1]
+                                if row_1 == len(df)-1:
+                                    st.warning("WARNING: No row is deleted!") 
+                            elif delRows=='greater or equal':
+                                sb_DM_delRows=df.index[df.index >= row_1]
+                                if row_1 == 0:
+                                    st.error("ERROR: All rows are deleted!")
+                                    return
+                            elif delRows=='smaller':
+                                sb_DM_delRows=df.index[df.index < row_1]
+                                if row_1 == 0:
+                                    st.warning("WARNING: No row is deleted!") 
+                            elif delRows=='smaller or equal':
+                                sb_DM_delRows=df.index[df.index <= row_1]
+                                if row_1 == len(df)-1:
+                                    st.error("ERROR: All rows are deleted!")
+                                    return
+                        if sb_DM_delRows is not None:
+                            df = df.loc[~df.index.isin(sb_DM_delRows)]
+                            no_delRows=n_rows-df.shape[0]
 
                     # Delete columns
                     sb_DM_delCols = st.multiselect("Select columns to delete", df.drop([entity, time], axis = 1).columns, key = session_state.id)
@@ -553,7 +580,60 @@ def app():
                             df = df.dropna()
                     elif n_rows_wNAs == 0: 
                         sb_DM_delRows_wNA = "No"   
-                if n_rows_wNAs > 0:
+
+                    # Filter data
+                    st.markdown("**Data filtering**")
+                    filter_var = st.selectbox('Filter your data by a variable...', list('-')+ list(df.columns), key = session_state.id)
+                    if filter_var !='-':
+                        
+                        if df[filter_var].dtypes=="int64" or df[filter_var].dtypes=="float64": 
+                            if df[filter_var].dtypes=="float64":
+                                filter_format="%.8f"
+                            else:
+                                filter_format=None
+
+                            user_filter=st.selectbox('Select values that are ...', options=['greater','greater or equal','smaller','smaller or equal', 'equal','between'], key = session_state.id)
+                                                    
+                            if user_filter=='between':
+                                filter_1=st.number_input('Lower limit is', format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = session_state.id)
+                                filter_2=st.number_input('Upper limit is', format=filter_format, value=df[filter_var].max(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = session_state.id)
+                                #reclassify values:
+                                if filter_1 < filter_2 :
+                                    df = df[(df[filter_var] > filter_1) & (df[filter_var] < filter_2)] 
+                                    if len(df) == 0:
+                                        st.error("ERROR: No data available for the selected limits!")  
+                                    return        
+                                elif filter_1 >= filter_2 :
+                                    st.error("ERROR: Lower limit must be smaller than upper limit!")  
+                                    return                    
+                            elif user_filter=='equal':                            
+                                filter_1=st.multiselect('to... ', options=df[filter_var].values, key = session_state.id)
+                                if len(filter_1)>0:
+                                    df = df.loc[df[filter_var].isin(filter_1)]
+
+                            else:
+                                filter_1=st.number_input('than... ',format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = session_state.id)
+                                #reclassify values:
+                                if user_filter=='greater':
+                                    df = df[df[filter_var] > filter_1]
+                                elif user_filter=='greater or equal':
+                                    df = df[df[filter_var] >= filter_1]        
+                                elif user_filter=='smaller':
+                                    df= df[df[filter_var]< filter_1] 
+                                elif user_filter=='smaller or equal':
+                                    df = df[df[filter_var] <= filter_1]
+                    
+                                if len(df) == 0:
+                                    st.error("ERROR: No data available for the selected value!")
+                                    return 
+                                elif len(df) == n_rows:
+                                    st.warning("WARNING: Data are not filtered for this value!")         
+                        else:                  
+                            filter_1=st.multiselect('Filter your data by a value...', (df[filter_var]).unique(), key = session_state.id)
+                            if len(filter_1)>0:
+                                df = df.loc[df[filter_var].isin(filter_1)]
+
+                if n_rows_wNAs_pre_processing == "Yes":
                     with a2:
                         #--------------------------------------------------------------------------------------
                         # DATA IMPUTATION
@@ -574,6 +654,7 @@ def app():
                             st.markdown("**Data imputation**")
                             st.write("")
                             st.info("No NAs in data set!")
+                
                 with a3:
                     #--------------------------------------------------------------------------------------
                     # DATA TRANSFORMATION
@@ -660,6 +741,24 @@ def app():
                             division_pairs.loc[i]["Var2"] = div_var2
                             fc.var_transform_div(df, div_var1, div_var2)
 
+                    data_transfrom=st.checkbox("Transfrom data in Excel?", value=False)
+                    if data_transfrom==True:
+                        st.info("Press the button to open your data in Excel. Don't forget to save your result as a csv or a txt file!")
+                        # Download link for summary statistics
+                        output = BytesIO()
+                        excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                        df.to_excel(excel_file, sheet_name="data")    
+                        excel_file.save()
+                        excel_file = output.getvalue()
+                        b64 = base64.b64encode(excel_file)
+                        dl_file_name = "Data_transformation__" + df_name + ".xlsx"
+                        st.markdown(
+                            f"""
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Transfrom your data in Excel</a>
+                        """,
+                        unsafe_allow_html=True)
+                        st.write("")  
+
                 #--------------------------------------------------------------------------------------
                 # PROCESSING SUMMARY
 
@@ -670,12 +769,15 @@ def app():
                     # DATA CLEANING
 
                     # Rows
-                    if len(sb_DM_delRows) > 1:
-                        st.write("-", len(sb_DM_delRows), " rows were manually deleted:", ', '.join(map(str,sb_DM_delRows)))
-                    elif len(sb_DM_delRows) == 1:
-                        st.write("-",len(sb_DM_delRows), " row was manually deleted:", str(sb_DM_delRows[0]))
-                    elif len(sb_DM_delRows) == 0:
-                        st.write("- No row was manually deleted!")
+                    if sb_DM_delRows is not None and delRows!='-' :
+                        if no_delRows > 1:
+                            st.write("-", no_delRows, " rows were deleted!")
+                        elif no_delRows == 1:
+                            st.write("-",no_delRows, " row was deleted!")
+                        elif no_delRows == 0:
+                            st.write("- No row was deleted!")
+                    else:
+                        st.write("- No row was deleted!")
                     # Columns
                     if len(sb_DM_delCols) > 1:
                         st.write("-", len(sb_DM_delCols), " columns were manually deleted:", ', '.join(sb_DM_delCols))
@@ -699,6 +801,24 @@ def app():
                             st.write("-", n_rows - n_rows_wNAs, "row with NAs was deleted!")
                     else:
                         st.write("- No row with NAs was deleted!")
+                    # Filter
+                    if filter_var != "-":
+                        if df[filter_var].dtypes=="int64" or df[filter_var].dtypes=="float64":
+                            if isinstance(filter_1, list):
+                                if len(filter_1) == 0:
+                                    st.write("-", " Data was not filtered!")
+                                elif len(filter_1) > 0:
+                                    st.write("-", " Data filtered by:", str(filter_var))
+                            elif filter_1 is not None:
+                                st.write("-", " Data filtered by:", str(filter_var))
+                            else:
+                                st.write("-", " Data was not filtered!")
+                        elif len(filter_1)>0:
+                            st.write("-", " Data filtered by:", str(filter_var))
+                        elif len(filter_1) == 0:
+                            st.write("-", " Data was not filtered!")
+                    else:
+                        st.write("-", " Data was not filtered!")
                     
                     #--------------------------------------------------------------------------------------
                     # DATA IMPUTATION
@@ -773,8 +893,8 @@ def app():
             # UPDATED DATA SUMMARY   
 
             # Show only if changes were made
-            if  any(v for v in [sb_DM_delRows, sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or sb_DM_dTrans_mult != 0 or sb_DM_dTrans_div != 0:
-                dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed panel data", expanded = False)
+            if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or sb_DM_dTrans_mult != 0 or sb_DM_dTrans_div != 0 or filter_var != "-" or delRows!='-':
+                dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed panel data info and stats", expanded = False)
                 with dev_expander_dsPost:
                     if df.shape[1] > 2 and df.shape[0] > 0:
 
