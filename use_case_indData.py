@@ -3909,12 +3909,12 @@ def app():
 
                         # Metrics means
                         st.write("Means of metrics across validation runs:")
-                        st.write(model_val_results["mean"].transpose())
+                        st.write(model_val_results["mean"].transpose().style.set_precision(user_precision))
                         if sett_hints:
                             st.info(str(fc.learning_hints("mod_md_val_means")))
                         # Metrics sd
                         st.write("SDs of metrics across validation runs:")
-                        st.write(model_val_results["sd"].transpose())
+                        st.write(model_val_results["sd"].transpose().style.set_precision(user_precision))
                         if sett_hints:
                             st.info(str(fc.learning_hints("mod_md_val_sds")))
                         st.write("")
@@ -3965,10 +3965,10 @@ def app():
                         # Variable importance (via permutation)
                         st.write("Means of variable importances:")
                         varImp_table_mean = model_val_results["variable importance mean"]
-                        st.write(varImp_table_mean)
+                        st.write(varImp_table_mean.transpose().style.set_precision(user_precision))
                         st.write("SDs of variable importances:")
                         varImp_table_sd = model_val_results["variable importance sd"]
-                        st.write(varImp_table_sd)
+                        st.write(varImp_table_sd.transpose().style.set_precision(user_precision))
                         if sett_hints:
                             st.info(str(fc.learning_hints("mod_md_val_varImp")))
                         st.write("")
@@ -3983,7 +3983,7 @@ def app():
                                 model_val_res.loc["75%-Q"][m] = model_val_results["residuals"][m].quantile(q = 0.75)
                                 model_val_res.loc["max"][m] = model_val_results["residuals"][m].max()
                             st.write("Residuals distribution across all validation runs:")
-                            st.write(model_val_res.transpose())
+                            st.write(model_val_res.transpose().style.set_precision(user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_val_res")))
                         st.write("")
