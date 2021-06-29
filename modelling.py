@@ -1546,7 +1546,7 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             gam_reg_inf.loc["Terms"] = str(gam.terms)
             gam_reg_inf.loc["Features"] = gam.statistics_["m_features"]
             gam_reg_inf.loc["No. observations"] = gam.statistics_["n_samples"]
-            gam_reg_inf.loc["Effective DF"] = round(gam.statistics_["edof"],2)
+            gam_reg_inf.loc["Effective DF"] = gam.statistics_["edof"]
             # Statistics
             gam_reg_stats.loc["Log-likelihood"] = gam.statistics_["loglikelihood"]
             gam_reg_stats.loc["AIC"] = gam.statistics_["AIC"]
@@ -1564,16 +1564,16 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             for c in coef_list:
                 if c != "const":
                     gam_reg_featSign.loc[c]["feature function"] = "s(" + str(c) + ")"
-                    gam_reg_featSign.loc[c]["lambda"] = gam.lam[coef_list.index(c)]
+                    gam_reg_featSign.loc[c]["lambda"] = gam.lam[coef_list.index(c)][0]
                     gam_reg_featSign.loc[c]["rank"] = gam.n_splines[coef_list.index(c)]
                 else:
                     gam_reg_featSign.loc[c]["feature function"] = "intercept"
                     gam_reg_featSign.loc[c]["coeff"] = gam.coef_[-1]
                     gam_reg_featSign.loc[c]["rank"] = 1
                 index_save_end = index_save_start + gam_reg_featSign.loc[c]["rank"]
-                gam_reg_featSign.loc[c]["edof"] = round(sum(gam.statistics_["edof_per_coef"][index_save_start:index_save_end]),2)
+                gam_reg_featSign.loc[c]["edof"] = sum(gam.statistics_["edof_per_coef"][index_save_start:index_save_end])
                 index_save_start = index_save_end
-                gam_reg_featSign.loc[c]["p-value"] = str(gam.statistics_["p_values"][coef_list.index(c)])
+                gam_reg_featSign.loc[c]["p-value"] = gam.statistics_["p_values"][coef_list.index(c)]
             # Variable importance (via permutation, order important)
             scoring_function = make_scorer(r2_score, greater_is_better = True)
             gam_varImp = permutation_importance(gam , X_data, Y_data, n_repeats = 10, random_state = 0, scoring = scoring_function)
@@ -2204,7 +2204,7 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             gam_reg_inf.loc["Terms"] = str(gam.terms)
             gam_reg_inf.loc["Features"] = gam.statistics_["m_features"]
             gam_reg_inf.loc["No. observations"] = gam.statistics_["n_samples"]
-            gam_reg_inf.loc["Effective DF"] = round(gam.statistics_["edof"],2)
+            gam_reg_inf.loc["Effective DF"] = gam.statistics_["edof"]
             # Statistics
             gam_reg_stats.loc["Log-likelihood"] = gam.statistics_["loglikelihood"]
             gam_reg_stats.loc["AIC"] = gam.statistics_["AIC"]
@@ -2223,14 +2223,14 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             for c in coef_list:
                 if c != "const":
                     gam_reg_featSign.loc[c]["feature function"] = "s(" + str(c) + ")"
-                    gam_reg_featSign.loc[c]["lambda"] = gam.lam[coef_list.index(c)]
+                    gam_reg_featSign.loc[c]["lambda"] = gam.lam[coef_list.index(c)][0]
                     gam_reg_featSign.loc[c]["rank"] = gam.n_splines[coef_list.index(c)]
                 else:
                     gam_reg_featSign.loc[c]["feature function"] = "intercept"
                     gam_reg_featSign.loc[c]["coeff"] = gam.coef_[-1]
                     gam_reg_featSign.loc[c]["rank"] = 1
                 index_save_end = index_save_start + gam_reg_featSign.loc[c]["rank"]
-                gam_reg_featSign.loc[c]["edof"] = round(sum(gam.statistics_["edof_per_coef"][index_save_start:index_save_end]),2)
+                gam_reg_featSign.loc[c]["edof"] = sum(gam.statistics_["edof_per_coef"][index_save_start:index_save_end])
                 index_save_start = index_save_end
                 gam_reg_featSign.loc[c]["p-value"] = gam.statistics_["p_values"][coef_list.index(c)]
             # Variable importance (via permutation, order important)
