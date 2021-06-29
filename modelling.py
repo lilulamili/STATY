@@ -2232,7 +2232,7 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
                 index_save_end = index_save_start + gam_reg_featSign.loc[c]["rank"]
                 gam_reg_featSign.loc[c]["edof"] = round(sum(gam.statistics_["edof_per_coef"][index_save_start:index_save_end]),2)
                 index_save_start = index_save_end
-                gam_reg_featSign.loc[c]["p-value"] = str(gam.statistics_["p_values"][coef_list.index(c)])
+                gam_reg_featSign.loc[c]["p-value"] = gam.statistics_["p_values"][coef_list.index(c)]
             # Variable importance (via permutation, order important)
             scoring_function = make_scorer(roc_auc_score, greater_is_better = True)
             gam_varImp = permutation_importance(gam , X_data, Y_data, n_repeats = 10, random_state = 0, scoring = scoring_function)
