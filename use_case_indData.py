@@ -536,10 +536,10 @@ def app():
                 data_transfrom=st.checkbox("Transfrom data in Excel?", value=False)
                 if data_transfrom==True:
                     st.info("Press the button to open your data in Excel. Don't forget to save your result as a csv or a txt file!")
-                    # Download link for summary statistics
+                    # Download link
                     output = BytesIO()
                     excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
-                    df.to_excel(excel_file, sheet_name="data")    
+                    df.to_excel(excel_file, sheet_name="data",index=False)    
                     excel_file.save()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
