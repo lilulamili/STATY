@@ -1576,8 +1576,8 @@ def app():
                             test_dataset=df[[test_var,group_var,'test_class']].dropna()   
                               
                         #identifying two data samples
-                        test_sample_0 =test_dataset[test_dataset['test_class']==0]
-                        test_sample_1 =test_dataset[test_dataset['test_class']==1]
+                        test_sample_0 =test_dataset[test_dataset['test_class']==1]
+                        test_sample_1 =test_dataset[test_dataset['test_class']==0]
                        
                         st.write('Investigated variable: ' + test_var)
                         st.write('Group info: ' + group_var)                                              
