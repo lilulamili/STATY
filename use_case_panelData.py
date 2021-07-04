@@ -112,6 +112,8 @@ def app():
 
     settings_expander=st.sidebar.beta_expander('Settings')
     with settings_expander:
+        st.caption("**Precision**")
+        user_precision=st.number_input('Number of digits after the decimal point',min_value=0,max_value=10,step=1,value=4)
         st.caption("**Help**")
         sett_hints = st.checkbox('Show learning hints', value=False)
         st.caption("**Appearance**")
@@ -265,7 +267,7 @@ def app():
             
                 # Show summary statistics (raw data)
                 if st.checkbox('Show summary statistics (raw data)', value = False, key = session_state.id): 
-                    st.write(df_summary["ALL"])
+                    st.write(df_summary["ALL"].style.set_precision(user_precision))
                     
                     # Download link for summary statistics
                     output = BytesIO()
@@ -509,6 +511,7 @@ def app():
                 sb_DM_dImp_num = None 
                 sb_DM_dImp_other = None
                 sb_DM_delRows=None
+                sb_DM_keepRows=None
                 group_by_num = None
                 group_by_other = None
                 
@@ -559,9 +562,55 @@ def app():
                             df = df.loc[~df.index.isin(sb_DM_delRows)]
                             no_delRows=n_rows-df.shape[0]
 
+                    # Keep rows
+                    keepRows =st.selectbox('Keep rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = session_state.id)
+                    if keepRows!='-':                                
+                        if keepRows=='between':
+                            row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                            row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                            if (row_1 + 1) < row_2 :
+                                sb_DM_keepRows=df.index[(df.index > row_1) & (df.index < row_2)]
+                            elif (row_1 + 1) == row_2 : 
+                                st.error("ERROR: No row is kept!")
+                                return
+                            elif row_1 == row_2 : 
+                                st.error("ERROR: No row is kept!")
+                                return
+                            elif row_1 > row_2 :
+                                st.error("ERROR: Lower limit must be smaller than upper limit!")  
+                                return                   
+                        elif keepRows=='equal':
+                            sb_DM_keepRows = st.multiselect("to...", df.index, key = session_state.id)
+                        else:
+                            row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = session_state.id)                    
+                            if keepRows=='greater':
+                                sb_DM_keepRows=df.index[df.index > row_1]
+                                if row_1 == len(df)-1:
+                                    st.error("ERROR: No row is kept!") 
+                                    return
+                            elif keepRows=='greater or equal':
+                                sb_DM_keepRows=df.index[df.index >= row_1]
+                                if row_1 == 0:
+                                    st.warning("WARNING: All rows are kept!")
+                            elif keepRows=='smaller':
+                                sb_DM_keepRows=df.index[df.index < row_1]
+                                if row_1 == 0:
+                                    st.error("ERROR: No row is kept!") 
+                                    return
+                            elif keepRows=='smaller or equal':
+                                sb_DM_keepRows=df.index[df.index <= row_1]
+                        if sb_DM_keepRows is not None:
+                            df = df.loc[df.index.isin(sb_DM_keepRows)]
+                            no_keptRows=df.shape[0]
+
                     # Delete columns
                     sb_DM_delCols = st.multiselect("Select columns to delete", df.drop([entity, time], axis = 1).columns, key = session_state.id)
                     df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
+
+                    # Keep columns
+                    sb_DM_keepCols = st.multiselect("Select columns to keep", df.drop([entity, time], axis = 1).columns, key = session_state.id)
+                    if len(sb_DM_keepCols) > 0:
+                        df = df.loc[:,df.columns.isin([entity, time] + sb_DM_keepCols)]
 
                     # Delete duplicates if any exist
                     if df[df.duplicated()].shape[0] > 0:
@@ -672,6 +721,9 @@ def app():
                     sb_DM_dTrans_square = st.multiselect("Select columns for squaring", transform_options, key = session_state.id)
                     if sb_DM_dTrans_square is not None: 
                         df = fc.var_transform_square(df, sb_DM_dTrans_square)
+                    sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options, key = session_state.id)
+                    if sb_DM_dTrans_cent is not None: 
+                        df = fc.var_transform_cent(df, sb_DM_dTrans_cent)
                     sb_DM_dTrans_stand = st.multiselect("Select columns for standardization", transform_options, key = session_state.id)
                     if sb_DM_dTrans_stand is not None: 
                         df = fc.var_transform_stand(df, sb_DM_dTrans_stand)
@@ -757,7 +809,7 @@ def app():
                         <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Transfrom your data in Excel</a>
                         """,
                         unsafe_allow_html=True)
-                        st.write("")  
+                    st.write("")  
 
                 #--------------------------------------------------------------------------------------
                 # PROCESSING SUMMARY
@@ -778,6 +830,15 @@ def app():
                             st.write("- No row was deleted!")
                     else:
                         st.write("- No row was deleted!")
+                    if sb_DM_keepRows is not None and keepRows!='-' :
+                        if no_keptRows > 1:
+                            st.write("-", no_keptRows, " rows are kept!")
+                        elif no_keptRows == 1:
+                            st.write("-",no_keptRows, " row is kept!")
+                        elif no_keptRows == 0:
+                            st.write("- All rows are kept!")
+                    else:
+                        st.write("- All rows are kept!") 
                     # Columns
                     if len(sb_DM_delCols) > 1:
                         st.write("-", len(sb_DM_delCols), " columns were manually deleted:", ', '.join(sb_DM_delCols))
@@ -785,6 +846,12 @@ def app():
                         st.write("-",len(sb_DM_delCols), " column was manually deleted:", str(sb_DM_delCols[0]))
                     elif len(sb_DM_delCols) == 0:
                         st.write("- No column was manually deleted!")
+                    if len(sb_DM_keepCols) > 1:
+                        st.write("-", len(sb_DM_keepCols), " columns are kept:", ', '.join(sb_DM_keepCols))
+                    elif len(sb_DM_keepCols) == 1:
+                        st.write("-",len(sb_DM_keepCols), " column is kept:", str(sb_DM_keepCols[0]))
+                    elif len(sb_DM_keepCols) == 0:
+                        st.write("- All columns are kept!")
                     # Duplicates
                     if sb_DM_delDup == "Yes":
                         if n_rows_dup > 1:
@@ -852,6 +919,13 @@ def app():
                         st.write("-",len(sb_DM_dTrans_square), " column was squared:", sb_DM_dTrans_square[0])
                     elif len(sb_DM_dTrans_square) == 0:
                         st.write("- No column was squared!")
+                    # centering
+                    if len(sb_DM_dTrans_cent) > 1:
+                        st.write("-", len(sb_DM_dTrans_cent), " columns were centered:", ', '.join(sb_DM_dTrans_cent))
+                    elif len(sb_DM_dTrans_cent) == 1:
+                        st.write("-",len(sb_DM_dTrans_cent), " column was centered:", sb_DM_dTrans_cent[0])
+                    elif len(sb_DM_dTrans_cent) == 0:
+                        st.write("- No column was centered!")
                     # standardize
                     if len(sb_DM_dTrans_stand) > 1:
                         st.write("-", len(sb_DM_dTrans_stand), " columns were standardized:", ', '.join(sb_DM_dTrans_stand))
@@ -893,7 +967,7 @@ def app():
             # UPDATED DATA SUMMARY   
 
             # Show only if changes were made
-            if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or sb_DM_dTrans_mult != 0 or sb_DM_dTrans_div != 0 or filter_var != "-" or delRows!='-':
+            if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_cent, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or sb_DM_dTrans_mult != 0 or sb_DM_dTrans_div != 0 or filter_var != "-" or delRows!='-' or keepRows!='-' or len(sb_DM_keepCols) > 0:
                 dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed panel data info and stats", expanded = False)
                 with dev_expander_dsPost:
                     if df.shape[1] > 2 and df.shape[0] > 0:
@@ -926,7 +1000,7 @@ def app():
 
                         # Show summary statistics (cleaned and transformed data)
                         if st.checkbox('Show summary statistics (cleaned and transformed data)', value = False):
-                            st.write(df_summary_post["ALL"])
+                            st.write(df_summary_post["ALL"].style.set_precision(user_precision))
 
                             # Download link for cleaned data statistics
                             output = BytesIO()
@@ -949,10 +1023,9 @@ def app():
                                 st.caption("** Mode is not unique.") 
                             if sett_hints:
                                 st.info(str(fc.learning_hints("de_summary_statistics")))
-                        
-                        
-
-                    else: st.error("ERROR: No data available for preprocessing!") 
+                    else: 
+                        st.error("ERROR: No data available for preprocessing!") 
+                        return
 
                 dev_expander_anovPost = st.beta_expander("ANOVA for cleaned and transformed panel data", expanded = False)
                 with dev_expander_anovPost:
@@ -1152,7 +1225,9 @@ def app():
                             st.write("")       
                         else:
                             st.error("ERROR: The target variable must be a numerical one!")
-                    else: st.error("ERROR: No data available for ANOVA!") 
+                    else: 
+                        st.error("ERROR: No data available for ANOVA!") 
+                        return
                 
         #------------------------------------------------------------------------------------------
         
@@ -1178,7 +1253,7 @@ def app():
                     if df[var_sel].dtypes == "float64" or df[var_sel].dtypes == "float32" or df[var_sel].dtypes == "int64" or df[var_sel].dtypes == "int32":
                         a4, a5 = st.beta_columns(2)
                         with a4:
-                            st.write('**Scatterplot**')
+                            st.write('**Scatterplot with LOESS line**')
                             yy_options = df.columns
                             yy_options = yy_options[yy_options.isin(df.drop([entity, time], axis = 1).columns)]
                             yy = st.selectbox('Select variable for y-axis', yy_options, key = session_state.id)
@@ -1194,7 +1269,7 @@ def app():
                                     y = alt.Y(yy, scale = alt.Scale(zero = False), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                     tooltip = [yy, var_sel, entity, time, "Index"]
                                 )
-                                st.altair_chart(fig + fig.transform_regression(var_sel, yy).mark_line(size = 2, color = "darkred"), use_container_width=True)
+                                st.altair_chart(fig + fig.transform_loess(var_sel, yy).mark_line(size = 2, color = "darkred"), use_container_width=True)
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("dv_scatterplot")))
                             else: st.error("ERROR: Please select a numeric variable for the y-axis!")   
@@ -1349,6 +1424,7 @@ def app():
                                 st.error(expl_var_message_num)
                             elif expl_var_message_na != False:
                                 st.error(expl_var_message_na)
+                                
                             # Continue if everything is clean for explanatory variables and at least one was selected
                             elif expl_var_message_num == False and expl_var_message_na == False and len(expl_var) > 0:
                             
@@ -1358,14 +1434,17 @@ def app():
                                 st.markdown("**Specify modelling algorithm**")
 
                                 # Algorithms selection
+                                col1, col2 = st.beta_columns(2)
                                 algorithms = ["Entity Fixed Effects", "Time Fixed Effects", "Two-ways Fixed Effects", "Random Effects", "Pooled"]
-                                PDM_alg = st.selectbox("Select modelling technique", algorithms)
+                                with col1:
+                                    PDM_alg = st.selectbox("Select modelling technique", algorithms)
                                 
                                 # Covariance type
-                                PDM_cov_type = st.selectbox("Select covariance type", ["homoskedastic", "heteroskedastic", "clustered"])
-                                PDM_cov_type2 = None 
-                                if PDM_cov_type == "clustered":
-                                    PDM_cov_type2 = st.selectbox("Select cluster type", ["entity", "time", "both"])
+                                with col2:
+                                    PDM_cov_type = st.selectbox("Select covariance type", ["homoskedastic", "heteroskedastic", "clustered"])
+                                    PDM_cov_type2 = None 
+                                    if PDM_cov_type == "clustered":
+                                        PDM_cov_type2 = st.selectbox("Select cluster type", ["entity", "time", "both"])
 
                                 #--------------------------------------------------------------------------------------
                                 # VALIDATION SETTINGS
@@ -1375,11 +1454,14 @@ def app():
                                 do_modval= st.selectbox("Use model validation", ["No", "Yes"])
 
                                 if do_modval == "Yes":
+                                    col1, col2 = st.beta_columns(2)
                                     # Select training/ test ratio 
-                                    train_frac = st.slider("Select training data size", 0.5, 0.95, 0.8)
+                                    with col1:
+                                        train_frac = st.slider("Select training data size", 0.5, 0.95, 0.8)
 
                                     # Select number for validation runs
-                                    val_runs = st.slider("Select number for validation runs", 5, 100, 10)
+                                    with col2:
+                                        val_runs = st.slider("Select number for validation runs", 5, 100, 10)
 
                                 #--------------------------------------------------------------------------------------
                                 # PREDICTION SETTINGS
@@ -1735,6 +1817,12 @@ def app():
                                 # Run everything on button click
                                 if run_models:
 
+                                    # Check if new data available
+                                    if do_modprednew == "Yes":
+                                        if new_data_pred is None:
+                                            st.error("ERROR: Please upload new data for additional model predictions or select 'No'!")
+                                            return
+
                                     # Define clustered cov matrix "entity", "time", "both"
                                     cluster_entity = True
                                     cluster_time = False
@@ -1757,6 +1845,7 @@ def app():
 
                                     # Model validation
                                     if do_modval == "Yes":
+
                                         # Progress bar
                                         st.info("Validation progress")
                                         my_bar = st.progress(0.0)
@@ -1796,20 +1885,25 @@ def app():
 
                                             # Train selected panel model
                                             # efe
-                                            panel_model_efe_val = PanelOLS(Y_train, X_train, entity_effects = True, time_effects = False)
-                                            panel_model_fit_efe_val = panel_model_efe_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
+                                            if PDM_alg == "Entity Fixed Effects":
+                                                panel_model_efe_val = PanelOLS(Y_train, X_train, entity_effects = True, time_effects = False)
+                                                panel_model_fit_efe_val = panel_model_efe_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
                                             # tfe
-                                            panel_model_tfe_val = PanelOLS(Y_train, X_train, entity_effects = False, time_effects = True)
-                                            panel_model_fit_tfe_val = panel_model_tfe_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
+                                            if PDM_alg == "Time Fixed Effects":
+                                                panel_model_tfe_val = PanelOLS(Y_train, X_train, entity_effects = False, time_effects = True)
+                                                panel_model_fit_tfe_val = panel_model_tfe_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
                                             # twfe
-                                            panel_model_twfe_val = PanelOLS(Y_train, X_train, entity_effects = True, time_effects = True)
-                                            panel_model_fit_twfe_val = panel_model_twfe_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
+                                            if PDM_alg == "Two-ways Fixed Effects":
+                                                panel_model_twfe_val = PanelOLS(Y_train, X_train, entity_effects = True, time_effects = True)
+                                                panel_model_fit_twfe_val = panel_model_twfe_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
                                             # re
-                                            panel_model_re_val = RandomEffects(Y_train, X_train)
-                                            panel_model_fit_re_val = panel_model_re_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True)
+                                            if PDM_alg == "Random Effects":
+                                                panel_model_re_val = RandomEffects(Y_train, X_train)
+                                                panel_model_fit_re_val = panel_model_re_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True)
                                             # pool
-                                            panel_model_pool_val = PooledOLS(Y_train, X_train)
-                                            panel_model_fit_pool_val = panel_model_pool_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True)                   
+                                            if PDM_alg == "Pooled":
+                                                panel_model_pool_val = PooledOLS(Y_train, X_train)
+                                                panel_model_fit_pool_val = panel_model_pool_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True)                   
                                             # save selected model
                                             if PDM_alg == "Entity Fixed Effects":
                                                 panel_model_fit_val = panel_model_fit_efe_val
@@ -1826,7 +1920,7 @@ def app():
                                             if PDM_alg != "Pooled":
                                                 comb_effects = panel_model_fit_val.estimated_effects
                                             ent_effects = pd.DataFrame(index = X_train.reset_index()[entity].drop_duplicates(), columns = ["Value"])
-                                            time_effects = pd.DataFrame(index = sorted(list(X_train.reset_index()[time].drop_duplicates().drop_duplicates())), columns = ["Value"])
+                                            time_effects = pd.DataFrame(index = sorted(list(X_train.reset_index()[time].drop_duplicates())), columns = ["Value"])
 
                                             # Use LSDV for estimating effects
                                             if PDM_alg == "Entity Fixed Effects":
@@ -1985,7 +2079,6 @@ def app():
                                     if PDM_alg == "Pooled":
                                         panel_model_fit = panel_model_fit_pool
                                         
-
                                     # Entity information
                                     ent_inf = pd.DataFrame(index = ["No. entities", "Avg observations", "Median observations", "Min observations", "Max observations"], columns = ["Value"])
                                     ent_inf.loc["No. entities"] = panel_model_fit.entity_info["total"]
@@ -2084,6 +2177,7 @@ def app():
                                     reg_time_effects = pd.DataFrame(index = sorted(list(df[time].drop_duplicates())), columns = ["Value"])
                                     reg_comb_effects = panel_model_fit.estimated_effects
                                     reg_comb_effects.columns = ["Value"]
+                                    
                                     # Use LSDV for estimating effects
                                     Y_data_mlr = df[response_var]
                                     if PDM_alg == "Pooled" or PDM_alg == "Random Effects":
@@ -2334,11 +2428,11 @@ def app():
                 with full_out_col1:
                     # Entity information
                     st.write("Entity information:")
-                    st.write(model_full_results["Entity information"])
+                    st.table(model_full_results["Entity information"].style.set_precision(user_precision))
                 with full_out_col2:
                     # Time information
                     st.write("Time period information:")
-                    st.write(model_full_results["Time information"])
+                    st.table(model_full_results["Time information"].style.set_precision(user_precision))
                 if sett_hints:
                     st.info(str(fc.learning_hints("mod_pd_information")))
                 st.write("")
@@ -2347,11 +2441,11 @@ def app():
                 with full_out_col3:
                     # Regression information
                     st.write("Regression information:")
-                    st.write(model_full_results["Regression information"])
+                    st.table(model_full_results["Regression information"].style.set_precision(user_precision))
                 with full_out_col4:
                     # Regression statistics
                     st.write("Regression statistics:")
-                    st.write(model_full_results["Regression statistics"])
+                    st.table(model_full_results["Regression statistics"].style.set_precision(user_precision))
                 if sett_hints:
                     st.info(str(fc.learning_hints("mod_pd_regression")))
                 st.write("")
@@ -2363,18 +2457,18 @@ def app():
                         st.write("Overall performance (with effects):")
                     if PDM_alg == "Pooled":
                         st.write("Overall performance :")
-                    st.write(model_full_results["Overall performance"])
+                    st.table(model_full_results["Overall performance"].style.set_precision(user_precision))
                 # Residuals
                 with full_out_col_op2:
                     st.write("Residuals:")
-                    st.write(model_full_results["Residuals"])     
+                    st.table(model_full_results["Residuals"].style.set_precision(user_precision))     
                 if sett_hints:
                     st.info(str(fc.learning_hints("mod_pd_overallPerf")))
                 st.write("")
 
                 # Coefficients
                 st.write("Coefficients:")
-                st.write(model_full_results["Coefficients"])
+                st.table(model_full_results["Coefficients"].style.set_precision(user_precision))
                 if sett_hints:
                     st.info(str(fc.learning_hints("mod_pd_coef")))
                 st.write("") 
@@ -2384,23 +2478,24 @@ def app():
                     full_out_col5, full_out_col6 = st.beta_columns(2)
                     with full_out_col5:
                         st.write("Entity effects:")
-                        st.write(model_full_results["Entity effects"])
+                        st.write(model_full_results["Entity effects"].style.set_precision(user_precision))
                     with full_out_col6:
                         st.write("Time effects:")
-                        st.write(model_full_results["Time effects"])
+                        st.write(model_full_results["Time effects"].style.set_precision(user_precision))
                     full_out_col7, full_out_col8 = st.beta_columns(2)
                     with full_out_col7:
                         st.write("Combined effects:")
                         st.write(model_full_results["Combined effects"]) 
                     with full_out_col8: 
-                        if sett_hints:
-                            st.info(str(fc.learning_hints("mod_pd_effects")))
+                        st.write("")
+                    if sett_hints:
+                        st.info(str(fc.learning_hints("mod_pd_effects")))
                     st.write("")  
 
                 # ANOVA
                 if PDM_alg == "Pooled":
                     st.write("ANOVA:")
-                    st.write(model_full_results["ANOVA"])
+                    st.table(model_full_results["ANOVA"].style.set_precision(user_precision))
                     if sett_hints:
                         st.info(str(fc.learning_hints("mod_pd_anova")))
                     st.write("")  
@@ -2410,11 +2505,15 @@ def app():
                     full_out_col_re1, full_out_col_re2 = st.beta_columns(2)
                     with full_out_col_re1:
                         st.write("Variance decomposition:")
-                        st.write(model_full_results["Variance decomposition"])
-                        st.write(model_full_results["Theta"])
+                        st.table(model_full_results["Variance decomposition"].style.set_precision(user_precision))
                     with full_out_col_re2:
-                        st.write("F-tests:")
-                        st.write(model_full_results["tests"]) 
+                        st.write("Theta:")
+                        st.table(model_full_results["Theta"].transpose().style.set_precision(user_precision))
+                    if sett_hints:
+                        st.info(str(fc.learning_hints("mod_pd_varDecRE")))
+                    st.write("")
+                    st.write("F-tests:")
+                    st.table(model_full_results["tests"].transpose().style.set_precision(user_precision)) 
                     if sett_hints:
                         st.info(str(fc.learning_hints("mod_pd_testRE")))
                     st.write("")    
@@ -2422,7 +2521,7 @@ def app():
                     if PDM_cov_type == "homoskedastic":
                         st.write("F-tests and Hausman-test:")
                     else: st.write("F-tests:")
-                    st.write(model_full_results["tests"])
+                    st.table(model_full_results["tests"].transpose().style.set_precision(user_precision))
                     if PDM_cov_type == "homoskedastic":
                         if sett_hints:
                             st.info(str(fc.learning_hints("mod_pd_testEFE_homosk")))
@@ -2432,7 +2531,7 @@ def app():
                     st.write("")  
                 if PDM_alg != "Entity Fixed Effects" and PDM_alg != "Random Effects":
                     st.write("F-tests:")
-                    st.write(model_full_results["tests"])
+                    st.table(model_full_results["tests"].transpose().style.set_precision(user_precision))
                     if PDM_alg == "Pooled":
                         if sett_hints:
                             st.info(str(fc.learning_hints("mod_pd_test_pooled")))
@@ -2444,32 +2543,10 @@ def app():
                 # Heteroskedasticity tests
                 if PDM_alg == "Pooled":
                     st.write("Heteroskedasticity tests:")
-                    st.write(model_full_results["hetTests"])
+                    st.table(model_full_results["hetTests"].transpose().style.set_precision(user_precision))
                     if sett_hints:
                         st.info(str(fc.learning_hints("mod_md_MLR_hetTest"))) 
                     st.write("")          
-
-                # # Residuals
-                # st.write("Residuals:")
-                # full_out_col8, full_out_col9 = st.beta_columns(2)
-                # with full_out_col8:
-                #     st.write(model_full_results["Residuals"])     
-                #     st.write("")
-                # with full_out_col9:
-                #     res = panel_model_fit.resids.values.copy()
-                #     residual_results = pd.DataFrame(res, columns = ["AbsResiduals"])
-                #     residual_results["AbsResiduals"] = residual_results["AbsResiduals"].abs()
-                #     residual_results["Index"] = df.index
-                #     #residuals_bplot = pd.melt(residual_results, ignore_index = False, value_name = "Residuals")
-                #     residuals_chart = alt.Chart(residual_results, height = 200).mark_bar(size = 2).encode(
-                #         x = alt.X("Index", title = "index", axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
-                #         y = alt.Y("AbsResiduals", title = "abs(residuals)", axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
-                #         tooltip = ["AbsResiduals", "Index"]
-                #     ).configure_axis(
-                #         labelFontSize = 12,
-                #         titleFontSize = 12
-                #     )
-                #     st.altair_chart(residuals_chart, use_container_width = True)
                 
                 # Graphical output
                 full_out_col10, full_out_col11 = st.beta_columns(2)
@@ -2668,11 +2745,11 @@ def app():
                     with val_col1:
                         # Metrics
                         st.write("Means of metrics across validation runs:")
-                        st.write(model_val_results["mean"])
+                        st.table(model_val_results["mean"].style.set_precision(user_precision))
                     with val_col2:
                         # Metrics
                         st.write("SDs of metrics across validation runs:")
-                        st.write(model_val_results["sd"])
+                        st.table(model_val_results["sd"].style.set_precision(user_precision))
                     if sett_hints:
                         st.info(str(fc.learning_hints("mod_pd_val_metrics"))) 
                     st.write("")
@@ -2729,9 +2806,13 @@ def app():
                         model_val_res.loc["75%-Q"]["Value"] = model_val_results["residuals"][response_var].quantile(q = 0.75)
                         model_val_res.loc["max"]["Value"] = model_val_results["residuals"][response_var].max()
                         st.write("Residuals distribution across all validation runs:")
-                        st.write(model_val_res)
-                        if sett_hints:
-                            st.info(str(fc.learning_hints("mod_pd_val_res")))
+                        col1, col2 = st.beta_columns(2)
+                        with col1:
+                            st.table(model_val_res.style.set_precision(user_precision))
+                            if sett_hints:
+                                st.info(str(fc.learning_hints("mod_pd_val_res")))
+                        with col2:
+                            st.write("")
                         st.write("")
 
                    # Download link for validation output

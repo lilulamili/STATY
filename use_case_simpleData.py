@@ -1,7 +1,9 @@
 #----------------------------------------------------------------------------------------------
+from operator import index
 import streamlit as st
 import pandas as pd
 import numpy as np
+from streamlit.proto.DataFrame_pb2 import Index
 from streamlit.proto.RootContainer_pb2 import SIDEBAR
 import plotly as dd
 import plotly.express as px
@@ -258,11 +260,11 @@ def app():
                  # Download link for data
                 output = BytesIO()
                 excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
-                df.to_excel(excel_file, sheet_name="data")    
+                df.to_excel(excel_file, sheet_name="data",index=False)    
                 excel_file.save()
                 excel_file = output.getvalue()
                 b64 = base64.b64encode(excel_file)
-                dl_file_name = "Univariate_data_.xlsx"
+                dl_file_name = df_name + "_staty.xlsx"
                 st.markdown(
                     f"""
                 <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Show data in Excel</a>
@@ -296,7 +298,7 @@ def app():
                 df_datasumstat=df_summary["ALL"]
                 #dfStyler = df_datasumstat.style.set_properties(**{'text-align': 'left'}).set_table_styles([dict(selector = 'th', props=[('text-align', 'left')])]) 
                 
-                st.write(df_datasumstat)
+                st.write(df_datasumstat.style.set_precision(user_precision))
                 if fc.get_mode(df).loc["n_unique"].any():
                     st.caption("** Mode is not unique.")
                 if sett_hints:
@@ -341,6 +343,7 @@ def app():
             sb_DM_dImp_num = None 
             sb_DM_dImp_other = None
             sb_DM_delRows=None
+            sb_DM_keepRows=None
             
             with a1:
                 #--------------------------------------------------------------------------------------
@@ -389,9 +392,55 @@ def app():
                         df = df.loc[~df.index.isin(sb_DM_delRows)]
                         no_delRows=n_rows-df.shape[0]
 
+                # Keep rows
+                keepRows =st.selectbox('Keep rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = session_state.id)
+                if keepRows!='-':                                
+                    if keepRows=='between':
+                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                        if (row_1 + 1) < row_2 :
+                            sb_DM_keepRows=df.index[(df.index > row_1) & (df.index < row_2)]
+                        elif (row_1 + 1) == row_2 : 
+                            st.error("ERROR: No row is kept!")
+                            return
+                        elif row_1 == row_2 : 
+                            st.error("ERROR: No row is kept!")
+                            return
+                        elif row_1 > row_2 :
+                            st.error("ERROR: Lower limit must be smaller than upper limit!")  
+                            return                   
+                    elif keepRows=='equal':
+                        sb_DM_keepRows = st.multiselect("to...", df.index, key = session_state.id)
+                    else:
+                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = session_state.id)                    
+                        if keepRows=='greater':
+                            sb_DM_keepRows=df.index[df.index > row_1]
+                            if row_1 == len(df)-1:
+                                st.error("ERROR: No row is kept!") 
+                                return
+                        elif keepRows=='greater or equal':
+                            sb_DM_keepRows=df.index[df.index >= row_1]
+                            if row_1 == 0:
+                                st.warning("WARNING: All rows are kept!")
+                        elif keepRows=='smaller':
+                            sb_DM_keepRows=df.index[df.index < row_1]
+                            if row_1 == 0:
+                                st.error("ERROR: No row is kept!") 
+                                return
+                        elif keepRows=='smaller or equal':
+                            sb_DM_keepRows=df.index[df.index <= row_1]
+                    if sb_DM_keepRows is not None:
+                        df = df.loc[df.index.isin(sb_DM_keepRows)]
+                        no_keptRows=df.shape[0]
+
                 # Delete columns
                 sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
                 df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
+
+                # Keep columns
+                sb_DM_keepCols = st.multiselect("Select columns to keep", df.columns, key = session_state.id)
+                if len(sb_DM_keepCols) > 0:
+                    df = df.loc[:,df.columns.isin(sb_DM_keepCols)]
 
                 # Delete duplicates if any exist
                 if df[df.duplicated()].shape[0] > 0:
@@ -500,6 +549,9 @@ def app():
                 sb_DM_dTrans_square = st.multiselect("Select columns for squaring ", transform_options, key = session_state.id)
                 if sb_DM_dTrans_square is not None: 
                     df = fc.var_transform_square(df, sb_DM_dTrans_square)
+                sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options, key = session_state.id)
+                if sb_DM_dTrans_cent is not None: 
+                    df = fc.var_transform_cent(df, sb_DM_dTrans_cent)
                 sb_DM_dTrans_stand = st.multiselect("Select columns for standardization ", transform_options, key = session_state.id)
                 if sb_DM_dTrans_stand is not None: 
                     df = fc.var_transform_stand(df, sb_DM_dTrans_stand)
@@ -585,7 +637,7 @@ def app():
                     <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Transfrom your data in Excel</a>
                     """,
                     unsafe_allow_html=True)
-                    st.write("")   
+                st.write("")   
                     
             #--------------------------------------------------------------------------------------
             # PROCESSING SUMMARY
@@ -606,7 +658,15 @@ def app():
                         st.write("- No row was deleted!")
                 else:
                     st.write("- No row was deleted!")
-
+                if sb_DM_keepRows is not None and keepRows!='-' :
+                    if no_keptRows > 1:
+                        st.write("-", no_keptRows, " rows are kept!")
+                    elif no_keptRows == 1:
+                        st.write("-",no_keptRows, " row is kept!")
+                    elif no_keptRows == 0:
+                        st.write("- All rows are kept!")
+                else:
+                    st.write("- All rows are kept!") 
                 # Columns
                 if len(sb_DM_delCols) > 1:
                     st.write("-", len(sb_DM_delCols), " columns were deleted:", ', '.join(sb_DM_delCols))
@@ -614,6 +674,12 @@ def app():
                     st.write("-",len(sb_DM_delCols), " column was deleted:", str(sb_DM_delCols[0]))
                 elif len(sb_DM_delCols) == 0:
                     st.write("- No column was deleted!")
+                if len(sb_DM_keepCols) > 1:
+                    st.write("-", len(sb_DM_keepCols), " columns are kept:", ', '.join(sb_DM_keepCols))
+                elif len(sb_DM_keepCols) == 1:
+                    st.write("-",len(sb_DM_keepCols), " column is kept:", str(sb_DM_keepCols[0]))
+                elif len(sb_DM_keepCols) == 0:
+                    st.write("- All columns are kept!")
                 # Duplicates
                 if sb_DM_delDup == "Yes":
                     if n_rows_dup > 1:
@@ -680,6 +746,13 @@ def app():
                     st.write("-",len(sb_DM_dTrans_square), " column was squared:", sb_DM_dTrans_square[0])
                 elif len(sb_DM_dTrans_square) == 0:
                     st.write("- No column was squared!")
+                # centering
+                if len(sb_DM_dTrans_cent) > 1:
+                    st.write("-", len(sb_DM_dTrans_cent), " columns were centered:", ', '.join(sb_DM_dTrans_cent))
+                elif len(sb_DM_dTrans_cent) == 1:
+                    st.write("-",len(sb_DM_dTrans_cent), " column was centered:", sb_DM_dTrans_cent[0])
+                elif len(sb_DM_dTrans_cent) == 0:
+                    st.write("- No column was centered!")
                 # standardize
                 if len(sb_DM_dTrans_stand) > 1:
                     st.write("-", len(sb_DM_dTrans_stand), " columns were standardized:", ', '.join(sb_DM_dTrans_stand))
@@ -721,7 +794,7 @@ def app():
         # UPDATED DATA SUMMARY   
 
         # Show only if changes were made
-        if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or filter_var != "-" or delRows!='-':
+        if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_cent, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or filter_var != "-" or delRows!='-' or keepRows!='-' or len(sb_DM_keepCols) > 0:
             dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed data info and stats ", expanded = False)
             with dev_expander_dsPost:
                 if df.shape[1] > 0 and df.shape[0] > 0:
@@ -754,7 +827,7 @@ def app():
 
                     # Show summary statistics (cleaned and transformed data)
                     if st.checkbox('Show summary statistics (cleaned and transformed data) ', value = False, key = session_state.id):
-                        st.write(df_summary_post["ALL"])
+                        st.write(df_summary_post["ALL"].style.set_precision(user_precision))
 
                         # Download link for cleaned summary statistics
                         output = BytesIO()
@@ -801,11 +874,18 @@ def app():
                 x_var = st.selectbox('Select x variable for your scatterplot', df.columns, key = session_state.id)    
                 y_var = st.selectbox('Select y variable for your scatterplot', df.columns, key = session_state.id)
                 
-                fig = px.scatter(x=df[x_var], y=df[y_var], color_discrete_sequence=['rgba(55, 126, 184, 0.7)'])
+                if x_var==y_var:
+                    df_to_plot=df[[x_var]]
+                else: 
+                    df_to_plot=df[[x_var,y_var]]
+                df_to_plot['Index']=df.index
+                fig = px.scatter(data_frame=df_to_plot, x=x_var, y=y_var,hover_data=[x_var, y_var, 'Index'], color_discrete_sequence=['rgba(77, 121, 169, 0.7)'])
                 fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',}) 
-                fig.update_layout(xaxis=dict(title=x_var, titlefont_size=12, tickfont_size=14,),)
-                fig.update_layout(yaxis=dict(title=y_var, titlefont_size=12, tickfont_size=14,),)
-                st.plotly_chart(fig,use_container_width=True) 
+                fig.update_layout(xaxis=dict(title=x_var, titlefont_size=14, tickfont_size=14,),)
+                fig.update_layout(yaxis=dict(title=y_var, titlefont_size=14, tickfont_size=14,),)
+                fig.update_layout(hoverlabel=dict(bgcolor="white", ))
+                fig.update_layout(height=400,width=400)
+                st.plotly_chart(fig) 
                 
                 if sett_hints:
                     st.info(str(fc.learning_hints("dv_scatterplot")))
@@ -821,21 +901,28 @@ def app():
                 st.markdown("") 
                 st.markdown("") 
                 st.markdown("") 
-                    
+                
+                df_to_plot[bx_var]=df[bx_var]    
                 fig = go.Figure()
-                fig.add_trace(go.Box(
-                    y=df[bx_var],
-                    name=str(bx_var),boxpoints='all', jitter=0.2,whiskerwidth=0.2,
-                    marker_color = 'indianred', marker_size=2, line_width=1)
+                fig.add_trace(go.Box( 
+                    y=df[bx_var],name=bx_var,
+                    boxpoints='all', jitter=0,whiskerwidth=0.2,
+                    marker_color = 'indianred', customdata=df_to_plot['Index'], marker_size=2, line_width=1)
                 )
-                #fillcolor='rgba(31, 119, 180, 0.7)',
-                fig.update_layout(font=dict(size=12,),)
+                fig.update_traces(hovertemplate=bx_var+': %{y} <br> Index: %{customdata}') 
+                #fig = px.box(df_to_plot, y=bx_var,points='all',labels={bx_var:bx_var}, color_discrete_sequence =['indianred'], notched=False, hover_data=[bx_var,"Index"]   )
+                #fig.update_traces(marker=dict(size=2))
+                #fig.update_traces(line=dict(width=1))
+                
+
+                fig.update_layout(font=dict(size=14,),)
                 fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',})  
-                st.plotly_chart(fig, use_container_width=True)
+                fig.update_layout(hoverlabel=dict(bgcolor="white",align="left"))
+                fig.update_layout(height=400,width=400)
+                st.plotly_chart(fig)
 
                 if sett_hints:
                     st.info(str(fc.learning_hints("dv_boxplot")))
-
 
     #---------------------------------
     # METHODS
@@ -859,6 +946,9 @@ def app():
         with dev_expander_fa:
                 
             feature = st.selectbox('Which variable would you like to analyse?', df.columns, key = session_state.id)
+            
+            if len(df[feature])!=len(df[feature].dropna()):
+                st.warning("WARNING: Your data set includes NAs! To ensure comparability of your results, we recommend you to go through the data cleaning process within 'Data screening and processing' section.")
             user_order=[] 
             
             
@@ -975,8 +1065,9 @@ def app():
                 
                     fig.add_trace(go.Bar(x=class_mean, y=fa_val, name='Relative frequency',marker_color = 'indianred',opacity=0.5))
                     fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',})  
-                    fig.update_layout(yaxis=dict(title='Relative frequency', titlefont_size=12, tickfont_size=14,),)
-                    fig.update_layout(xaxis=dict(title=feature, titlefont_size=12, tickfont_size=14,),)
+                    fig.update_layout(yaxis=dict(title='Relative frequency', titlefont_size=14, tickfont_size=14,),)
+                    fig.update_layout(xaxis=dict(title=feature, titlefont_size=14, tickfont_size=14,),)
+                    fig.update_layout(hoverlabel=dict(bgcolor="white",align="left"))
                     st.plotly_chart(fig, use_container_width=True)
                 
                 else:
@@ -992,8 +1083,9 @@ def app():
                 
                     fig.add_trace(go.Bar(x=names, y=rel_freq, name='Relative frequency',marker_color = 'indianred',opacity=0.5))
                     fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',})  
-                    fig.update_layout(yaxis=dict(title='Relative frequency', titlefont_size=12, tickfont_size=14,),)
-                    fig.update_layout(xaxis=dict(title=feature, titlefont_size=12, tickfont_size=14,),)
+                    fig.update_layout(yaxis=dict(title='Relative frequency', titlefont_size=14, tickfont_size=14,),)
+                    fig.update_layout(xaxis=dict(title=feature, titlefont_size=14, tickfont_size=14,),)
+                    fig.update_layout(hoverlabel=dict(bgcolor="white",align="left"))
                     st.plotly_chart(fig, use_container_width=True)
                     
                     #write frequency analysis table
@@ -1065,7 +1157,11 @@ def app():
                 if len((df[clas_var]).unique())>=len(df[clas_var]):
                     st.error("ERROR: The variable you selected is not suitable as a classifier!")
                 else:
-                    
+                    anova_data=df[[clas_var,target_var]]
+                    if len(anova_data)!=len(anova_data.dropna()):
+                        anova_data=anova_data.dropna()
+                        st.warning("WARNING: Your data set includes NAs. Rows with NAs are automatically deleted!")          
+                        st.write("")    
                     run_anova = st.button("Press to perform one-way ANOVA") 
                     st.write("") 
                     st.write("")
@@ -1073,19 +1169,26 @@ def app():
                     if run_anova:         
                         
                         # Boxplot
+                        anova_data['Index']=anova_data.index
                         fig = go.Figure()
                         fig.add_trace(go.Box(
-                            x=df[clas_var],y=df[target_var],
-                            name='', boxpoints='all', jitter=0.2,
+                            x=anova_data[clas_var],y=anova_data[target_var],customdata=anova_data['Index'],
+                            name='', boxpoints='all', jitter=0,
                             whiskerwidth=0.2, marker_color = 'indianred',
                             marker_size=2, line_width=1))
                         fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',})  
-                        
-                        
+                        fig.update_layout(font=dict(size=14,),)
+                        fig.update_layout(hoverlabel=dict(bgcolor="white", ))
+                        fig.update_traces(hovertemplate=target_var+': %{y} <br> Index: %{customdata}') 
+                        fig.update_layout(height=400,width=400)
+
                         # Histogram
-                        fig1 = px.histogram(df, height=400, x=target_var, color=clas_var)     
+                        fig1 = px.histogram(anova_data, height=400, x=target_var, color=clas_var)     
                         fig1.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',}) 
                         fig1.update_traces(opacity=0.35) 
+                        fig1.update_layout(yaxis=dict(titlefont_size=14, tickfont_size=14,),)
+                        fig1.update_layout(xaxis=dict(titlefont_size=14, tickfont_size=14,),)
+                        fig1.update_layout(height=400,width=400)
 
                         a4,a5=st.beta_columns(2)
                         with a4:
@@ -1096,7 +1199,7 @@ def app():
                             st.plotly_chart(fig1, use_container_width=True)
                         
                         # ANOVA calculation & plots
-                        df_grouped=df[[target_var,clas_var]].groupby(clas_var)
+                        df_grouped=anova_data.groupby(clas_var)
                         overal_mean=(df_grouped.mean()*df_grouped.count()).sum()/df_grouped.count().sum()
                         dof1=len(df_grouped.count())-1
                         dof2=df_grouped.count().sum()-len(df_grouped.count())
@@ -1110,16 +1213,19 @@ def app():
                         F_stat=mqe_stat/mqr_stat
                         p_value=scipy.stats.f.sf(F_stat, dof1, dof2)
                         
+                        anova_summary=pd.DataFrame(index=df_grouped.mean().index,columns=["count", "mean" , "variance"])
+                        anova_summary["count"]=df_grouped.count()
+                        anova_summary["mean"]=df_grouped.mean()
+                        anova_summary["variance"]=df_grouped.var()
 
-                        anova_summary=pd.concat([df_grouped.count(),df_grouped.mean(),df_grouped.var()], axis=1)
-                        anova_summary.columns={"count", "mean" , "variance"}
                         st.subheader("Groups summary:")
                         st.table(anova_summary.style.set_precision(user_precision))
-
+                        
+                        
                         anova_table=pd.DataFrame({
-                            "Deviance": [sqe_stat.values[0], sqr_stat.values[0], sq_tot.values[0]],
+                            "SS": [sqe_stat.values[0], sqr_stat.values[0], sq_tot.values[0]],
                             "DOF": [dof1, dof2.values[0], dof_tot.values[0]],
-                            "Mean squared error": [mqe_stat.values[0], mqe_stat.values[0], ""],
+                            "MS": [mqe_stat.values[0], mqe_stat.values[0], ""],
                             "F": [F_stat.values[0], "", ""],
                             "p-value": [p_value[0], "", ""]},
                             index=["Between groups", "Within groups", "Total"],)
@@ -1128,43 +1234,45 @@ def app():
                         st.table(anova_table.style.set_precision(user_precision))
 
                         #Anova (OLS)
-                        codes, uniques = pd.factorize(df[clas_var])
-                        ano_ols = sm.OLS(df[target_var], sm.add_constant(codes))
+                        codes, uniques = pd.factorize(anova_data[clas_var])
+                        ano_ols = sm.OLS(anova_data[target_var], sm.add_constant(codes))
                         ano_ols_output= ano_ols.fit()
-                        residuals=df[target_var]-ano_ols_output.fittedvalues
+                        residuals=anova_data[target_var]-ano_ols_output.fittedvalues
 
                         # Q-Q plot residuals
                         qq_plot_data = pd.DataFrame()
                         qq_plot_data["Theoretical quantiles"] = stats.probplot(residuals, dist="norm")[0][0]
                         qq_plot_data["StandResiduals"] = sorted((residuals - residuals.mean())/residuals.std())
-                        qq_plot = alt.Chart(qq_plot_data,height=400).mark_circle(size=20).encode(
-                            x = alt.X("Theoretical quantiles", title = "theoretical quantiles", scale = alt.Scale(domain = [min(qq_plot_data["Theoretical quantiles"]), max(qq_plot_data["Theoretical quantiles"])]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
-                            y = alt.Y("StandResiduals", title = "stand. residuals", axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
-                            tooltip = ["StandResiduals", "Theoretical quantiles"]
-                        )
-                        line = alt.Chart(
-                            pd.DataFrame({"Theoretical quantiles": [min(qq_plot_data["Theoretical quantiles"]), max(qq_plot_data["Theoretical quantiles"])], "StandResiduals": [min(qq_plot_data["Theoretical quantiles"]), max(qq_plot_data["Theoretical quantiles"])]})).mark_line(size = 2, color = "darkred").encode(
-                                    alt.X("Theoretical quantiles"),
-                                    alt.Y("StandResiduals"),
-                        )
-                        
+                        qq_plot_data["Index"]=qq_plot_data.index                                                
+                        qq_plot = px.scatter(data_frame=qq_plot_data, x="Theoretical quantiles", y="StandResiduals",
+                            hover_data=["Theoretical quantiles", "StandResiduals", 'Index'], color_discrete_sequence=['rgba(77, 121, 169, 0.7)'])
+                        qq_plot.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',}) 
+                        qq_plot.update_layout(xaxis=dict(title="theoretical quantiles", titlefont_size=14, tickfont_size=14,),)
+                        qq_plot.update_layout(yaxis=dict(title="stand. residuals", titlefont_size=14, tickfont_size=14,),)
+                        qq_plot.update_layout(hoverlabel=dict(bgcolor="white", ))
+                        qq_plot.update_layout(height=400,width=400)
+
+
                         # histogram - residuals
-                        res_hist = px.histogram(residuals, histnorm='probability density',opacity=0.7,color_discrete_sequence=['indianred'] ,height=400)                    
+                        res_hist = px.histogram(residuals, histnorm='probability density',opacity=0.5,color_discrete_sequence=['indianred'] ,height=400)                    
                         res_hist.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',}) 
-                        res_hist.layout.showlegend = False                
+                        res_hist.layout.showlegend = False 
+                        res_hist.update_layout(hoverlabel=dict(bgcolor="white", ))   
+                        res_hist.update_layout(xaxis=dict(title="residuals", titlefont_size=14, tickfont_size=14,),)  
+                        res_hist.update_layout(height=400,width=400)          
 
                         a4,a5=st.beta_columns(2)
                         with a4:
                             st.subheader("Q-Q plot")
-                            st.altair_chart(qq_plot + line, use_container_width=True)
+                            st.plotly_chart(qq_plot, use_container_width=True)
                         with a5:
                             st.subheader("Histogram")
-                            st.plotly_chart(res_hist, use_container_width=True)
+                            st.plotly_chart(res_hist,use_container_width=True)
                     
                         output = BytesIO()
                         excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                         if anova_data_output==True:
-                            df[[target_var,clas_var]].to_excel(excel_file, sheet_name="data")
+                            anova_data.to_excel(excel_file, sheet_name="data")
                         anova_summary.to_excel(excel_file, sheet_name="Groups summary")
                         anova_table.to_excel(excel_file, sheet_name="ANOVA")
                         excel_file.save()
@@ -1200,9 +1308,14 @@ def app():
             # Test selection
             test_sel = st.selectbox('Select the test', ['z-test','One sample location t-test', 'Two sample location t-test'], key = session_state.id)     
 
+            #Variance assumption two sample t-test
+            if test_sel=='Two sample location t-test':
+                    test_variance_ass=st.selectbox('Select variance assumption', ['equal variance', 'unequal variance'], key = session_state.id) 
+            
             # Test variable                       
             test_var = st.selectbox('Select the test variable', df.columns, key = session_state.id)
             
+                        
             if df[test_var].dtypes=="int64" or df[test_var].dtypes=="float64":                    
                 
                 a4,a5=st.beta_columns(2)                
@@ -1213,33 +1326,39 @@ def app():
                     if test_sel=='z-test':
                         with a5:
                             test_variance=st.number_input('Enter the population variance',format="%.8f", key = session_state.id) 
-                    if test_sel=='Two sample location t-test':
-                        test_variance_ass=st.selectbox('Select variance assumption', ['equal variance', 'unequal variance'], key = session_state.id) 
-                            
+                    
             else:
                 st.error("ERROR: The test variable must be a numerical one!")       
             
-            if test_sel =='Two sample location t-test': 
-                #a4,a5=st.beta_columns(2) 
-                with a4:
-                    group_var = st.selectbox('Select the sample info variable', df.columns, key = session_state.id)
+            if test_sel =='Two sample location t-test':                 
+                
+                group_var = st.selectbox('Select the sample info variable', df.columns, key = session_state.id)
                
                 if df[group_var].unique().size>2:  
-                    with a5:  
+                    a4,a5=st.beta_columns(2)    
+                    with a4:  
                         st.write("")                      
                         st.warning('The variable ' + group_var + ' has more than two realisations! Choose another variable or reclassify ' + group_var+ '!')            
                         test_check=False
-                                       
+
+                    with a5: 
+                        st.write("")       
+                        st.write("") 
+                        st.write("")            
                         test_group_var_reclas=st.checkbox('Reclassify '+group_var, value=False )        
                         test_check=False
+
                     if test_group_var_reclas==True:
                         test_check=True
-                        if df[group_var].dtypes=="int64" or df[group_var].dtypes=="float64": 
+                        
+                        
+                        if df[group_var].dtypes=="int64" or df[group_var].dtypes=="float64":                           
+
                             a4,a5=st.beta_columns(2)
                             with a4: 
                                 test_recl=st.selectbox('First group is where values are ...', options=['greater','greater or equal','smaller','smaller or equal', 'equal','between'], key = session_state.id)
-                           
-                            with a5:
+                                   
+                            with a5:                                
                                 if test_recl=='between':
                                     test_recl_thr_1=st.number_input('Lower limit for the classification',format="%.8f", key = session_state.id)
                                     test_recl_thr_2=st.number_input('Upper limit for the classification',format="%.8f", key = session_state.id)
@@ -1251,7 +1370,7 @@ def app():
                                     
                                      #reclassify values:
                                     if test_recl=='greater':
-                                        df['test_class'] = np.where((df[group_var] > test_recl_thr_1),1,0) 
+                                       df['test_class'] = np.where((df[group_var] > test_recl_thr_1),1,0) 
                                         
                                     elif test_recl=='greater or equal':
                                         df['test_class'] = np.where((df[group_var] >= test_recl_thr_1),1,0) 
@@ -1272,7 +1391,6 @@ def app():
                             with a4:
                                 test_recl=st.selectbox('First group is where values are ...', options=(df[group_var]).unique(), key = session_state.id)
                                 df['test_class'] = np.where((df[group_var] == test_recl),1,0) 
-                                #st.write(df[[test_var,group_var,'test_class']])
                                 test_check=True
              
             st.write("")    
@@ -1450,16 +1568,13 @@ def app():
                     #  'Two sample location t-test'
                     elif test_sel=='Two sample location t-test':
                         st.subheader("Two sample location t-test")
-                        st.write("")
+                        st.write("")                      
                        
-                        #test_var group_var
-                        #test_variance_ass
-                        #df['test_class']
                         if test_var==group_var:
                             test_dataset=df[[test_var,'test_class']].dropna()                            
-                        else:
+                        else:                            
                             test_dataset=df[[test_var,group_var,'test_class']].dropna()   
-                        
+                              
                         #identifying two data samples
                         test_sample_0 =test_dataset[test_dataset['test_class']==0]
                         test_sample_1 =test_dataset[test_dataset['test_class']==1]
@@ -1544,6 +1659,9 @@ def app():
                         t_stats.loc["p-value - less"]=p_value_less
                         t_stats.loc["p-value - greater"]=p_value_greater
                         t_stats.loc["p-value - two sided"]=p_value_two_sided
+
+                        #clean dataset
+                        df=df.drop(['test_class'], axis=1)
 
                         st.write("")                 
                         st.write("")
@@ -1655,7 +1773,7 @@ def app():
                         st.info('The sum of squared diferences (SSD) is smallest for the "' +best_name + ' distribution"  \n The p-value of the $\chi^2$ statistics is largest for the "'+ max_p +' distribution"')
                     else:
                         st.info('The sum of squared diferences (SSD) is smallest for the "' +best_name + ' distribution"  \n The p-value of the $\chi^2$ statistics is for none of the distributions above 5%')
-                    st.subheader("A comparision of relative frequencies")
+                    st.subheader("A comparison of relative frequencies")
                     rel_freq_comp=pd.DataFrame(xlower,columns=['Lower limit'])
                     rel_freq_comp['Upper limit']= xupper
                     rel_freq_comp['Class mean']=x_mid
@@ -1668,7 +1786,7 @@ def app():
                     st.table(rel_freq_comp.style.set_precision(user_precision))
                             
                     # Plot results:
-                    st.subheader("A comparision of relative frequencies (empirical vs. theoretical)")
+                    st.subheader("A comparison of relative frequencies (empirical vs. theoretical)")
                     fig = go.Figure()
                     
                     fig.add_trace(go.Bar(x=x_mid, y=rel_freq, name='empirical',marker_color = 'indianred',opacity=0.5))
@@ -1687,7 +1805,7 @@ def app():
                     if ft_data_output==True:
                         ft_data.to_excel(excel_file, sheet_name="data")
                     results[['SSD', 'Chi-squared','DOF', 'p-value','Distribution']].to_excel(excel_file, sheet_name="Goodness-of-fit results")
-                    rel_freq_comp.to_excel(excel_file, sheet_name="frequency comparision")
+                    rel_freq_comp.to_excel(excel_file, sheet_name="frequency comparison")
                     excel_file.save()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
@@ -1935,8 +2053,6 @@ def app():
                                 model_comparison.loc["SSR"][reg_technique] = np.round_(((Y_data-Y_pred)**2).sum(),decimals=user_precision)
 
 
-
-
                                 # scatterplot with the initial data:
                                 x_label=str(X_label_prefix[reg_technique])+str(ra_Xvar)
                                 y_label=str(Y_label_prefix[reg_technique])+str(ra_Yvar)
@@ -1944,40 +2060,52 @@ def app():
                                 
                                 if reg_technique=='Polynomial Regression':
                                     reg_plot_data[ra_Xvar] = X_ini 
+                                    
                                 else:                                         
                                     reg_plot_data[ra_Xvar] = X_data
-
+                                    
+                                reg_plot_data["Index"] = reg_plot_data[ra_Xvar].index
                                 reg_plot_data[ra_Yvar] = Y_data
                                 reg_plot = alt.Chart(reg_plot_data,height=400).mark_circle(size=20).encode(
                                     x = alt.X(ra_Xvar, scale = alt.Scale(domain = [min(reg_plot_data[ra_Xvar]), max(reg_plot_data[ra_Xvar])]), axis = alt.Axis(title=x_label, titleFontSize = 12, labelFontSize = 11)),
                                     y = alt.Y(ra_Yvar, scale = alt.Scale(domain = [min(min(reg_plot_data[ra_Yvar]),min(Y_pred)), max(max(reg_plot_data[ra_Yvar]),max(Y_pred))]), axis = alt.Axis(title=y_label,titleFontSize = 12, labelFontSize = 11)),
-                                    tooltip = [alt.Tooltip(shorthand=ra_Xvar,title=x_label), alt.Tooltip(shorthand=ra_Yvar,title=y_label)]
+                                    tooltip = [ra_Xvar,ra_Yvar,"Index"]
                                 )
                                 
                                 # model fit plot 
                                 line_plot_data = pd.DataFrame()
                                 if reg_technique=='Polynomial Regression':
-                                    line_plot_data[ra_Xvar] = X_ini 
+                                    line_plot_data[ra_Xvar] = X_ini                                     
                                 else:       
                                     line_plot_data[ra_Xvar] = X_data
-                                line_plot_data[ra_Yvar] = Y_pred
+                                reg_technique
+                                line_plot_data[reg_technique+'_'+ra_Yvar] = Y_pred
+
+                                line_plot_data.to_excel(excel_file, sheet_name="Fit_"+reg_technique)
                                 
-                                line_plot = alt.Chart(line_plot_data,height=400).mark_circle(size=20).mark_point(opacity=0.2, color='darkred').encode(
+                                line_plot_data[ra_Yvar] = Y_pred
+                                line_plot_data["Index"]=line_plot_data[ra_Xvar].index    
+                                
+
+                                line_plot_0 = alt.Chart(line_plot_data,height=400).mark_line(size = 2, color = "darkred").encode( x=ra_Xvar, y=ra_Yvar)
+                                
+                                line_plot = alt.Chart(line_plot_data,height=400).mark_circle(size=1).mark_point(opacity=0, color='darkred').encode(
                                     x = alt.X(ra_Xvar, scale = alt.Scale(domain = [min(reg_plot_data[ra_Xvar]), max(reg_plot_data[ra_Xvar])]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                     y = alt.Y(ra_Yvar, scale = alt.Scale(domain = [min(min(reg_plot_data[ra_Yvar]),min(Y_pred)), max(max(reg_plot_data[ra_Yvar]),max(Y_pred))]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
-                                    tooltip = [alt.Tooltip(shorthand=ra_Xvar,title=x_label), alt.Tooltip(shorthand=ra_Yvar,title=y_label)]
+                                    tooltip = [alt.Tooltip(shorthand=ra_Xvar,title=x_label), alt.Tooltip(shorthand=ra_Yvar,title='Fit_'+y_label),"Index"]
                                 )
-                                
-                                
+
+
                                 # Q-Q plot residuals
                                 qq_plot_data = pd.DataFrame()
                                 residuals=Y_data-Y_pred
                                 qq_plot_data["Theoretical quantiles"] = stats.probplot(residuals, dist="norm")[0][0]
                                 qq_plot_data["StandResiduals"] = sorted((residuals - residuals.mean())/residuals.std())
+                                qq_plot_data["Index"] = qq_plot_data["Theoretical quantiles"].index
                                 qq_plot = alt.Chart(qq_plot_data,height=400).mark_circle(size=20).encode(
                                     x = alt.X("Theoretical quantiles", title = "theoretical quantiles", scale = alt.Scale(domain = [min(qq_plot_data["Theoretical quantiles"]), max(qq_plot_data["Theoretical quantiles"])]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                     y = alt.Y("StandResiduals", title = "stand. residuals", axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
-                                    tooltip = ["StandResiduals", "Theoretical quantiles"]
+                                    tooltip = ["StandResiduals", "Theoretical quantiles","Index"]
                                 )
                                 line = alt.Chart(
                                     pd.DataFrame({"Theoretical quantiles": [min(qq_plot_data["Theoretical quantiles"]), max(qq_plot_data["Theoretical quantiles"])], "StandResiduals": [min(qq_plot_data["Theoretical quantiles"]), max(qq_plot_data["Theoretical quantiles"])]})).mark_line(size = 2, color = "darkred").encode(
@@ -1999,7 +2127,7 @@ def app():
                                     a4,a5=st.beta_columns(2)
                                     with a4:
                                         st.subheader("Regression plot")
-                                        st.altair_chart(reg_plot +line_plot, use_container_width=True) 
+                                        st.altair_chart(reg_plot +line_plot_0+line_plot, use_container_width=True) 
                                     with a5:
                                         st.subheader("Q-Q plot")
                                         st.altair_chart(qq_plot + line, use_container_width=True)
@@ -2007,7 +2135,7 @@ def app():
                                     a4,a5=st.beta_columns(2)
                                     with a4:
                                         st.subheader("Regression plot")
-                                        st.altair_chart(reg_plot +line_plot, use_container_width=True) 
+                                        st.altair_chart(reg_plot +line_plot_0+line_plot, use_container_width=True) 
                                     with a5:
                                         st.subheader("Q-Q plot")
                                         st.altair_chart(qq_plot + line, use_container_width=True)   
@@ -2022,7 +2150,7 @@ def app():
                             st.write("")  
 
                             
-                            model_output.to_excel(excel_file, sheet_name="Model comparision")
+                            model_output.to_excel(excel_file, sheet_name="Model comparison")
                             excel_file.save()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
@@ -2101,14 +2229,14 @@ def app():
                             st.table(pd.DataFrame(data={'min': [min(df[cont_numerical[0]])], 'max': [max(df[cont_numerical[0]])]},index=['range']))
                             low0=st.number_input(str(cont_numerical[0]) + ': 1st class should start at?')
                             up0=st.number_input(str(cont_numerical[0]) + ': Max limit for your classes?')
-                            noclass0= st.number_input(str(cont_numerical[0]) + ': Number of classes?',step=1)
+                            noclass0= st.number_input(str(cont_numerical[0]) + ': ax number of classes? (Fully empty classes will be ignored!)',step=1)
                         
                         with a5:
                             st.subheader(str(cont_numerical[1]))
                             st.table(pd.DataFrame(data={'min': [min(df[cont_numerical[1]])], 'max': [max(df[cont_numerical[1]])]},index=['range']))
                             low1=st.number_input(str(cont_numerical[1]) + ': 1st class should start at?')
                             up1=st.number_input(str(cont_numerical[1]) + ': Max limit for your classes?')
-                            noclass1= st.number_input(str(cont_numerical[1]) + ': Number of classes?',step=1)
+                            noclass1= st.number_input(str(cont_numerical[1]) + ': Max number of classes? (Fully empty classes will be ignored!)',step=1)
                         
                     elif len(cont_numerical)==1 and len(cont_categs)==1:
                         data_reclas=1
@@ -2119,9 +2247,8 @@ def app():
                             st.table( {'min': [min(df[cont_numerical[0]])], 'max': [max(df[cont_numerical[0]])]})
                             low0=st.number_input(str(cont_numerical[0]) + ': 1st class should start at?')
                             up0=st.number_input(str(cont_numerical[0]) + ': Max limit for your classes?')
-                            noclass0= st.number_input(str(cont_numerical[0]) + ': Number of classes?')
-                        
-                    
+                            noclass0= st.number_input(str(cont_numerical[0]) + ': Max number of classes? (Fully empty classes will be ignored!)')
+                                        
                     else:           
                         st.info("Please try data reclassification outside of Staty as the sort of classification you might need is not yet implemented!")    
                 
@@ -2158,7 +2285,7 @@ def app():
                 st.write("")    
              
                 if run_cont:                    
-
+                    cont_df=df    
                     if sett_hints:
                         st.info(str(fc.learning_hints("contingency_hints")))
                         st.write("")
@@ -2169,27 +2296,27 @@ def app():
                         lim_ser=lim_ser.round(user_precision) 
 
                         for k in range(len(lim_ser)-1):
-                            df.loc[(df[cont_numerical[0]]>lim_ser[k]) & (df[cont_numerical[0]] <= lim_ser[k+1]), cont_numerical[0]] = lim_ser[k]
-                        df.loc[df[cont_numerical[0]]>max(lim_ser), cont_numerical[0]] = '>'+ str(max(lim_ser))#+step0
+                            cont_df.loc[(cont_df[cont_numerical[0]]>lim_ser[k]) & (cont_df[cont_numerical[0]] <= lim_ser[k+1]), cont_numerical[0]] = lim_ser[k]
+                        cont_df.loc[cont_df[cont_numerical[0]]>lim_ser[k+1], cont_numerical[0]] = '>'+ str(max(lim_ser))#+step0
 
                         step1=(up1-low1)/noclass1
                         lim_ser1 = pd.Series(np.arange(low1, up1, step1))
+                        lim_ser1=lim_ser1.round(user_precision) 
                         for k in range(len(lim_ser1)-1):
-                            df.loc[(df[cont_numerical[1]]>lim_ser1[k]) & (df[cont_numerical[1]] <= lim_ser1[k+1]), cont_numerical[1]] = lim_ser1[k]
-                        df.loc[df[cont_numerical[1]]>max(lim_ser1), cont_numerical[1]] = '>'+ str(max(lim_ser1))
+                            cont_df.loc[(cont_df[cont_numerical[1]]>lim_ser1[k]) & (cont_df[cont_numerical[1]] <= lim_ser1[k+1]), cont_numerical[1]] = lim_ser1[k]
+                        cont_df.loc[cont_df[cont_numerical[1]]>lim_ser1[k+1], cont_numerical[1]] = '>'+ str(max(lim_ser1))
                     elif data_reclas==1:
                         step0=(up0-low0)/noclass0
-                        lim_ser = pd.Series(np.arange(low0, up0, step0)) 
-                        lim_ser=lim_ser.round(user_precision)                                             
-                        
-                        for k in range(len(lim_ser)-1):
-                            
-                            df.loc[(df[cont_numerical[0]]>lim_ser[k]) & (df[cont_numerical[0]] <= lim_ser[k+1]), cont_numerical[0]] = lim_ser[k]
-                        df.loc[df[cont_numerical[0]]>max(lim_ser), cont_numerical[0]] = '>'+ str(max(lim_ser))
-    
-                
-                    bivarite_table = pd.crosstab(index= df.iloc[:,0], columns= df.iloc[:,1] , margins=True, margins_name="Total")
-                    stat, p, dof, expected = chi2_contingency(pd.crosstab(index= df.iloc[:,0], columns= df.iloc[:,1])) 
+                        lim_ser = pd.Series(np.arange(low0, up0, step0))                         
+                        lim_ser=lim_ser.round(user_precision)   
+
+                       
+                        for k in range(len(lim_ser)-1):                                                  
+                            cont_df.loc[(cont_df[cont_numerical[0]]>lim_ser[k]) & (cont_df[cont_numerical[0]] <= lim_ser[k+1]), cont_numerical[0]] = lim_ser[k+1]
+                        cont_df.loc[cont_df[cont_numerical[0]]>lim_ser[k+1], cont_numerical[0]] = '>'+ str(max(lim_ser))
+                     
+                    bivarite_table = pd.crosstab(index= cont_df.iloc[:,0], columns= cont_df.iloc[:,1] , margins=True, margins_name="Total")
+                    stat, p, dof, expected = chi2_contingency(pd.crosstab(index= cont_df.iloc[:,0], columns= cont_df.iloc[:,1])) 
                         
                     st.subheader('Contingency table with absolute frequencies')    
                     st.table(bivarite_table)

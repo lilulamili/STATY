@@ -389,10 +389,13 @@ def get_mode(data):
                 df_mode.loc["n_unique"][i] = "True"
 
         elif col.dtypes == "object":
-            df_mode.loc["mode"][i] = col.mode().iloc[0]
-            if col.mode().unique().size > 1:
-                df_mode.loc["mode"][i] = str(col.mode().iloc[0]) +" **"
-                df_mode.loc["n_unique"][i] = "True"
+            if col.isnull().all() == False:
+                df_mode.loc["mode"][i] = col.mode().iloc[0]
+                if col.mode().unique().size > 1:
+                    df_mode.loc["mode"][i] = str(col.mode().iloc[0]) +" **"
+                    df_mode.loc["n_unique"][i] = "True"
+            else: 
+                df_mode.loc["mode"][i] = np.nan 
 
         elif col.dtypes == "int64" and col.unique().size > 2:
             df_mode.loc["mode"][i] = col.mode().iloc[0]
@@ -756,6 +759,20 @@ def var_transform_square(data, var_list):
         if data[i].dtypes == "float64" or data[i].dtypes == "int64" or data[i].dtypes == "float32" or data[i].dtypes == "int32":
             new_var_name = "square_" + i
             new_var = np.square(data[i])
+            data[new_var_name] = new_var 
+
+    return data
+
+#---------------------------------------------------------------------------------------------
+#FUNCTION FOR TRANSFORMING VARIABLE TO CENT_VARIABLE
+
+def var_transform_cent(data, var_list):
+    for i in var_list:
+
+        # transform only if numeric     
+        if data[i].dtypes == "float64" or data[i].dtypes == "int64" or data[i].dtypes == "float32" or data[i].dtypes == "int32":
+            new_var_name = "cent_" + i
+            new_var = (data[i] - data[i].mean())
             data[new_var_name] = new_var 
 
     return data
@@ -2579,6 +2596,17 @@ def learning_hints(name):
         random_hint = randint(0, len(learning_hint_options)-1)
         learning_hint = learning_hint_options[random_hint]
     
+    # Modelling - Variance decomposition (Random Models)
+    if name == "mod_pd_varDecRE":
+        # All options
+        learning_hint_options = [
+        "How is the variance distributed?",
+        "How is theta used in the random effects model?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
     # Modelling - Statistical tests (Random Models)
     if name == "mod_pd_testRE":
         # All options
@@ -2593,8 +2621,6 @@ def learning_hints(name):
         "What is the difference between the non-robust and robust F-test?",
         "Do the non-robust and robust F-test lead to the same conclusion?", 
         "Do the p-values of the non-robust and robust F-test coincide?",
-        "How is the variance distributed?",
-        "How is theta used in the random effects model?" 
         ]
         # Randomly select an option
         random_hint = randint(0, len(learning_hint_options)-1)

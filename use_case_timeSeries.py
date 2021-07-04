@@ -252,6 +252,7 @@ def app():
             sb_DM_dImp_num = None 
             sb_DM_dImp_other = None
             sb_DM_delRows=None
+            sb_DM_keepRows=None
             
             with a1:
                 #--------------------------------------------------------------------------------------
@@ -300,9 +301,55 @@ def app():
                         df = df.loc[~df.index.isin(sb_DM_delRows)]
                         no_delRows=n_rows-df.shape[0]
 
+                # Keep rows
+                keepRows =st.selectbox('Keep rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = session_state.id)
+                if keepRows!='-':                                
+                    if keepRows=='between':
+                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                        if (row_1 + 1) < row_2 :
+                            sb_DM_keepRows=df.index[(df.index > row_1) & (df.index < row_2)]
+                        elif (row_1 + 1) == row_2 : 
+                            st.error("ERROR: No row is kept!")
+                            return
+                        elif row_1 == row_2 : 
+                            st.error("ERROR: No row is kept!")
+                            return
+                        elif row_1 > row_2 :
+                            st.error("ERROR: Lower limit must be smaller than upper limit!")  
+                            return                   
+                    elif keepRows=='equal':
+                        sb_DM_keepRows = st.multiselect("to...", df.index, key = session_state.id)
+                    else:
+                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = session_state.id)                    
+                        if keepRows=='greater':
+                            sb_DM_keepRows=df.index[df.index > row_1]
+                            if row_1 == len(df)-1:
+                                st.error("ERROR: No row is kept!") 
+                                return
+                        elif keepRows=='greater or equal':
+                            sb_DM_keepRows=df.index[df.index >= row_1]
+                            if row_1 == 0:
+                                st.warning("WARNING: All rows are kept!")
+                        elif keepRows=='smaller':
+                            sb_DM_keepRows=df.index[df.index < row_1]
+                            if row_1 == 0:
+                                st.error("ERROR: No row is kept!") 
+                                return
+                        elif keepRows=='smaller or equal':
+                            sb_DM_keepRows=df.index[df.index <= row_1]
+                    if sb_DM_keepRows is not None:
+                        df = df.loc[df.index.isin(sb_DM_keepRows)]
+                        no_keptRows=df.shape[0]
+
                 # Delete columns
                 sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
                 df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
+
+                # Keep columns
+                sb_DM_keepCols = st.multiselect("Select columns to keep", df.columns, key = session_state.id)
+                if len(sb_DM_keepCols) > 0:
+                    df = df.loc[:,df.columns.isin(sb_DM_keepCols)]
 
                 # Delete duplicates if any exist
                 if df[df.duplicated()].shape[0] > 0:
@@ -411,6 +458,9 @@ def app():
                 sb_DM_dTrans_square = st.multiselect("Select columns for squaring ", transform_options, key = session_state.id)
                 if sb_DM_dTrans_square is not None: 
                     df = fc.var_transform_square(df, sb_DM_dTrans_square)
+                sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options, key = session_state.id)
+                if sb_DM_dTrans_cent is not None: 
+                    df = fc.var_transform_cent(df, sb_DM_dTrans_cent)
                 sb_DM_dTrans_stand = st.multiselect("Select columns for standardization ", transform_options, key = session_state.id)
                 if sb_DM_dTrans_stand is not None: 
                     df = fc.var_transform_stand(df, sb_DM_dTrans_stand)
@@ -496,7 +546,7 @@ def app():
                     <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Transfrom your data in Excel</a>
                     """,
                     unsafe_allow_html=True)
-                    st.write("")  
+                st.write("")  
 
             #--------------------------------------------------------------------------------------
             # PROCESSING SUMMARY
@@ -517,6 +567,15 @@ def app():
                         st.write("- No row was deleted!")
                 else:
                     st.write("- No row was deleted!")
+                if sb_DM_keepRows is not None and keepRows!='-' :
+                    if no_keptRows > 1:
+                        st.write("-", no_keptRows, " rows are kept!")
+                    elif no_keptRows == 1:
+                        st.write("-",no_keptRows, " row is kept!")
+                    elif no_keptRows == 0:
+                        st.write("- All rows are kept!")
+                else:
+                    st.write("- All rows are kept!") 
                 # Columns
                 if len(sb_DM_delCols) > 1:
                     st.write("-", len(sb_DM_delCols), " columns were manually deleted:", ', '.join(sb_DM_delCols))
@@ -524,6 +583,12 @@ def app():
                     st.write("-",len(sb_DM_delCols), " column was manually deleted:", str(sb_DM_delCols[0]))
                 elif len(sb_DM_delCols) == 0:
                     st.write("- No column was manually deleted!")
+                if len(sb_DM_keepCols) > 1:
+                    st.write("-", len(sb_DM_keepCols), " columns are kept:", ', '.join(sb_DM_keepCols))
+                elif len(sb_DM_keepCols) == 1:
+                    st.write("-",len(sb_DM_keepCols), " column is kept:", str(sb_DM_keepCols[0]))
+                elif len(sb_DM_keepCols) == 0:
+                    st.write("- All columns are kept!")
                 # Duplicates
                 if sb_DM_delDup == "Yes":
                     if n_rows_dup > 1:
@@ -590,6 +655,13 @@ def app():
                     st.write("-",len(sb_DM_dTrans_square), " column was squared:", sb_DM_dTrans_square[0])
                 elif len(sb_DM_dTrans_square) == 0:
                     st.write("- No column was squared!")
+                # centering
+                if len(sb_DM_dTrans_cent) > 1:
+                    st.write("-", len(sb_DM_dTrans_cent), " columns were centered:", ', '.join(sb_DM_dTrans_cent))
+                elif len(sb_DM_dTrans_cent) == 1:
+                    st.write("-",len(sb_DM_dTrans_cent), " column was centered:", sb_DM_dTrans_cent[0])
+                elif len(sb_DM_dTrans_cent) == 0:
+                    st.write("- No column was centered!")
                 # standardize
                 if len(sb_DM_dTrans_stand) > 1:
                     st.write("-", len(sb_DM_dTrans_stand), " columns were standardized:", ', '.join(sb_DM_dTrans_stand))
@@ -631,7 +703,7 @@ def app():
         # UPDATED DATA SUMMARY   
 
         # Show only if changes were made
-        if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or filter_var != "-" or delRows!='-':
+        if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_cent, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or filter_var != "-" or delRows!='-' or keepRows!='-' or len(sb_DM_keepCols) > 0:
             dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed data info and stats", expanded = False)
             with dev_expander_dsPost:
                 if df.shape[1] > 0 and df.shape[0] > 0:

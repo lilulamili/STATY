@@ -37,7 +37,7 @@ def app():
     caching.clear_cache()
 
     # Hide traceback in error messages (comment out for de-bugging)
-    #sys.tracebacklimit = 0
+    sys.tracebacklimit = 0
 
     # Show altair tooltip when full screen
     st.markdown('<style>#vg-tooltip-element{z-index: 1000051}</style>',unsafe_allow_html=True)
@@ -260,7 +260,7 @@ def app():
         
             # Show summary statistics (raw data)
             if st.checkbox('Show summary statistics (raw data) ', value = False, key = session_state.id): 
-                st.write(df_summary["ALL"])
+                st.write(df_summary["ALL"].style.set_precision(user_precision))
                 
                 # Download link for summary statistics
                 output = BytesIO()
@@ -305,6 +305,7 @@ def app():
             sb_DM_dImp_num = None 
             sb_DM_dImp_other = None
             sb_DM_delRows=None
+            sb_DM_keepRows=None
             
             with a1:
                 #--------------------------------------------------------------------------------------
@@ -353,9 +354,55 @@ def app():
                         df = df.loc[~df.index.isin(sb_DM_delRows)]
                         no_delRows=n_rows-df.shape[0]
 
+                # Keep rows
+                keepRows =st.selectbox('Keep rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = session_state.id)
+                if keepRows!='-':                                
+                    if keepRows=='between':
+                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                        if (row_1 + 1) < row_2 :
+                            sb_DM_keepRows=df.index[(df.index > row_1) & (df.index < row_2)]
+                        elif (row_1 + 1) == row_2 : 
+                            st.error("ERROR: No row is kept!")
+                            return
+                        elif row_1 == row_2 : 
+                            st.error("ERROR: No row is kept!")
+                            return
+                        elif row_1 > row_2 :
+                            st.error("ERROR: Lower limit must be smaller than upper limit!")  
+                            return                   
+                    elif keepRows=='equal':
+                        sb_DM_keepRows = st.multiselect("to...", df.index, key = session_state.id)
+                    else:
+                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = session_state.id)                    
+                        if keepRows=='greater':
+                            sb_DM_keepRows=df.index[df.index > row_1]
+                            if row_1 == len(df)-1:
+                                st.error("ERROR: No row is kept!") 
+                                return
+                        elif keepRows=='greater or equal':
+                            sb_DM_keepRows=df.index[df.index >= row_1]
+                            if row_1 == 0:
+                                st.warning("WARNING: All rows are kept!")
+                        elif keepRows=='smaller':
+                            sb_DM_keepRows=df.index[df.index < row_1]
+                            if row_1 == 0:
+                                st.error("ERROR: No row is kept!") 
+                                return
+                        elif keepRows=='smaller or equal':
+                            sb_DM_keepRows=df.index[df.index <= row_1]
+                    if sb_DM_keepRows is not None:
+                        df = df.loc[df.index.isin(sb_DM_keepRows)]
+                        no_keptRows=df.shape[0]
+
                 # Delete columns
                 sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = session_state.id)
                 df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
+
+                # Keep columns
+                sb_DM_keepCols = st.multiselect("Select columns to keep", df.columns, key = session_state.id)
+                if len(sb_DM_keepCols) > 0:
+                    df = df.loc[:,df.columns.isin(sb_DM_keepCols)]
 
                 # Delete duplicates if any exist
                 if df[df.duplicated()].shape[0] > 0:
@@ -464,6 +511,9 @@ def app():
                 sb_DM_dTrans_square = st.multiselect("Select columns for squaring ", transform_options, key = session_state.id)
                 if sb_DM_dTrans_square is not None: 
                     df = fc.var_transform_square(df, sb_DM_dTrans_square)
+                sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options, key = session_state.id)
+                if sb_DM_dTrans_cent is not None: 
+                    df = fc.var_transform_cent(df, sb_DM_dTrans_cent)
                 sb_DM_dTrans_stand = st.multiselect("Select columns for standardization ", transform_options, key = session_state.id)
                 if sb_DM_dTrans_stand is not None: 
                     df = fc.var_transform_stand(df, sb_DM_dTrans_stand)
@@ -549,7 +599,7 @@ def app():
                     <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Transfrom your data in Excel</a>
                     """,
                     unsafe_allow_html=True)
-                    st.write("")   
+                st.write("")   
                     
             #--------------------------------------------------------------------------------------
             # PROCESSING SUMMARY
@@ -570,6 +620,15 @@ def app():
                         st.write("- No row was deleted!")
                 else:
                     st.write("- No row was deleted!")
+                if sb_DM_keepRows is not None and keepRows!='-' :
+                    if no_keptRows > 1:
+                        st.write("-", no_keptRows, " rows are kept!")
+                    elif no_keptRows == 1:
+                        st.write("-",no_keptRows, " row is kept!")
+                    elif no_keptRows == 0:
+                        st.write("- All rows are kept!")
+                else:
+                    st.write("- All rows are kept!") 
                 # Columns
                 if len(sb_DM_delCols) > 1:
                     st.write("-", len(sb_DM_delCols), " columns were deleted:", ', '.join(sb_DM_delCols))
@@ -577,6 +636,12 @@ def app():
                     st.write("-",len(sb_DM_delCols), " column was deleted:", str(sb_DM_delCols[0]))
                 elif len(sb_DM_delCols) == 0:
                     st.write("- No column was deleted!")
+                if len(sb_DM_keepCols) > 1:
+                    st.write("-", len(sb_DM_keepCols), " columns are kept:", ', '.join(sb_DM_keepCols))
+                elif len(sb_DM_keepCols) == 1:
+                    st.write("-",len(sb_DM_keepCols), " column is kept:", str(sb_DM_keepCols[0]))
+                elif len(sb_DM_keepCols) == 0:
+                    st.write("- All columns are kept!")
                 # Duplicates
                 if sb_DM_delDup == "Yes":
                     if n_rows_dup > 1:
@@ -643,6 +708,13 @@ def app():
                     st.write("-",len(sb_DM_dTrans_square), " column was squared:", sb_DM_dTrans_square[0])
                 elif len(sb_DM_dTrans_square) == 0:
                     st.write("- No column was squared!")
+                # centering
+                if len(sb_DM_dTrans_cent) > 1:
+                    st.write("-", len(sb_DM_dTrans_cent), " columns were centered:", ', '.join(sb_DM_dTrans_cent))
+                elif len(sb_DM_dTrans_cent) == 1:
+                    st.write("-",len(sb_DM_dTrans_cent), " column was centered:", sb_DM_dTrans_cent[0])
+                elif len(sb_DM_dTrans_cent) == 0:
+                    st.write("- No column was centered!")
                 # standardize
                 if len(sb_DM_dTrans_stand) > 1:
                     st.write("-", len(sb_DM_dTrans_stand), " columns were standardized:", ', '.join(sb_DM_dTrans_stand))
@@ -684,7 +756,7 @@ def app():
         # UPDATED DATA SUMMARY   
 
         # Show only if changes were made
-        if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or sb_DM_dTrans_mult != 0 or sb_DM_dTrans_div != 0 or filter_var != "-" or delRows!='-':
+        if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_cent, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or sb_DM_dTrans_mult != 0 or sb_DM_dTrans_div != 0 or filter_var != "-" or delRows!='-' or keepRows!='-' or len(sb_DM_keepCols) > 0:
             dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed data info and stats ", expanded = False)
             with dev_expander_dsPost:
                 if df.shape[1] > 0 and df.shape[0] > 0:
@@ -717,7 +789,7 @@ def app():
 
                     # Show summary statistics (cleaned and transformed data)
                     if st.checkbox('Show summary statistics (cleaned and transformed data) ', value = False, key = session_state.id):
-                        st.write(df_summary_post["ALL"])
+                        st.write(df_summary_post["ALL"].style.set_precision(user_precision))
 
                         # Download link
                         output = BytesIO()
@@ -740,7 +812,9 @@ def app():
                             st.caption("** Mode is not unique.")
                         if sett_hints:
                             st.info(str(fc.learning_hints("de_summary_statistics")))  
-                else: st.error("ERROR: No data available for preprocessing!") 
+                else: 
+                    st.error("ERROR: No data available for preprocessing!") 
+                    return
      
     #------------------------------------------------------------------------------------------
     
@@ -764,20 +838,21 @@ def app():
                 if df[var_sel].dtypes == "float64" or df[var_sel].dtypes == "float32" or df[var_sel].dtypes == "int64" or df[var_sel].dtypes == "int32":
                     a4, a5 = st.beta_columns(2)
                     with a4:
-                        st.write('**Scatterplot**')
+                        st.write('**Scatterplot with LOESS line**')
                         yy_options = df.columns
                         yy = st.selectbox('Select variable for y-axis', yy_options, key = session_state.id)
                         if df[yy].dtypes == "float64" or df[yy].dtypes == "float32" or df[yy].dtypes == "int64" or df[yy].dtypes == "int32":
                             fig_data = pd.DataFrame()
                             fig_data[yy] = df[yy]
                             fig_data[var_sel] = df[var_sel]
+                            
                             fig_data["Index"] = df.index
                             fig = alt.Chart(fig_data).mark_circle().encode(
                                 x = alt.X(var_sel, scale = alt.Scale(domain = [min(fig_data[var_sel]), max(fig_data[var_sel])]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                 y = alt.Y(yy, scale = alt.Scale(zero = False), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                 tooltip = [yy, var_sel, "Index"]
                             )
-                            st.altair_chart(fig + fig.transform_regression(var_sel, yy).mark_line(size = 2, color = "darkred"), use_container_width=True)
+                            st.altair_chart(fig + fig.transform_loess(var_sel, yy).mark_line(size = 2, color = "darkred"), use_container_width=True)
                             if sett_hints:
                                 st.info(str(fc.learning_hints("dv_scatterplot")))
                         else: st.error("ERROR: Please select a numeric variable for the y-axis!")   
@@ -827,8 +902,37 @@ def app():
                         if sett_hints:
                             st.info(str(fc.learning_hints("dv_qqplot")))
                 else: st.error("ERROR: Please select a numeric variable!") 
+                
             else: st.error("ERROR: No data available for Data Visualization!")  
 
+            # scatter matrix
+            #Check If variables are numeric
+            num_cols=[]
+            for column in df:            
+                if df[column].dtypes in ('float', 'float64', 'int','int64'):                    
+                    num_cols.append(column)
+            if len(num_cols)>1:
+                show_scatter_matrix=st.checkbox('Show scatter matrix',value=False,key= session_state.id)
+                if show_scatter_matrix==True:
+                    multi_var_sel = st.multiselect('Select variables for scatter matrix', num_cols, num_cols, key = session_state.id)
+
+                    if len(multi_var_sel)<2:
+                        st.error("ERROR: Please choose at least two variables fro a scatterplot")
+                    else:
+                       #Plot scatter matrix:
+                        scatter_matrix=alt.Chart(df[multi_var_sel]).mark_circle().encode(
+                            x=alt.X(alt.repeat("column"), type='quantitative'),
+                            y=alt.Y(alt.repeat("row"), type='quantitative')
+                        ).properties(
+                                width=150,
+                                height=150
+                        ).repeat(
+                                row=multi_var_sel,
+                                column=multi_var_sel
+                        ).interactive()
+                        st.altair_chart(scatter_matrix, use_container_width=True)
+                    
+                   
     #------------------------------------------------------------------------------------------
 
     #++++++++++++++++++++++++++++++++++++++++++++
@@ -1083,10 +1187,10 @@ def app():
                                     with col4:
                                         rf_finalPara["maximum number of features"] = st.slider("Maximum number of features ", value=len(expl_var), step=1, min_value=1, max_value=len(expl_var))
                                     with col2:
-                                        rf_finalPara["sample rate"] = st.slider("Sample rate ", value=0.99, step=0.01, min_value=0.1, max_value=0.99)
+                                        rf_finalPara["sample rate"] = st.slider("Sample rate ", value=0.99, step=0.01, min_value=0.5, max_value=0.99)
                                 else:
                                     with col2:
-                                         rf_finalPara["sample rate"] = st.slider("Sample rate ", value=0.99, step=0.01, min_value=0.1, max_value=0.99)
+                                         rf_finalPara["sample rate"] = st.slider("Sample rate ", value=0.99, step=0.01, min_value=0.5, max_value=0.99)
                                 final_hyPara_values["rf"] = rf_finalPara 
                                 st.write("") 
 
@@ -1133,7 +1237,7 @@ def app():
                                 with col3:
                                     ann_finalPara["maximum number of iterations"] = st.slider("Maximum number of iterations ", value=200, step=1, min_value=10, max_value=1000) 
                                 with col4:
-                                    ann_finalPara["learning rate"] = st.slider("Learning rate  ", 0.0001, 0.01, 0.001, step=1e-4, format="%.4f")
+                                    ann_finalPara["learning rate"] = st.slider("Learning rate  ", min_value=0.0001, max_value=0.01, value=0.001, step=1e-4, format="%.4f")
                                 with col5:
                                     number_hidden_layers = st.selectbox("Number of hidden layers", [1, 2, 3])
                                     if number_hidden_layers == 1:
@@ -1149,7 +1253,7 @@ def app():
                                         number_nodes3 = st.slider("Number of neurons in third hidden layer", 5, 500, 100)
                                         ann_finalPara["hidden layer sizes"] = [(number_nodes1,number_nodes2,number_nodes3,)]
                                 with col6:
-                                    ann_finalPara["L² regularization"] = st.slider("L² regularization  ", 0.00001, 0.001, 0.0001, step=1e-5, format="%.5f")                                
+                                    ann_finalPara["L² regularization"] = st.slider("L² regularization  ", min_value=0.00001, max_value=0.001, value=0.0001, step=1e-5, format="%.5f")                                
 
                         #--------------------------------------------------------------------------------------
                         # HYPERPARAMETER TUNING SETTINGS
@@ -1171,7 +1275,7 @@ def app():
 
                                 # Hyperparameter-tuning 
                                 elif do_hypTune == "Yes":
-                                    st.warning("WARNING: Hyperparameter-tuning can take a lot of time!")
+                                    st.warning("WARNING: Hyperparameter-tuning can take a lot of time! For tips, please [contact us](mailto:o.kaercher@hs-osnabrueck.de?subject=Staty-App).")
                                     
                                     # Further general settings
                                     hypTune_method = st.selectbox("Hyperparameter-search method", ["random grid-search", "grid-search", "Bayes optimization", "sequential model-based optimization"])
@@ -4175,7 +4279,7 @@ def app():
                             rf_finalTuneMetrics["mean cv score"] = [rf_tuning_results.loc["value"]["mean score"]]
                             rf_finalTuneMetrics["standard deviation cv score"] = [rf_tuning_results.loc["value"]["std score"]]
                             rf_finalTuneMetrics["test data score"] = [rf_tuning_results.loc["value"]["test score"]]
-                            st.write(rf_finalTuneMetrics)
+                            st.table(rf_finalTuneMetrics.transpose().style.set_precision(user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_hypeTune_RF_details")))
                             st.write("")
@@ -4204,7 +4308,7 @@ def app():
                             brt_finalTuneMetrics["mean cv score"] = [brt_tuning_results.loc["value"]["mean score"]]
                             brt_finalTuneMetrics["standard deviation cv score"] = [brt_tuning_results.loc["value"]["std score"]]
                             brt_finalTuneMetrics["test data score"] = [brt_tuning_results.loc["value"]["test score"]]
-                            st.write(brt_finalTuneMetrics)
+                            st.table(brt_finalTuneMetrics.transpose().style.set_precision(user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_hypeTune_BRT_details")))
                             st.write("")
@@ -4233,7 +4337,7 @@ def app():
                             ann_finalTuneMetrics["mean cv score"] = [ann_tuning_results.loc["value"]["mean score"]]
                             ann_finalTuneMetrics["standard deviation cv score"] = [ann_tuning_results.loc["value"]["std score"]]
                             ann_finalTuneMetrics["test data score"] = [ann_tuning_results.loc["value"]["test score"]]
-                            st.write(ann_finalTuneMetrics)
+                            st.table(ann_finalTuneMetrics.transpose().style.set_precision(user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_hypeTune_ANN_details")))
                             st.write("")
