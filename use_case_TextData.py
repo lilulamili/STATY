@@ -33,6 +33,7 @@ from pysummarization.tokenizabledoc.simple_tokenizer import SimpleTokenizer
 from pysummarization.web_scraping import WebScraping
 from pysummarization.abstractabledoc.std_abstractor import StdAbstractor
 from pysummarization.abstractabledoc.top_n_rank_abstractor import TopNRankAbstractor
+from sklearn.feature_extraction.text import CountVectorizer
 #----------------------------------------------------------------------------------------------
 
 def app():
@@ -86,7 +87,7 @@ def app():
     basic_text="Let STATY do text/web processing for you and start exploring your data stories right below... "
     
     st.header('**Web scraping and text data**')
-    tw_meth = ['Web-Page summary','Stock data analysis','WordCloud']
+    tw_meth = ['Web-Page summary','Stock data analysis','Text analysis']
     tw_classifier = st.selectbox('What analysis would you like to perform?', list('-')+tw_meth, key = session_state.id)
     
     if tw_classifier in tw_meth:
@@ -248,7 +249,9 @@ def app():
 
        
 
-    if tw_classifier=='WordCloud':
+    if tw_classifier=='Text analysis':
+        run_text_OK=False
+        
         user_color=21  
         def random_color_func(user_col,word=None, font_size=None, position=None,  orientation=None, font_path=None, random_state=None):
             h = int(user_color)
@@ -256,72 +259,78 @@ def app():
             l = int(100.0 * float(random_state.randint(60, 120)) / 255.0)
             return "hsl({}, {}%, {}%)".format(h, s, l)    
         
-        a3,a4=st.beta_columns(2)
-        with a3:
-            # specify color options for the WordCloud (user selection)
-            color_options= pd.DataFrame(np.array([[21, 120, 12, 240,30]]), 
-                columns=['orange', 'green', 'red','blue','brown'])
-            user_color_name=st.selectbox('Select the main color of your WordCloud',color_options.columns)
-            user_color=color_options[user_color_name]
+        #specify the data source
+        word_sl=st.radio('Select the data source for text analysis',['text input','web page'])  
 
-        #specify the data source for WordCloud
-        wordcloud_sl=st.radio('Select the data source for your WordCloud',['text input','web page'])  
-
-        if wordcloud_sl=='text input':
+        if word_sl=='text input':
             user_text=st.text_area('Please enter or copy your text here', value='', height=600, )
 
             if len(user_text)>0:  
                 
-                wordcount= pd.DataFrame(WordCloud().process_text(user_text),index=[0])
-                if st.checkbox('Show a word count for your text', value = False): 
-                    st.write(wordcount)    
-                word_sorted=wordcount.sort_values(by=0, axis=1, ascending=False)
-                word_stopwords=st.multiselect("Remove words from wordcloud", word_sorted.columns)
                 
-                run_wptext = st.button("Press to start the data processing...")
-                if run_wptext:
-                    wordcloud = WordCloud(background_color="white",
-                        contour_color="white",max_words=100,stopwords=word_stopwords,
-                        width=600,height=400,color_func=random_color_func).generate(user_text)  
-                    fig_text, ax = plt.subplots()
-                    ax=plt.imshow(wordcloud, interpolation='bilinear')
-                    plt.axis("off")
+                wordcount= pd.DataFrame(WordCloud(stopwords=['didlidudieu']).process_text(user_text),index=["WordCount"])
+                word_sorted=wordcount.transpose().sort_values(by=["WordCount"], ascending=False)
 
-                    #draw WordCloud
-                    st.subheader('WordCloud')
-                    st.pyplot(fig_text)
+                if st.checkbox('Show a word count for your text', value = False): 
+                    st.write(word_sorted) 
+                         
+                word_stopwords=st.multiselect("Remove words from text", word_sorted.index.tolist(),word_sorted.index[1:min(10,len(word_sorted.index))].tolist())
+
+                # specify color options for the WordCloud (user selection)
+                color_options= pd.DataFrame(np.array([[21, 120, 12, 240, 30]]), 
+                columns=['orange', 'green', 'red','blue','brown'])
+                user_color_name=st.selectbox('Select the main color of your WordCloud',color_options.columns)
+                user_color=color_options[user_color_name]
+
+                run_text_OK = True
+                
        
         
-        if wordcloud_sl=='web page':
-            user_path_wp = st.text_input("For what web page should I create a WordCloud?","https://en.wikipedia.org/wiki/Data_mining")
+        elif word_sl=='web page':
+            user_path_wp = st.text_input("What web page should I analyse?","https://en.wikipedia.org/wiki/Data_mining")
             
             if user_path_wp !='':
 
                 web_scrape = WebScraping()
-                document = web_scrape.scrape(user_path_wp)
+                user_text = web_scrape.scrape(user_path_wp)
                 
-                wordcount= pd.DataFrame(WordCloud().process_text(document),index=[0])
+                wordcount= pd.DataFrame(WordCloud(stopwords=['didlidudieu']).process_text(user_text),index=["WordCount"]).transpose()
+                word_sorted=wordcount.sort_values(by=["WordCount"], ascending=False)
+
                 if st.checkbox('Show a word count', value = False): 
-                    st.write(wordcount)    
-                word_sorted=wordcount.sort_values(by=0, axis=1, ascending=False)
-                word_stopwords=st.multiselect("Remove words from wordcloud", word_sorted.columns)
+                    st.write(word_sorted)                                    
+           
+                word_stopwords=st.multiselect("Remove words from text", word_sorted.index.tolist(),word_sorted.index[1:min(10,len(word_sorted.index))].tolist())
+                # specify color options for the WordCloud (user selection)
+                color_options= pd.DataFrame(np.array([[21, 120, 12, 240, 30]]), 
+                columns=['orange', 'green', 'red','blue','brown'])
+                user_color_name=st.selectbox('Select the main color of your WordCloud',color_options.columns)
+                user_color=color_options[user_color_name]
+                run_text_OK=True
+        
+        if run_text_OK==True:
+            run_text = st.button("Press to start the data processing...")
                 
-                run_wp = st.button("Press to start the data processing...")
-                if run_wp:
-                    wordcloud = WordCloud(background_color="white",
-                        contour_color="white",max_words=100,stopwords=word_stopwords,
-                        width=600,height=400,color_func=random_color_func).generate(document)  
-                    
-                    fig_wp, ax = plt.subplots()
-                    ax=plt.imshow(wordcloud, interpolation='bilinear')
-                    plt.axis("off")                           
 
-                    st.subheader('WordCloud')
-                    st.pyplot(fig_wp)
+            if run_text:
+                st.write("")
+                st.write("")
 
-                    st.subheader('Web page preview')
-                    components.iframe(user_path_wp,width=None,height=500,scrolling=True)
-                    
-                        
+                st.subheader('Word frequency') 
+                wordcount= pd.DataFrame(WordCloud(stopwords=word_stopwords).process_text(user_text),index=["WordCount"]).transpose()    
+                word_sorted=wordcount.sort_values(by=["WordCount"], ascending=False)
+                st.write(word_sorted) 
+
+                wordcloud = WordCloud(background_color="white",
+                    contour_color="white",max_words=100,stopwords=word_stopwords,
+                    width=600,height=400,color_func=random_color_func).generate(user_text)  
+                fig_text, ax = plt.subplots()
+                ax=plt.imshow(wordcloud, interpolation='bilinear')
+                plt.axis("off")
+
+                #draw WordCloud
+                st.subheader('WordCloud')
+                st.pyplot(fig_text)            
+                            
             
     

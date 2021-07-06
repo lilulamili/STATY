@@ -39,11 +39,7 @@ def app():
     # FAQs
 
     st.header("**FAQs**")
-    st.markdown("""
-        <p> If your question is not answered, please
-        <a href="mailto:o.kaercher@hs-osnabrueck.de">contact us</a>!
-        <p>
-        """, unsafe_allow_html=True)
+    st.markdown("If your question is not answered, please [contact us](mailto:staty@quant-works.de?subject=Staty-App)!")
         
     general_questions_container = st.beta_container()
     with general_questions_container:
