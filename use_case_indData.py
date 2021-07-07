@@ -1275,7 +1275,7 @@ def app():
 
                                 # Hyperparameter-tuning 
                                 elif do_hypTune == "Yes":
-                                    st.warning("WARNING: Hyperparameter-tuning can take a lot of time! For tips, please [contact us](mailto:o.kaercher@hs-osnabrueck.de?subject=Staty-App).")
+                                    st.warning("WARNING: Hyperparameter-tuning can take a lot of time! For tips, please [contact us](mailto:staty@quant-works.de?subject=Staty-App).")
                                     
                                     # Further general settings
                                     hypTune_method = st.selectbox("Hyperparameter-search method", ["random grid-search", "grid-search", "Bayes optimization", "sequential model-based optimization"])

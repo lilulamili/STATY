@@ -78,7 +78,8 @@ components.html("""
 )
 
 
-st.markdown("Your data can tell great stories! Let STATY do all the data juggling for you, and focus your attention on the outcomes of powerful models and critical reflection of issues around your data.")
+st.markdown("Your data can tell great stories! Let STATY do all the data juggling for you, and focus your attention on critical reflection of issues around your data.") 
+#Let STATY do all the data juggling for you, and focus your attention on the outcomes of powerful models and on critical reflection.
 st.sidebar.title("Menu")
 
 
@@ -115,7 +116,6 @@ st.sidebar.markdown("Report a [bug] (https://drive.google.com/file/d/1iDLJMyYxwR
 
 st.sidebar.markdown("")
 st.sidebar.markdown("Your :rocket: to data science!   \n Licensed under the [Apache License, Version 2.0] (https://www.apache.org/licenses/LICENSE-2.0.html)")
-
  
 
 # Hide footer
