@@ -16,14 +16,14 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager
 import plotly.graph_objects as go
 import functions as fc
-import use_case_indData
-import use_case_panelData
-import use_case_TextData
-import use_case_simpleData
-import use_case_home
-import use_case_geo
-import use_case_timeSeries
-import use_case_faqs
+import use_case_MultivariateData
+import use_case_PanelData
+import use_case_WebScrapingTextData
+import use_case_UnivariateBivariateData
+import use_case_Home
+import use_case_GeospatialData
+import use_case_TimeSeriesData
+import use_case_FAQs
 import os 
 import platform
 import time
@@ -93,14 +93,14 @@ st.sidebar.title("Menu")
 
 # Run different code for different use case
 PAGES = {
-    "Home": use_case_home,
-    "Uni- and bivariate data": use_case_simpleData,
-    "Multivariate data": use_case_indData,
-    "Panel data": use_case_panelData,
-    "Web scraping and text data": use_case_TextData,
-    "Geospatial data": use_case_geo,
-    "Time series data":use_case_timeSeries,
-    "FAQs": use_case_faqs
+    "Home": use_case_Home,
+    "Uni- and bivariate data": use_case_UnivariateBivariateData,
+    "Multivariate data": use_case_MultivariateData,
+    "Panel data": use_case_PanelData,
+    "Web scraping and text data": use_case_WebScrapingTextData,
+    "Geospatial data": use_case_GeospatialData,
+    "Time series data":use_case_TimeSeriesData,
+    "FAQs": use_case_FAQs
 }
 #st.sidebar.subheader("Navigation")
 use_case = st.sidebar.radio("Navigation", ["Home", "Uni- and bivariate data", "Multivariate data", "Panel data", "Time series data", "Web scraping and text data", "Geospatial data", "FAQs"])
