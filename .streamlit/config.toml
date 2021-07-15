@@ -3,7 +3,6 @@ port = 8501
 
 [client]
 showErrorDetails = True
-showTracebacks=True
 
 [theme]
 primaryColor="#38bcf0"
