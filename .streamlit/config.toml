@@ -1,8 +1,8 @@
 [server]
 port = 8501
 
-[client]
-showErrorDetails = true
+#[client]
+#showErrorDetails = true
 
 [theme]
 primaryColor="#38bcf0"
