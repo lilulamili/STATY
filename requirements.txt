@@ -1,6 +1,7 @@
 altair==4.1.0
 bs4==0.0.1
 datetime==4.3
+factor-analyzer==0.3.2
 linearmodels==4.24
 matplotlib==3.3.4
 nltk==3.6.1
@@ -9,16 +10,16 @@ pandas==1.2.0
 plotly==4.14.3
 pmdarima==1.8.2
 pybase64==1.1.4
-pysummarization==1.1.7
 pygam==0.8.0
+pysummarization==1.1.7
 pyquery==1.4.3
 regex==2021.4.4
 requests==2.25.1
 scipy==1.6.0
-statsmodels==0.12.2
 seaborn==0.11.1
 scikit-learn==0.23.2
 scikit-optimize==0.8.1
+statsmodels==0.12.2
 streamlit==0.81.1
 tqdm==4.60.0
 wordcloud==1.8.1

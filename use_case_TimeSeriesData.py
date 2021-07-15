@@ -948,9 +948,9 @@ def app():
             #-----------------------------------------------------------
             # Detrending and seasonal adjustment
             #-----------------------------------------------------------
-            ts_expander_decomp = st.beta_expander("Time series detrending and seasonal adjustment")
+            ts_expander_decomp = st.beta_expander("Differencing, detrending and seasonal adjustment")
             with ts_expander_decomp:
-                ts_decomp = st.selectbox("Specify your time series decomposition preferences:", 
+                ts_decomp = st.selectbox("Specify your time series differencing and decomposition preferences:", 
                     ["n-order differences", "detrending", "seasonal adjustment", "detrending & seasonal adjustment"], key = session_state.id)
 
                 #----------------------------------------------------------
@@ -1248,7 +1248,7 @@ def app():
                         # trend specification                           
                         a4,a5=st.beta_columns(2)
                         with a4:
-                            ts_trend_spec=st.selectbox('Include a trend component via automatic model specification', ['No', 'constant term (intercept)', 'linear trend', 'second order polinomial'], key = session_state.id)
+                            ts_trend_spec=st.selectbox('Include a trend component in the model specification', ['No', 'constant term (intercept)', 'linear trend', 'second order polinomial'], key = session_state.id)
                             
                     
                     st.write("")

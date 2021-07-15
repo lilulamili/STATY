@@ -16,6 +16,7 @@ import statsmodels.api as sm
 import plotly.graph_objects as go
 import streamlit as st
 from random import randint
+from sklearn.feature_extraction.text import CountVectorizer
 
 #----------------------------------------------------------------------------------------------
 #FUNCTION FOR WIDE MODE
@@ -1137,7 +1138,37 @@ def regression_models(X_ini, Y_ini, expl_var,reg_technique,poly_order):
 
     return  mlr_reg_inf, mlr_reg_stats, mlr_reg_anova, mlr_reg_coef,X_data, Y_data, Y_pred
 
+#------------------------------------------------------------------------------------------
+#FUNCTION FOR TEXT PROCESSING
 
+def cv_text(user_text, word_stopwords, ngram_level,user_precision,number_remove):
+    
+    if ngram_level>1:
+        if number_remove==True:
+            user_text=''.join(c for c in user_text if not c.isdigit())
+
+    cv = CountVectorizer(analyzer='word', stop_words=set(word_stopwords), ngram_range=(ngram_level, ngram_level))
+  
+    cv_fit=cv.fit_transform([user_text])
+    cv_output= pd.DataFrame(cv_fit.toarray().sum(axis=0), index=cv.get_feature_names(),columns=["Word count"])
+    cv_output["Rel. freq."]=100*cv_output["Word count"]/cv_output["Word count"].sum() 
+    cv_output["Rel. freq."]=cv_output["Rel. freq."].round(user_precision)
+    
+    # sort the output:
+    cv_output=cv_output.sort_values(by=["Word count"], ascending=False)
+
+    if ngram_level==1:
+        if number_remove==True:
+        # remove numbers:
+            words_stay =[x for x in cv.get_feature_names() if not any(c.isdigit() for c in x)]
+            cv_output = cv_output[cv_output.index.isin(words_stay)]       
+        
+    
+
+    #add column with word length
+    cv_output["Word length"]=[len(i) for i in cv_output.index]
+
+    return  cv_output
 
 #---------------------------------------------------------------------------------------------
 #FUNCTION FOR LEARNING HINTS
@@ -2767,7 +2798,130 @@ def learning_hints(name):
         random_hint = randint(0, len(learning_hint_options)-1)
         learning_hint = learning_hint_options[random_hint]
 
-    
+    #-------------------------------------------------------------------------------------------------
+
+    # DECOMPOSITION 
+    #--------------
+
+    # Decomposition - Correlation
+    if name == "decomp_cor":
+        # All options
+        learning_hint_options = [
+        "Which variables are strongly correlated?",
+        "Is there a risk of multicollinearity?",
+        "Are there causal relationships between variables with high correlation?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Principal Component Analysis (PCA)
+    #-----------------------------------
+
+    # Decomposition - PCA - Eigenvalues and explained variance
+    if name == "decomp_pca_eigval":
+        # All options
+        learning_hint_options = [
+        "How many components should be included?",
+        "How many components have an eigenvalue above 1?",
+        "How much variance is explained by the first components?",
+        "How can the eigenvalues be interpreted?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Decomposition - PCA - Eigenvectors
+    if name == "decomp_pca_eigvec":
+        # All options
+        learning_hint_options = [
+        "What are the loadings for the first component?",
+        "Can the first component be labelled based on the loadings?",
+        "Which variables have the highest loading for the first components?",
+        "What do the values of the eigenvectors represent?",
+        "How can the values be interpreted?",
+        "How are the eigenvectors used to derive the transformed data?",
+        "Are structures identifiable?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Factor Analysis (FA)
+    #---------------------
+
+    # Decomposition - FA - Adequacy tests
+    if name == "decomp_fa_adeqtests":
+        # All options
+        learning_hint_options = [
+        "What is the null hypothesis of Bartlett's Sphericity test?",
+        "What does the KMO value tell you?",
+        "Is a Factor Analysis appropriate for the data?",
+        "What is the minimum/ maximum value for KMO?",
+        "What does a low p-value imply?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Decomposition - FA - Eigenvalues
+    if name == "decomp_fa_eigval":
+        # All options
+        learning_hint_options = [
+        "How many components should be included?",
+        "How many components have an eigenvalue above 1?",
+        "How much variance is explained by the first components?",
+        "How can the eigenvalues be interpreted?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Decomposition - FA - Explained variance
+    if name == "decomp_fa_explvar":
+        # All options
+        learning_hint_options = [
+        "How are the SS loadings calculated?",
+        "What do the SS loadings represent?",
+        "How much variance is explained by the first factors?",
+        "How many factors should be kept?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Decomposition - FA - Communalities and uniquenesses
+    if name == "decomp_fa_comuniq":
+        # All options
+        learning_hint_options = [
+        "How are communalities determined?",
+        "How are the uniquenesses determined?",
+        "What does a high communality imply?",
+        "What does a high uniqueness imply?",
+        "Which variables should be kept in the factor analysis?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Decomposition - FA - Loadings
+    if name == "decomp_fa_loadings":
+        # All options
+        learning_hint_options = [
+        "What are the loadings for the first factor?",
+        "Can the first factor be labelled based on the loadings?",
+        "Which variables have the highest loading for the first factor?",
+        "What do the loadings represent?",
+        "How can the loadings be interpreted?",
+        "How are the loadings related to the variance of the variables?",
+        "Are structures identifiable?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    #-------------------------------------------------------------------------------------------------
+
     #-----------------------------------------------------
     # Time series
     #-----------------------------------------------------

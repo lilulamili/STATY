@@ -2280,7 +2280,7 @@ def app():
                     df.to_excel(excel_file, sheet_name="data")
                 
                 st.write("")            
-                run_cont = st.button("Press to start the data processing...")           
+                run_cont = st.button("Press to start data processing...")           
                 st.write("")
                 st.write("")    
              

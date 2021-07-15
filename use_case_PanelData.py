@@ -793,8 +793,8 @@ def app():
                             division_pairs.loc[i]["Var2"] = div_var2
                             fc.var_transform_div(df, div_var1, div_var2)
 
-                    data_transfrom=st.checkbox("Transfrom data in Excel?", value=False)
-                    if data_transfrom==True:
+                    data_transform=st.checkbox("Transform data in Excel?", value=False)
+                    if data_transform==True:
                         st.info("Press the button to open your data in Excel. Don't forget to save your result as a csv or a txt file!")
                         # Download link
                         output = BytesIO()
@@ -806,7 +806,7 @@ def app():
                         dl_file_name = "Data_transformation__" + df_name + ".xlsx"
                         st.markdown(
                             f"""
-                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Transfrom your data in Excel</a>
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Transform your data in Excel</a>
                         """,
                         unsafe_allow_html=True)
                     st.write("")  
@@ -1387,8 +1387,6 @@ def app():
                             response_var_message_num = "ERROR: Please select a numeric response variable!"
                         elif var_cat.loc[response_var] == "string/categorical" or var_cat.loc[response_var] == "other" or var_cat.loc[response_var] == "string/single":
                             response_var_message_num = "ERROR: Please select a numeric response variable!"
-                        # elif np.where(df[response_var].isnull())[0].size > 0:
-                        #     response_var_message_na = "ERROR: Please select a response variable without NAs or delete/replace rows with NAs in data processing preferences!"
                         elif var_cat.loc[response_var] == "categorical":
                             response_var_message_cat = "WARNING: Categorical variable is treated as continuous variable!"
 
@@ -1406,15 +1404,12 @@ def app():
                             expl_var = st.multiselect("Select explanatory variables", expl_var_options, key = session_state.id)
                             var_list = list([entity]) + list([time]) + list([response_var]) + list(expl_var)
 
-                            # Check if explanatory variables are numeric and have no NAs
+                            # Check if explanatory variables are numeric
                             expl_var_message_num = False
                             expl_var_message_na = False
                             if any(a for a in df[expl_var].dtypes if a != "float64" and a != "float32" and a != "int64" and a != "int64"): 
                                 expl_var_not_num = df[expl_var].select_dtypes(exclude=["int64", "int32", "float64", "float32"]).columns
                                 expl_var_message_num = "ERROR: Please exclude non-numeric variables: " + ', '.join(map(str,list(expl_var_not_num)))
-                            # elif np.where(df[expl_var].isnull())[0].size > 0:
-                            #     expl_var_with_na = df[expl_var].columns[df[expl_var].isna().any()].tolist()
-                            #     expl_var_message_na = "ERROR: Please select variables without NAs or delete/replace rows with NAs in data processing preferences: " + ', '.join(map(str,list(expl_var_with_na)))
                             
                             # Check if NAs are present and delete them automatically (delete before run models button)
                             if np.where(df[var_list].isnull())[0].size > 0:
@@ -2768,12 +2763,6 @@ def app():
                                 labelFontSize = 12,
                                 titleFontSize = 12
                             )
-                            # Scatterplot residuals
-                            # residuals_scatter = alt.Chart(residuals_bplot, height = 200).mark_circle(size=60).encode(
-                            #     x = "Value",
-                            #     y = alt.Y("Algorithm", title = None),
-                            #     color = alt.Color("Algorithm", legend=None)
-                            # )
                             residuals_plot = residuals_boxchart #+ residuals_scatter
                             st.altair_chart(residuals_plot, use_container_width=True)
                             if sett_hints:
