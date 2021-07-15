@@ -2,8 +2,8 @@
 port = 8501
 
 #[client]
-#showErrorDetails = true
-showTracebacks=true
+showErrorDetails = true
+#showTracebacks=true
 
 [theme]
 primaryColor="#38bcf0"
