@@ -2,7 +2,7 @@
 port = 8501
 
 [client]
-showErrorDetails = True
+showErrorDetails = true
 
 [theme]
 primaryColor="#38bcf0"
