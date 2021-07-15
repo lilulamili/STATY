@@ -1,9 +1,9 @@
 [server]
 port = 8501
 
-#[client]
+[client]
 showErrorDetails = true
-#showTracebacks=true
+showTracebacks=true
 
 [theme]
 primaryColor="#38bcf0"
