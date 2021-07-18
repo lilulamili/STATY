@@ -24,7 +24,7 @@ streamlit==0.81.1
 tqdm==4.60.0
 wordcloud==1.8.1
 xlsxwriter==1.4.3
-yfinance==0.1.55
+yfinance==0.1.63
 
 
 
