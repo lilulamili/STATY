@@ -271,7 +271,8 @@ def app():
         word_sl=st.radio('Select the data source for text analysis',['text input','web page'])  
 
         if word_sl=='text input':
-            user_text=st.text_area('Please enter or copy your text here', value='', height=600, key = session_state.id )
+            user_text=st.text_area('Please enter or copy your text here', value='STATY  \n\n STATY is growing out of the effort to bring more data insights to university education across all disciplines of the natural and social sciences. It is motivated by the belief that fostering data literacy, creativity and critical thinking are more effective towards innovation, than bringing endless units of introduction to programming to students who find learning programming an overwhelming task. By providing easy access to the methods of classical statistics and machine learning, STATY’s approach is to inspire students to explore issues they are studying in the curriculum directly on real data, practice interpreting the results and check the source code to see how it is done or to improve the code. STATY can be used in the process of teaching and learning data science, demonstrations of theoretical concepts across various disciplines, active learning, promotion of teamwork, research and beyond.', height=600, key = session_state.id )
+            
             st.write("")
             if len(user_text)>0:  
                 run_text_OK = True             
@@ -294,7 +295,7 @@ def app():
                                          
 
             #Stop words handling:
-            stopword_selection=st.selectbox("Select stop word option",["No stop words (use all words)","Manually select stop words", "Use a built-in list of stop words in German", "Use a built-in list of stop words in English", "Specify stop words"], index=1, key=session_state.id)
+            stopword_selection=st.selectbox("Select stop word option",["No stop words (use all words)","Manually select stop words", "Use a built-in list of stop words in German", "Use a built-in list of stop words in English", "Specify stop words"], index=3, key=session_state.id)
             if stopword_selection=="No stop words (use all words)":
                 word_stopwords=[] 
             elif stopword_selection=="Manually select stop words":
@@ -332,13 +333,13 @@ def app():
                 st.write(word_sorted)  
             
             st.write("")
-            number_remove=st.checkbox("Remove numbers from text", value=False, key = session_state.id)  
+            number_remove=st.checkbox("Remove numbers from text", value=True, key = session_state.id)  
                        
             a4,a5=st.beta_columns(2)
             with a4:
                 #WordCloud color specification               
                 st.write("")
-                draw_WordCloud=st.checkbox("Create a Word Cloud", value=False, key = session_state.id)  
+                draw_WordCloud=st.checkbox("Create a Word Cloud", value=True, key = session_state.id)  
             
             with a5:    
                 if draw_WordCloud==True:              
@@ -604,7 +605,8 @@ def app():
                 
                 progress += 1
                 text_bar.progress(progress/3)
-
+                # Success message
+                #st.success('Text processing completed')
                 
 
                              
