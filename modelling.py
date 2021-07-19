@@ -87,7 +87,7 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
     if response_var_type == "continuous":
         X_train, X_test, Y_train, Y_test = train_test_split(X_data, Y_data, train_size = 0.8, random_state = 1)
     if response_var_type == "binary":
-        X_train, X_test, Y_train, Y_test = train_test_split(X_data, Y_data, train_size = 0.8, random_state = 1) #, stratify = Y_data)
+        X_train, X_test, Y_train, Y_test = train_test_split(X_data, Y_data, train_size = 0.8, random_state = 1, stratify = Y_data)
 
     #---------------------------------------------------------------------------------
     # Random Forest
