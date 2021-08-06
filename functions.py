@@ -438,22 +438,22 @@ def get_mainq(data):
         
         if col.dtypes == "float64" or col.dtypes == "int64" or col.dtypes == "float32" or col.dtypes == "int32":
             df_mainq.loc["min"][i] = col.min()
-            df_mainq.loc["1%-Q"][i] = col.quantile(q = 0.05)
+            df_mainq.loc["1%-Q"][i] = col.quantile(q = 0.01)
             df_mainq.loc["10%-Q"][i] = col.quantile(q = 0.1)
             df_mainq.loc["25%-Q"][i] = col.quantile(q = 0.25)
             df_mainq.loc["75%-Q"][i] = col.quantile(q = 0.75)
             df_mainq.loc["90%-Q"][i] = col.quantile(q = 0.9)
-            df_mainq.loc["99%-Q"][i] = col.quantile(q = 0.95)
+            df_mainq.loc["99%-Q"][i] = col.quantile(q = 0.99)
             df_mainq.loc["max"][i] = col.max()
 
         elif col.dtypes == "bool":
             df_mainq.loc["min"][i] = col.min()
-            df_mainq.loc["1%-Q"][i] = col.quantile(q = 0.05)
+            df_mainq.loc["1%-Q"][i] = col.quantile(q = 0.01)
             df_mainq.loc["10%-Q"][i] = col.quantile(q = 0.1)
             df_mainq.loc["25%-Q"][i] = col.quantile(q = 0.25)
             df_mainq.loc["75%-Q"][i] = col.quantile(q = 0.75)
             df_mainq.loc["90%-Q"][i] = col.quantile(q = 0.9)
-            df_mainq.loc["99%-Q"][i] = col.quantile(q = 0.95)
+            df_mainq.loc["99%-Q"][i] = col.quantile(q = 0.99)
             df_mainq.loc["max"][i] = col.max()
 
         elif col.dtypes == "object":
@@ -2206,6 +2206,128 @@ def learning_hints(name):
         random_hint = randint(0, len(learning_hint_options)-1)
         learning_hint = learning_hint_options[random_hint]
 
+    # multi-class variables
+
+    # Modelling - RF - Regression statistics
+    if name == "mod_md_RF_regStat_mult":
+        # All options
+        learning_hint_options = [
+        "What does the accuracy tell you?",
+        "What does the balanced accuracy tell you?",
+        "How would you interpret the out-of-bag (OOB) score?",
+        "How would you interpret the performance of the model?"  
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - RF - Variable importance
+    if name == "mod_md_RF_varImp_mult":
+        # All options
+        learning_hint_options = [
+        "Which variable is the most important?",
+        "Would it make sense to exclude a variable in the model?",
+        "What do the values for variable importance tell you?",
+        "Which variable importance shows a high variance?",
+        "Can the variable importance be logically explained?",
+        "Is there a difference between the two methods used for determining variable importance?"  
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - RF - Confusion matrix
+    if name == "mod_md_RF_confu_mult":
+        # All options
+        learning_hint_options = [
+        "Which category is predicted worst?",
+        "Which category is predicted best?",
+        "Is a pattern for wrong predictions observable?",
+        "How would you assess the confusion matrix?"  
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+    
+    # Modelling - RF - Classification report
+    if name == "mod_md_RF_classRep_mult":
+        # All options
+        learning_hint_options = [
+        "Which category has the highest values for the given performance measures?",
+        "Which category has the lowest values for the given performance measures?",
+        "How is the weighted average determined?",
+        "How is the macro average determined?",
+        "What is the difference between the precision and the recall?",
+        "How is the F1 score related to precision and recall?"  
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Artificial Neural Networks
+    #---------------------------
+
+    # Modelling - ANN - Regression statistics
+    if name == "mod_md_ANN_regStat_mult":
+        # All options
+        learning_hint_options = [
+        "What does the accuracy tell you?",
+        "What does the balanced accuracy tell you?",
+        "What is the aim of the loss function log loss?",
+        "How would you interpret the performance of the model?",
+        "How can the best loss be interpreted?",
+        "How often was the dataset seen by the model?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - ANN - Confusion matrix
+    if name == "mod_md_ANN_confu_mult":
+        # All options
+        learning_hint_options = [
+        "Which category is predicted worst?",
+        "Which category is predicted best?",
+        "Is a pattern for wrong predictions observable?",
+        "How would you assess the confusion matrix?"  
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+    
+    # Modelling - ANN - Classification report
+    if name == "mod_md_ANN_classRep_mult":
+        # All options
+        learning_hint_options = [
+        "Which category has the highest values for the given performance measures?",
+        "Which category has the lowest values for the given performance measures?",
+        "How is the weighted average determined?",
+        "How is the macro average determined?",
+        "What is the difference between the precision and the recall?",
+        "How is the F1 score related to precision and recall?"  
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Model comparison
+    #-----------------
+    
+    # Modelling - Model comparisons - Performance metrics
+    if name == "mod_md_modComp_mult":
+        # All options
+        learning_hint_options = [
+        "Which algorithm has the highest ACC?",
+        "Which algorithm has the highest BAL ACC?", 
+        "Which algorithm has the highest average PREC?", 
+        "Which algorithm has the highest average RECALL?",
+        "Which algorithm has the highest average F1 score?",
+        "Which algorithm is the overall best algorithm according to the metrics?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
     #-------------------------------------------------------------------------------------------------
 
     # VALIDATION (Multivariate Data)
@@ -2429,6 +2551,83 @@ def learning_hints(name):
         random_hint = randint(0, len(learning_hint_options)-1)
         learning_hint = learning_hint_options[random_hint]
 
+    # multi-class
+
+    # Modelling - Validation - Means 
+    if name == "mod_md_val_means_mult":
+        # All options
+        learning_hint_options = [
+        "Which algorithm has the highest mean ACC?",
+        "Which algorithm has the highest mean BAL ACC?", 
+        "Which algorithm is the overall best algorithm according to the metrics of the validation?"
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+    
+    # Modelling - Validation - SDs 
+    if name == "mod_md_val_sds_mult":
+        # All options
+        learning_hint_options = [
+        "Which algorithm has the lowest standard deviation for ACC?",
+        "Which algorithm has the lowest standard deviation for BAL ACC?", 
+        "Which algorithm seems overall most robust according to the standard deviations?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - Validation - Boxplot of ACC
+    if name == "mod_md_val_ACCBoxplot":
+        # All options
+        learning_hint_options = [
+        "Which algorithm has the narrowest distribution of ACC?", 
+        "Which algorithm has the broadest distribution of ACC?",
+        "Which algorithm has the most outliers?",
+        "For which algorithm is the box the smallest?",
+        "For which algorithm is the box the largest?",
+        "Which algorithm has the highest median?",
+        "Which algorithm has the largest whiskers?",
+        "Which algorithm has the highest ACC?",
+        "Which algorithm has the lowest ACC?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+    
+    # Modelling - Validation - Boxplot of  BAL ACC
+    if name == "mod_md_val_BALACCBoxplot":
+        # All options
+        learning_hint_options = [
+        "Which algorithm has the narrowest distribution of BAL ACC?", 
+        "Which algorithm has the broadest distribution of BAL ACC?",
+        "Which algorithm has the most outliers?",
+        "For which algorithm is the box the smallest?",
+        "For which algorithm is the box the largest?",
+        "Which algorithm has the highest median?",
+        "Which algorithm has the largest whiskers?",
+        "Which algorithm has the highest BAL ACC?",
+        "Which algorithm has the lowest BAL ACC?" 
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
+    # Modelling - Validation - Variable importance
+    if name == "mod_md_val_varImp_mult":
+        # All options
+        learning_hint_options = [
+        "Which variable is the most important?",
+        "Does the order of most important variables coincide with the results from the full model?",
+        "Would it make sense to exclude a variable in the model?",
+        "What does the value for variable importance tell you?",
+        "Which variable importance shows a high variance?",
+        "Can the variable importance be logically explained?"    
+        ]
+        # Randomly select an option
+        random_hint = randint(0, len(learning_hint_options)-1)
+        learning_hint = learning_hint_options[random_hint]
+
     #-------------------------------------------------------------------------------------------------
 
     # HYPERPARAMETER-TUNING (Multivariate Data)
@@ -2442,7 +2641,7 @@ def learning_hints(name):
         # All options
         learning_hint_options = [
         "What does the specific maximum tree depth mean?",
-        "What role does a single tree play in the model?"
+        "What role does a single tree play in the model?",
         "Are interactions of the explanatory variables incorporated into the model?",
         "What does the specific sample rate mean?"
         ]
