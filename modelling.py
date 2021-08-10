@@ -19,7 +19,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn import ensemble
 from sklearn.neural_network import MLPRegressor, MLPClassifier
-from sklearn.metrics import make_scorer, mean_squared_error, r2_score, mean_absolute_error, explained_variance_score, roc_auc_score, max_error, log_loss, average_precision_score, precision_recall_curve, auc, roc_curve, confusion_matrix, recall_score, precision_score, f1_score, accuracy_score, balanced_accuracy_score, cohen_kappa_score
+from sklearn.metrics import make_scorer, mean_squared_error, r2_score, mean_absolute_error, explained_variance_score, roc_auc_score, max_error, log_loss, average_precision_score, precision_recall_curve, auc, roc_curve, confusion_matrix, recall_score, precision_score, f1_score, accuracy_score, balanced_accuracy_score, cohen_kappa_score, classification_report
 from sklearn.model_selection import cross_val_score, GridSearchCV, RandomizedSearchCV
 from sklearn.base import BaseEstimator, RegressorMixin, ClassifierMixin
 from sklearn.inspection import plot_partial_dependence, partial_dependence, permutation_importance
@@ -35,6 +35,7 @@ from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from pygam import LinearGAM, LogisticGAM, s
+from sklearn.multiclass import OneVsOneClassifier, OneVsRestClassifier
 
 
 #----------------------------------------------------------------------------------------------
@@ -80,6 +81,12 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
         scoring_function = make_scorer(roc_auc_score, greater_is_better = True, needs_proba = True)
 
     #-----------------------------------------------------------------------------------------
+    # Objective function for multi-class response variables
+
+    if response_var_type == "multi-class":
+        scoring_function = make_scorer(accuracy_score, greater_is_better = True)
+
+    #-----------------------------------------------------------------------------------------
     # Split data into training and test data (always 80%/20%)
 
     Y_data = data[response_var]
@@ -87,6 +94,8 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
     if response_var_type == "continuous":
         X_train, X_test, Y_train, Y_test = train_test_split(X_data, Y_data, train_size = 0.8, random_state = 1)
     if response_var_type == "binary":
+        X_train, X_test, Y_train, Y_test = train_test_split(X_data, Y_data, train_size = 0.8, random_state = 1, stratify = Y_data)
+    if response_var_type == "multi-class":
         X_train, X_test, Y_train, Y_test = train_test_split(X_data, Y_data, train_size = 0.8, random_state = 1, stratify = Y_data)
 
     #---------------------------------------------------------------------------------
@@ -101,6 +110,8 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
             rf_tuning_results["scoring"] = "% VE"
         if response_var_type == "binary":
             rf_tuning_results["scoring"] = "AUC ROC"
+        if response_var_type == "multi-class":
+            rf_tuning_results["scoring"] = "accuracy"
 
         # Extract hyperparameter range settings
         min_not = hyPara_values["rf"]["number of trees"]["min"]
@@ -153,6 +164,12 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
             cv = RepeatedKFold(n_splits = hypTune_nCV, n_repeats = 1, random_state = 0)
         # Model specification for binary variables
         if response_var_type == "binary":
+            # Model
+            rf = ensemble.RandomForestClassifier()
+            # Cross-validation technique
+            cv = RepeatedStratifiedKFold(n_splits = hypTune_nCV, n_repeats = 1, random_state = 0)
+        # Model specification for multi-class variables
+        if response_var_type == "multi-class":
             # Model
             rf = ensemble.RandomForestClassifier()
             # Cross-validation technique
@@ -250,6 +267,8 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
                 cv_best_para = cross_val_score(ensemble.RandomForestRegressor(**params), X_train, Y_train, cv = cv, scoring = scoring_function)#, n_jobs = -1)
             if response_var_type == "binary":
                 cv_best_para = cross_val_score(ensemble.RandomForestClassifier(**params), X_train, Y_train, cv = cv, scoring = scoring_function)#, n_jobs = -1)
+            if response_var_type == "multi-class":
+                cv_best_para = cross_val_score(ensemble.RandomForestClassifier(**params), X_train, Y_train, cv = cv, scoring = scoring_function)#, n_jobs = -1)
 
             # Extract best score (mean cross-validated score of the best_estimator) and standard deviation
             rf_tuning_results["mean score"] = np.mean(cv_best_para)
@@ -260,6 +279,8 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
             rf_final_model = ensemble.RandomForestRegressor(**params)
         if response_var_type == "binary":
             rf_final_model = ensemble.RandomForestClassifier(**params)
+        if response_var_type == "multi-class":
+            rf_final_model = ensemble.RandomForestClassifier(**params)
         rf_final_model.fit(X_train, Y_train)
     
         # Prediction for Y_test (continuous)
@@ -268,6 +289,9 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
         # Prediction of probability for Y_test (binary)
         if response_var_type == "binary":
             Y_test_pred = rf_final_model.predict_proba(X_test)[:, 1]
+        # Prediction for Y_test (multi-class)
+        if response_var_type == "multi-class":
+            Y_test_pred = rf_final_model.predict(X_test)
 
         # R² for test data (continuous)
         if response_var_type == "continuous":
@@ -275,6 +299,9 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
         # AUC for test data (binary)
         if response_var_type == "binary":
             rf_tuning_results["test score"] = roc_auc_score(Y_test, Y_test_pred)
+        # Accuracy for test data (multi-class)
+        if response_var_type == "multi-class":
+            rf_tuning_results["test score"] = accuracy_score(Y_test, Y_test_pred)
 
         # Save results
         tuning_results["rf tuning"] = rf_tuning_results
@@ -461,6 +488,8 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
             ann_tuning_results["scoring"] = "% VE"
         if response_var_type == "binary":
             ann_tuning_results["scoring"] = "AUC ROC"
+        if response_var_type == "multi-class":
+            ann_tuning_results["scoring"] = "accuracy"
 
         # Extract hyperparameter range settings
         woa_list = hyPara_values["ann"]["weight optimization solver"]["min"]
@@ -592,7 +621,21 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
             elif hypTune_method == "grid-search" or hypTune_method == "random grid-search":
                 ann = MLPClassifier()
             # Cross-validation technique
-            cv = RepeatedStratifiedKFold(n_splits = hypTune_nCV, n_repeats = 1, random_state = 0)         
+            cv = RepeatedStratifiedKFold(n_splits = hypTune_nCV, n_repeats = 1, random_state = 0) 
+        # Model specification for multi-class variables
+        if response_var_type == "multi-class":
+            # Wrapper for MLP due to hidden_layer_nodes tuple property in Bayesian search
+            if hypTune_method == "Bayes optimization" or hypTune_method == "sequential model-based optimization":
+                if nhl_value == 1:
+                    ann = mlp.MLPWrapperBin_1Layer()
+                elif nhl_value == 2:
+                    ann = mlp.MLPWrapperBin_2Layer()
+                elif nhl_value == 3:
+                    ann = mlp.MLPWrapperBin_3Layer()
+            elif hypTune_method == "grid-search" or hypTune_method == "random grid-search":
+                ann = MLPClassifier()
+            # Cross-validation technique
+            cv = RepeatedStratifiedKFold(n_splits = hypTune_nCV, n_repeats = 1, random_state = 0)            
 
         # Search method
         # Grid-search
@@ -716,6 +759,8 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
                 cv_best_para = cross_val_score(MLPRegressor(**params2), X_train_ann, Y_train, cv = cv, scoring = scoring_function)#, n_jobs = -1)
             if response_var_type == "binary":
                 cv_best_para = cross_val_score(MLPClassifier(**params2), X_train_ann, Y_train, cv = cv, scoring = scoring_function)#, n_jobs = -1)
+            if response_var_type == "multi-class":
+                cv_best_para = cross_val_score(MLPClassifier(**params2), X_train_ann, Y_train, cv = cv, scoring = scoring_function)#, n_jobs = -1)
 
             # Extract best score (mean cross-validated score of the best_estimator) and standard deviation
             ann_tuning_results["mean score"] = np.mean(cv_best_para)
@@ -726,6 +771,8 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
             ann_final_model = MLPRegressor(**params2)
         if response_var_type == "binary":
             ann_final_model = MLPClassifier(**params2)
+        if response_var_type == "multi-class":
+            ann_final_model = MLPClassifier(**params2)
         ann_final_model.fit(X_train_ann, Y_train)
     
         # Prediction for Y_test (continuous)
@@ -734,6 +781,9 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
         # Prediction of probability for Y_test (binary)
         if response_var_type == "binary":
             Y_test_pred = ann_final_model.predict_proba(X_test_ann)[:, 1]
+        # Prediction for Y_test (multi-class)
+        if response_var_type == "multi-class":
+            Y_test_pred = ann_final_model.predict(X_test_ann)
 
         # R² for test data (continuous)
         if response_var_type == "continuous":
@@ -741,6 +791,9 @@ def model_tuning(data, algorithms, hypTune_method, hypTune_iter, hypTune_nCV, hy
         # AUC for test data (binary)
         if response_var_type == "binary":
             ann_tuning_results["test score"] = roc_auc_score(Y_test, Y_test_pred)
+        # Accuracy for test data (multi-class)
+        if response_var_type == "multi-class":
+            ann_tuning_results["test score"] = accuracy_score(Y_test, Y_test_pred)
 
         # Save results
         tuning_results["ann tuning"] = ann_tuning_results
@@ -1317,6 +1370,128 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
             validation_results["sd_dep"] = pd.DataFrame(columns = algorithms)
             validation_results["AUC ROC"] = pd.DataFrame(columns = algorithms)
             validation_results["TSS"] = pd.DataFrame(columns = algorithms)
+            validation_results["variable importance mean"] = pd.DataFrame(columns = algorithms)
+            validation_results["variable importance sd"] = pd.DataFrame(columns = algorithms)
+    
+    #-----------------------------------------------------------------------------------------
+    # Multi-class response variables
+
+    if response_var_type == "multi-class":
+
+        validation_results = {}
+
+        if algorithms is not None:
+        
+            # Model validation
+            # ACC
+            model_eval_acc = pd.DataFrame(index = range(val_runs), columns = algorithms)
+            # BAL ACC
+            model_eval_bal_acc = pd.DataFrame(index = range(val_runs), columns = algorithms)
+
+            # Variable importance
+            model_varImp = {}
+            for var in expl_var:
+                model_varImp[var] = []
+            model_varImp_mean = pd.DataFrame(index = expl_var, columns = algorithms)
+            model_varImp_sd = pd.DataFrame(index = expl_var, columns = algorithms)
+
+            # Model validation summary
+            model_eval_mean = pd.DataFrame(index = ["ACC", "BAL ACC"], columns = algorithms)
+            model_eval_sd = pd.DataFrame(index = ["ACC", "BAL ACC"], columns = algorithms)
+            
+            for model in algorithms:
+                for val in range(val_runs):
+
+                    # Split data into train/ test data
+                    Y_data = data[response_var]
+                    X_data = data[expl_var]
+                    X_train, X_test, Y_train, Y_test = train_test_split(X_data, Y_data, train_size = train_frac, random_state = val)#, stratify = Y_data)
+
+                    # Train RF model
+                    if model == "Random Forest":
+                        rf_final_para = final_hyPara_values["rf"]
+                        params = {'n_estimators': rf_final_para["number of trees"][0],
+                        'max_depth': rf_final_para["maximum tree depth"][0],
+                        'max_features': rf_final_para["maximum number of features"][0],
+                        'max_samples': rf_final_para["sample rate"][0],
+                        'bootstrap': True,
+                        'oob_score': True,
+                        }
+                        ml_model = ensemble.RandomForestClassifier(**params)
+                        ml_model.fit(X_train, Y_train)
+                        
+                        # Prediction for Y_test
+                        Y_test_pred = ml_model.predict(X_test)         
+
+                    # Train ANN model
+                    if model == "Artificial Neural Networks":
+                        # Standardize X_data
+                        scaler = StandardScaler()
+                        scaler.fit(X_train)
+                        X_train_ann = scaler.transform(X_train)
+                        X_test_ann = scaler.transform(X_test) 
+
+                        ann_final_para = final_hyPara_values["ann"]
+                        params = {"solver": ann_final_para["weight optimization solver"][0],
+                        "max_iter": ann_final_para["maximum number of iterations"][0],
+                        "activation": ann_final_para["activation function"][0],
+                        "hidden_layer_sizes": ann_final_para["hidden layer sizes"][0],
+                        "learning_rate_init": ann_final_para["learning rate"][0],
+                        #"learning_rate": ann_final_para["learning rate schedule"][0],
+                        #"momentum": ann_final_para["momentum"][0],
+                        "alpha": ann_final_para["L² regularization"][0]
+                        #"epsilon": ann_final_para["epsilon"][0]
+                        }
+                        ml_model = MLPClassifier(**params)
+                        ml_model.fit(X_train_ann, Y_train)
+
+                        # Prediction probability for Y_test
+                        Y_test_pred = ml_model.predict(X_test_ann)
+
+                    # Variable importance with test data (via permutation, order important)
+                    scoring_function = make_scorer(accuracy_score, greater_is_better = True)
+                    # if model == "Logistic Regression":
+                    #     varImp = permutation_importance(ml_model_sk , X_test, Y_test, n_repeats = 10, random_state = 0, scoring = scoring_function)
+                    if model == "Random Forest":
+                        varImp = permutation_importance(ml_model , X_test, Y_test, n_repeats = 10, random_state = 0, scoring = scoring_function)
+                    elif model == "Artificial Neural Networks":
+                        varImp = permutation_importance(ml_model , X_test_ann, Y_test, n_repeats = 10, random_state = 0, scoring = scoring_function)
+                    for var in expl_var:
+                        model_varImp[var] = np.append(model_varImp[var], varImp.importances[expl_var.index(var)])
+
+                    # Save accuracy for test data
+                    model_eval_acc.iloc[val][model] = accuracy_score(Y_test, Y_test_pred)
+
+                    # Save balanced accuracy for test data
+                    model_eval_bal_acc.iloc[val][model] = balanced_accuracy_score(Y_test, Y_test_pred)
+
+                    progress1 += 1
+                    my_bar.progress(progress1/(len(algorithms)*val_runs))
+
+                # Calculate mean performance statistics
+                # mean
+                model_eval_mean.loc["ACC"][model] = model_eval_acc[model].mean()
+                model_eval_mean.loc["BAL ACC"][model] = model_eval_bal_acc[model].mean()
+                # sd
+                model_eval_sd.loc["ACC"][model] = model_eval_acc[model].std()
+                model_eval_sd.loc["BAL ACC"][model] = model_eval_bal_acc[model].std()
+                # Variable importances (mean & sd)
+                for v in expl_var:
+                    model_varImp_mean.loc[v][model] = model_varImp[v].mean()
+                    model_varImp_sd.loc[v][model] = model_varImp[v].std()
+
+            # Collect results
+            validation_results["mean"] = model_eval_mean
+            validation_results["sd"] = model_eval_sd
+            validation_results["ACC"] = model_eval_acc
+            validation_results["BAL ACC"] = model_eval_bal_acc
+            validation_results["variable importance mean"] = model_varImp_mean
+            validation_results["variable importance sd"] = model_varImp_sd
+        else:
+            validation_results["mean"] = pd.DataFrame(columns = algorithms)
+            validation_results["sd"] = pd.DataFrame(columns = algorithms)
+            validation_results["ACC"] = pd.DataFrame(columns = algorithms)
+            validation_results["BAL ACC"] = pd.DataFrame(columns = algorithms)
             validation_results["variable importance mean"] = pd.DataFrame(columns = algorithms)
             validation_results["variable importance sd"] = pd.DataFrame(columns = algorithms)
             
@@ -2639,6 +2814,223 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
         full_model_results["model comparison thres"] = model_comparison_thres
         full_model_results["model comparison thresDep"] = model_comparison_thresDep
         full_model_results["residuals"] = residuals_comparison
+
+    #-----------------------------------------------------------------------------------------
+    # Multi-class response variables
+
+    if response_var_type == "multi-class":
+
+        # Collect performance results across all algorithms
+        model_comparison = pd.DataFrame(index = ["ACC", "BAL ACC", "macro avg PREC", "macro avg RECALL", "macro avg F1", "weighted avg PREC", "weighted avg RECALL", "weighted avg F1"], columns = algorithms)
+        
+        # Random Forest full model
+        if any(a for a in algorithms if a == "Random Forest"):
+
+            # Save results
+            rf_reg_inf = pd.DataFrame(index = ["Base estimator", "Estimators", "Features", "OOB score"], columns = ["Value"])
+            rf_reg_featImp = pd.DataFrame(index = expl_var, columns = ["Value"])
+            rf_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
+            rf_class_rep = pd.DataFrame(index = np.unique(Y_data), columns = ["PREC", "RECALL", "F1", "SUPPORT"])
+
+            # Train RF model
+            rf_final_para = final_hyPara_values["rf"]
+            params = {'n_estimators': rf_final_para["number of trees"][0],
+            'max_depth': rf_final_para["maximum tree depth"][0],
+            'max_features': rf_final_para["maximum number of features"][0],
+            'max_samples': rf_final_para["sample rate"][0],
+            'bootstrap': True,
+            'oob_score': True,
+            }
+            full_model_rf_sk = ensemble.RandomForestClassifier(**params)
+            full_model_rf_sk.fit(X_data, Y_data)
+            Y_pred = full_model_rf_sk.predict(X_data)
+            Y_pred_proba = full_model_rf_sk.predict_proba(X_data)
+            if data_new.empty == False:
+                Y_pred_new = full_model_rf_sk.predict(X_data_new)
+                Y_pred_new_proba = full_model_rf_sk.predict_proba(X_data_new)
+
+            # Extract essential results from model
+            # Information
+            rf_reg_inf.loc["Base estimator"] = full_model_rf_sk.base_estimator_
+            rf_reg_inf.loc["Estimators"] = len(full_model_rf_sk.estimators_)
+            rf_reg_inf.loc["Features"] = full_model_rf_sk.n_features_
+            rf_reg_inf.loc["OOB score"] = full_model_rf_sk.oob_score_
+            # Feature importances (RF method)
+            rf_featImp = full_model_rf_sk.feature_importances_
+            for varI in expl_var:
+                rf_reg_featImp.loc[varI]["Value"] = rf_featImp[expl_var.index(varI)]
+            rf_reg_featImp = rf_reg_featImp.sort_values(by = ["Value"], ascending = False)
+            # Variable importance (via permutation, order important)
+            scoring_function = make_scorer(accuracy_score, greater_is_better = True)
+            rf_varImp = permutation_importance(full_model_rf_sk , X_data, Y_data, n_repeats = 10, random_state = 0, scoring = scoring_function)
+            for varI in expl_var:
+                rf_reg_varImp.loc[varI]["mean"] = rf_varImp.importances_mean[expl_var.index(varI)]
+                rf_reg_varImp.loc[varI]["std"] = rf_varImp.importances_std[expl_var.index(varI)]
+            rf_reg_varImp = rf_reg_varImp.sort_values(by = ["mean"], ascending = False)
+            # Partial dependence
+            # rf_pd = {}
+            # rf_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
+            # rf_partDep = plot_partial_dependence(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            # for varPd in expl_var:
+            #     rf_pd[varPd] = rf_partDep[expl_var.index(varPd)]
+            #     rf_pd_min_max.loc[varPd]["min"] = rf_partDep[expl_var.index(varPd)][0].min()
+            #     rf_pd_min_max.loc[varPd]["max"] = rf_partDep[expl_var.index(varPd)][0].max() 
+            # Classification report
+            for i in range(len(np.unique(Y_data))):
+                rf_class_rep.loc[np.unique(Y_data)[i]]["PREC"] =  classification_report(Y_data, Y_pred, digits = 10, output_dict = True)[str(np.unique(Y_data)[i])]["precision"]
+                rf_class_rep.loc[np.unique(Y_data)[i]]["RECALL"] =  classification_report(Y_data, Y_pred, digits = 10, output_dict = True)[str(np.unique(Y_data)[i])]["recall"]
+                rf_class_rep.loc[np.unique(Y_data)[i]]["F1"] =  classification_report(Y_data, Y_pred, digits = 10, output_dict = True)[str(np.unique(Y_data)[i])]["f1-score"]
+                rf_class_rep.loc[np.unique(Y_data)[i]]["SUPPORT"] =  classification_report(Y_data, Y_pred, digits = 10, output_dict = True)[str(np.unique(Y_data)[i])]["support"]
+            macro_avg_values = classification_report(Y_data, Y_pred, digits = 10, output_dict = True)["macro avg"]
+            macro_avg = pd.DataFrame(index = ["macro avg"], columns = ["PREC", "RECALL", "F1", "SUPPORT"])
+            macro_avg.loc["macro avg"]["PREC"] = macro_avg_values["precision"]
+            macro_avg.loc["macro avg"]["RECALL"] = macro_avg_values["recall"]
+            macro_avg.loc["macro avg"]["F1"] = macro_avg_values["f1-score"]
+            macro_avg.loc["macro avg"]["SUPPORT"] = macro_avg_values["support"]
+            weigh_avg_values = classification_report(Y_data, Y_pred, digits = 10, output_dict = True)["weighted avg"]
+            weigh_avg = pd.DataFrame(index = ["weighted avg"], columns = ["PREC", "RECALL", "F1", "SUPPORT"])
+            weigh_avg.loc["weighted avg"]["PREC"] = weigh_avg_values["precision"]
+            weigh_avg.loc["weighted avg"]["RECALL"] = weigh_avg_values["recall"]
+            weigh_avg.loc["weighted avg"]["F1"] = weigh_avg_values["f1-score"]
+            weigh_avg.loc["weighted avg"]["SUPPORT"] = weigh_avg_values["support"]
+            rf_class_rep = rf_class_rep.append(macro_avg, ignore_index=False)
+            rf_class_rep = rf_class_rep.append(weigh_avg, ignore_index=False)                     
+            
+            # Save tables
+            full_model_results["RF information"] = rf_reg_inf
+            full_model_results["RF variable importance"] = rf_reg_varImp
+            full_model_results["RF feature importance"] = rf_reg_featImp
+            full_model_results["RF fitted"] = Y_pred
+            full_model_results["RF fitted proba"] = Y_pred_proba
+            full_model_results["RF confusion"] = pd.DataFrame(confusion_matrix(Y_data, Y_pred, labels = np.unique(Y_data)), index=np.unique(Y_data), columns=np.unique(Y_data))
+            full_model_results["RF classification report"] = rf_class_rep
+            #full_model_results["RF partial dependence"] = rf_pd
+            #full_model_results["RF partial dependence min/max"] = rf_pd_min_max
+            if data_new.empty == False:
+                full_model_results["RF prediction"] = Y_pred_new
+                full_model_results["RF prediction proba"] = Y_pred_new_proba
+
+            # Model comparison for RF
+            model_comparison.loc["ACC"]["Random Forest"] = accuracy_score(Y_data, Y_pred)
+            model_comparison.loc["BAL ACC"]["Random Forest"] = balanced_accuracy_score(Y_data, Y_pred)
+            model_comparison.loc["macro avg PREC"]["Random Forest"] = rf_class_rep.loc["macro avg"]["PREC"]
+            model_comparison.loc["macro avg RECALL"]["Random Forest"] = rf_class_rep.loc["macro avg"]["RECALL"]
+            model_comparison.loc["macro avg F1"]["Random Forest"] = rf_class_rep.loc["macro avg"]["F1"]
+            model_comparison.loc["weighted avg PREC"]["Random Forest"] = rf_class_rep.loc["weighted avg"]["PREC"]
+            model_comparison.loc["weighted avg RECALL"]["Random Forest"] = rf_class_rep.loc["weighted avg"]["RECALL"]
+            model_comparison.loc["weighted avg F1"]["Random Forest"] = rf_class_rep.loc["weighted avg"]["F1"]
+
+            progress2 += 1
+            my_bar.progress(progress2/len(algorithms))
+
+        # Artificial Neural Networks full model
+        if any(a for a in algorithms if a == "Artificial Neural Networks"):
+
+            # Save results
+            ann_reg_inf = pd.DataFrame(index = ["Outputs", "Layers", "Training samples", "Output activation", "Loss function"], columns = ["Value"])
+            ann_reg_varImp = pd.DataFrame(index = expl_var, columns = ["mean", "std"])
+            ann_class_rep = pd.DataFrame(index = np.unique(Y_data), columns = ["PREC", "RECALL", "F1", "SUPPORT"])
+            
+            # Train ANN model
+            scaler = StandardScaler()
+            scaler.fit(X_data)
+            X_data_ann = scaler.transform(X_data)
+            X_data_ann = pd.DataFrame(X_data_ann, index = X_data.index, columns = X_data.columns)
+            ann_final_para = final_hyPara_values["ann"]
+            params2 = {"solver": ann_final_para["weight optimization solver"][0],
+            "max_iter": ann_final_para["maximum number of iterations"][0],
+            "activation": ann_final_para["activation function"][0],
+            "hidden_layer_sizes": ann_final_para["hidden layer sizes"][0],
+            "learning_rate_init": ann_final_para["learning rate"][0],
+            #"learning_rate": ann_final_para["learning rate schedule"][0],
+            #"momentum": ann_final_para["momentum"][0],
+            "alpha": ann_final_para["L² regularization"][0]
+            #"epsilon": ann_final_para["epsilon"][0]
+            }
+            full_model_ann_sk = MLPClassifier(**params2)
+            full_model_ann_sk.fit(X_data_ann, Y_data)
+            Y_pred = full_model_ann_sk.predict(X_data_ann)
+            Y_pred_proba = full_model_ann_sk.predict_proba(X_data_ann)
+            if data_new.empty == False:
+                X_data_new_ann = scaler.transform(X_data_new)
+                Y_pred_new = full_model_ann_sk.predict(X_data_new_ann)
+                Y_pred_new_proba = full_model_ann_sk.predict_proba(X_data_new_ann)
+            
+            # Extract essential results from model
+            # Regression information
+            ann_reg_inf.loc["Outputs"] = full_model_ann_sk.n_outputs_
+            ann_reg_inf.loc["Layers"] = full_model_ann_sk.n_layers_
+            ann_reg_inf.loc["Training samples"] = full_model_ann_sk.t_
+            ann_reg_inf.loc["Output activation"] = full_model_ann_sk.out_activation_
+            ann_reg_inf.loc["Loss function"] = full_model_ann_sk.loss
+            
+            # Variable importance (via permutation, order important)
+            scoring_function = make_scorer(accuracy_score, greater_is_better = True)
+            ann_varImp = permutation_importance(full_model_ann_sk , X_data_ann, Y_data, n_repeats = 10, random_state = 0, scoring = scoring_function)
+            for varI in expl_var:
+                ann_reg_varImp.loc[varI]["mean"] = ann_varImp.importances_mean[expl_var.index(varI)]
+                ann_reg_varImp.loc[varI]["std"] = ann_varImp.importances_std[expl_var.index(varI)]
+            ann_reg_varImp = ann_reg_varImp.sort_values(by = ["mean"], ascending = False)
+            # Partial dependence
+            # ann_pd = {}
+            # ann_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
+            # ann_partDep = plot_partial_dependence(full_model_ann_sk, X = X_data_ann, features = expl_var, percentiles = (0, 1), method = "brute", response_method = "predict_proba").pd_results
+            # for varPd in expl_var:
+            #     ann_pd[varPd] = ann_partDep[expl_var.index(varPd)]
+            #     ann_pd_min_max.loc[varPd]["min"] = ann_partDep[expl_var.index(varPd)][0].min()
+            #     ann_pd_min_max.loc[varPd]["max"] = ann_partDep[expl_var.index(varPd)][0].max() 
+            # Classification report
+            for i in range(len(np.unique(Y_data))):
+                ann_class_rep.loc[np.unique(Y_data)[i]]["PREC"] =  classification_report(Y_data, Y_pred, digits = 10, output_dict = True)[str(np.unique(Y_data)[i])]["precision"]
+                ann_class_rep.loc[np.unique(Y_data)[i]]["RECALL"] =  classification_report(Y_data, Y_pred, digits = 10, output_dict = True)[str(np.unique(Y_data)[i])]["recall"]
+                ann_class_rep.loc[np.unique(Y_data)[i]]["F1"] =  classification_report(Y_data, Y_pred, digits = 10, output_dict = True)[str(np.unique(Y_data)[i])]["f1-score"]
+                ann_class_rep.loc[np.unique(Y_data)[i]]["SUPPORT"] =  classification_report(Y_data, Y_pred, digits = 10, output_dict = True)[str(np.unique(Y_data)[i])]["support"]
+            macro_avg_values = classification_report(Y_data, Y_pred, digits = 10, output_dict = True)["macro avg"]
+            macro_avg = pd.DataFrame(index = ["macro avg"], columns = ["PREC", "RECALL", "F1", "SUPPORT"])
+            macro_avg.loc["macro avg"]["PREC"] = macro_avg_values["precision"]
+            macro_avg.loc["macro avg"]["RECALL"] = macro_avg_values["recall"]
+            macro_avg.loc["macro avg"]["F1"] = macro_avg_values["f1-score"]
+            macro_avg.loc["macro avg"]["SUPPORT"] = macro_avg_values["support"]
+            weigh_avg_values = classification_report(Y_data, Y_pred, digits = 10, output_dict = True)["weighted avg"]
+            weigh_avg = pd.DataFrame(index = ["weighted avg"], columns = ["PREC", "RECALL", "F1", "SUPPORT"])
+            weigh_avg.loc["weighted avg"]["PREC"] = weigh_avg_values["precision"]
+            weigh_avg.loc["weighted avg"]["RECALL"] = weigh_avg_values["recall"]
+            weigh_avg.loc["weighted avg"]["F1"] = weigh_avg_values["f1-score"]
+            weigh_avg.loc["weighted avg"]["SUPPORT"] = weigh_avg_values["support"]
+            ann_class_rep = ann_class_rep.append(macro_avg, ignore_index=False)
+            ann_class_rep = ann_class_rep.append(weigh_avg, ignore_index=False)
+
+            # Save tables
+            full_model_results["ANN information"] = ann_reg_inf
+            full_model_results["ANN variable importance"] = ann_reg_varImp
+            full_model_results["ANN fitted"] = Y_pred
+            full_model_results["ANN fitted proba"] = Y_pred_proba
+            full_model_results["ANN confusion"] = pd.DataFrame(confusion_matrix(Y_data, Y_pred, labels = np.unique(Y_data)), index=np.unique(Y_data), columns=np.unique(Y_data))
+            full_model_results["ANN classification report"] = ann_class_rep
+            # full_model_results["ANN partial dependence"] = ann_pd
+            # full_model_results["ANN partial dependence min/max"] = ann_pd_min_max
+            if ann_final_para["weight optimization solver"][0] != "lbfgs":
+                full_model_results["ANN loss curve"] = full_model_ann_sk.loss_curve_
+                full_model_results["ANN loss"] = full_model_ann_sk.best_loss_
+            if data_new.empty == False:
+                full_model_results["ANN prediction"] = Y_pred_new
+                full_model_results["ANN prediction proba"] = Y_pred_new_proba
+
+            # Model comparison for ANN
+            model_comparison.loc["ACC"]["Artificial Neural Networks"] = accuracy_score(Y_data, Y_pred)
+            model_comparison.loc["BAL ACC"]["Artificial Neural Networks"] = balanced_accuracy_score(Y_data, Y_pred)
+            model_comparison.loc["macro avg PREC"]["Artificial Neural Networks"] = ann_class_rep.loc["macro avg"]["PREC"]
+            model_comparison.loc["macro avg RECALL"]["Artificial Neural Networks"] = ann_class_rep.loc["macro avg"]["RECALL"]
+            model_comparison.loc["macro avg F1"]["Artificial Neural Networks"] = ann_class_rep.loc["macro avg"]["F1"]
+            model_comparison.loc["weighted avg PREC"]["Artificial Neural Networks"] = ann_class_rep.loc["weighted avg"]["PREC"]
+            model_comparison.loc["weighted avg RECALL"]["Artificial Neural Networks"] = ann_class_rep.loc["weighted avg"]["RECALL"]
+            model_comparison.loc["weighted avg F1"]["Artificial Neural Networks"] = ann_class_rep.loc["weighted avg"]["F1"]
+
+            progress2 += 1
+            my_bar.progress(progress2/len(algorithms))
+            
+        # Save model comparison
+        full_model_results["model comparison"] = model_comparison
 
     return full_model_results  
 
