@@ -806,6 +806,21 @@ def app():
                         n_cols_post = df.shape[1]
                         st.write(df)
                         st.write("Data shape: ", n_rows_post, "rows and ", n_cols_post, "columns")
+                         # Download transformed data:
+                        output = BytesIO()
+                        excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                        df.to_excel(excel_file, sheet_name="Clean. and transf. data")
+                        excel_file.save()
+                        excel_file = output.getvalue()
+                        b64 = base64.b64encode(excel_file)
+                        dl_file_name = "CleanedTransfData__" + df_name + ".xlsx"
+                        st.markdown(
+                            f"""
+                        <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download cleaned and transformed data</a>
+                        """,
+                        unsafe_allow_html=True)
+                        st.write("")
+
                     if df[df.duplicated()].shape[0] > 0 or df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] > 0:
                         check_nasAnddupl2 = st.checkbox("Show duplicates and NAs info (processed) ", value = False, key = session_state.id) 
                         if check_nasAnddupl2:
