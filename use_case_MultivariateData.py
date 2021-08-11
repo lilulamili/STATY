@@ -50,6 +50,18 @@ def app():
     #Session state
     session_state = SessionState.get(id = 0)
 
+    # Analysis type
+    analysis_type = st.selectbox("What kind of analysis would you like to conduct?", ["Regression", "Multi-class classification", "Data decomposition"], key = session_state.id)
+
+    st.header("**Multivariate data**")
+
+    if analysis_type == "Regression":
+        st.markdown("Get your data ready for powerfull methods: Artificial Neural Networks, Boosted Regression Trees, Random Forest, Generalized Additive Models, Multiple Linear Regression, and Logistic Regression! Let STATY do data cleaning, variable transformations, visualizations and deliver you the stats you need. Specify your data processing preferences and start exploring your data stories right below... ")
+    if analysis_type == "Multi-class classification":
+        st.markdown("Get your data ready for powerfull multi-class classification methods! Let STATY do data cleaning, variable transformations, visualizations and deliver you the stats you need. Specify your data processing preferences and start exploring your data stories right below... ")
+    if analysis_type == "Data decomposition":
+        st.markdown("Decompose your data with Principal Component Analysis or Factor Analysis! Let STATY do data cleaning, variable transformations, visualizations and deliver you the stats you need. Specify your data processing preferences and start exploring your data stories right below... ")
+
     #------------------------------------------------------------------------------------------
 
     #++++++++++++++++++++++++++++++++++++++++++++
@@ -99,11 +111,19 @@ def app():
             df_name=os.path.splitext(uploaded_data.name)[0]
             st.sidebar.success('Loading data... done!')
         elif uploaded_data is None:
-           df = pd.read_csv("default data/WHR_2021.csv", sep = ";|,|\t",engine='python')
-           df_name="WHR_2021" 
+            if analysis_type == "Regression" or analysis_type == "Data decomposition":
+                df = pd.read_csv("default data/WHR_2021.csv", sep = ";|,|\t",engine='python')
+                df_name="WHR_2021" 
+            if analysis_type == "Multi-class classification":
+                df = pd.read_csv("default data/iris.txt", sep = ";|,|\t",engine='python')
+                df_name="iris" 
     else:
-        df = pd.read_csv("default data/WHR_2021.csv", sep = ";|,|\t",engine='python') 
-        df_name="WHR_2021" 
+        if analysis_type == "Regression" or analysis_type == "Data decomposition":
+            df = pd.read_csv("default data/WHR_2021.csv", sep = ";|,|\t",engine='python') 
+            df_name="WHR_2021" 
+        if analysis_type == "Multi-class classification":
+            df = pd.read_csv("default data/iris.txt", sep = ";|,|\t",engine='python')
+            df_name="iris" 
     st.sidebar.markdown("")
         
     #Basic data info
@@ -151,35 +171,12 @@ def app():
     #++++++++++++++++++++++++++++++++++++++++++++
     # DATA PREPROCESSING & VISUALIZATION
 
-    st.header("**Multivariate data**")
-    
-    # Analysis type
-    analysis_type = st.selectbox("What kind of analysis would you like to conduct?", ["Regression", "Multi-class classification", "Data decomposition"], key = session_state.id)
-
-    if analysis_type == "Regression":
-        st.markdown("Get your data ready for powerfull methods: Artificial Neural Networks, Boosted Regression Trees, Random Forest, Generalized Additive Models, Multiple Linear Regression, and Logistic Regression! Let STATY do data cleaning, variable transformations, visualizations and deliver you the stats you need. Specify your data processing preferences and start exploring your data stories right below... ")
-    if analysis_type == "Multi-class classification":
-        st.markdown("Get your data ready for powerfull multi-class classification methods! Let STATY do data cleaning, variable transformations, visualizations and deliver you the stats you need. Specify your data processing preferences and start exploring your data stories right below... ")
-    if analysis_type == "Data decomposition":
-        st.markdown("Decompose your data with Principal Component Analysis or Factor Analysis! Let STATY do data cleaning, variable transformations, visualizations and deliver you the stats you need. Specify your data processing preferences and start exploring your data stories right below... ")
-
     # Check if enough data is available
     if n_rows > 0 and n_cols > 0:
         st.empty()
     else:
         st.error("ERROR: Not enough data!")
         return
-
-    data_empty_container = st.beta_container()
-    with data_empty_container:
-        st.empty()
-        st.empty()
-        st.empty()
-        st.empty()
-        st.empty()
-        st.empty()
-        st.empty()
-        st.empty()
     
     data_exploration_container = st.beta_container()
     with data_exploration_container:
@@ -199,58 +196,88 @@ def app():
 
             # Default data description:
             if uploaded_data == None:
-                if st.checkbox("Show data description", value = False, key = session_state.id):          
-                    st.markdown("**Data source:**")
-                    st.markdown("The data come from the Gallup World Poll surveys from 2018 to 2020. For more details see the [World Happiness Report 2021] (https://worldhappiness.report/).")
-                    st.markdown("**Citation:**")
-                    st.markdown("Helliwell, John F., Richard Layard, Jeffrey Sachs, and Jan-Emmanuel De Neve, eds. 2021. World Happiness Report 2021. New York: Sustainable Development Solutions Network.")
-                    st.markdown("**Variables in the dataset:**")
+                if analysis_type == "Regression" or analysis_type == "Data decomposition":
+                    if st.checkbox("Show data description", value = False, key = session_state.id):          
+                        st.markdown("**Data source:**")
+                        st.markdown("The data come from the Gallup World Poll surveys from 2018 to 2020. For more details see the [World Happiness Report 2021] (https://worldhappiness.report/).")
+                        st.markdown("**Citation:**")
+                        st.markdown("Helliwell, John F., Richard Layard, Jeffrey Sachs, and Jan-Emmanuel De Neve, eds. 2021. World Happiness Report 2021. New York: Sustainable Development Solutions Network.")
+                        st.markdown("**Variables in the dataset:**")
 
-                    col1,col2=st.beta_columns(2) 
-                    col1.write("Country")
-                    col2.write("country name")
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("Country")
+                        col2.write("country name")
+                        
+                        col1,col2=st.beta_columns(2)
+                        col1.write("Year ")
+                        col2.write("year ranging from 2005 to 2020")
+                        
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("Ladder")
+                        col2.write("happiness  score  or  subjective  well-being with the best possible life being a 10, and the worst possible life being a 0")
+                        
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("Log GDP per capita")
+                        col2.write("in purchasing power parity at  constant  2017  international  dollar  prices")
+                        
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("Social support")
+                        col2.write("the national average of the binary responses (either 0 or 1) to the question regarding relatives or friends to count on")
+                        
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("Healthy life expectancy at birth")
+                        col2.write("based on  the  data  extracted  from  the  World  Health  Organization’s  Global Health Observatory data repository")
                     
-                    col1,col2=st.beta_columns(2)
-                    col1.write("Year ")
-                    col2.write("year ranging from 2005 to 2020")
-                    
-                    col1,col2=st.beta_columns(2) 
-                    col1.write("Ladder")
-                    col2.write("happiness  score  or  subjective  well-being with the best possible life being a 10, and the worst possible life being a 0")
-                    
-                    col1,col2=st.beta_columns(2) 
-                    col1.write("Log GDP per capita")
-                    col2.write("in purchasing power parity at  constant  2017  international  dollar  prices")
-                    
-                    col1,col2=st.beta_columns(2) 
-                    col1.write("Social support")
-                    col2.write("the national average of the binary responses (either 0 or 1) to the question regarding relatives or friends to count on")
-                    
-                    col1,col2=st.beta_columns(2) 
-                    col1.write("Healthy life expectancy at birth")
-                    col2.write("based on  the  data  extracted  from  the  World  Health  Organization’s  Global Health Observatory data repository")
-                   
-                    col1,col2=st.beta_columns(2) 
-                    col1.write("Freedom to make life choices")
-                    col2.write("national average of responses to the corresponding question")
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("Freedom to make life choices")
+                        col2.write("national average of responses to the corresponding question")
 
-                    col1,col2=st.beta_columns(2) 
-                    col1.write("Generosity")
-                    col2.write("residual of regressing national average of response to the question regarding money donations in the past month on GDP per capita")
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("Generosity")
+                        col2.write("residual of regressing national average of response to the question regarding money donations in the past month on GDP per capita")
 
-                    col1,col2=st.beta_columns(2) 
-                    col1.write("Perceptions of corruption")
-                    col2.write("the national average of the survey responses to the corresponding question")
-                    
-                    col1,col2=st.beta_columns(2) 
-                    col1.write("Positive affect")
-                    col2.write("the  average  of  three  positive  affect  measures (happiness,  laugh  and  enjoyment)")
-                    
-                    col1,col2=st.beta_columns(2)
-                    col1.write("Negative affect (worry, sadness and anger)")
-                    col2.write("the  average  of  three  negative  affect  measures  (worry, sadness and anger)")
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("Perceptions of corruption")
+                        col2.write("the national average of the survey responses to the corresponding question")
+                        
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("Positive affect")
+                        col2.write("the  average  of  three  positive  affect  measures (happiness,  laugh  and  enjoyment)")
+                        
+                        col1,col2=st.beta_columns(2)
+                        col1.write("Negative affect (worry, sadness and anger)")
+                        col2.write("the  average  of  three  negative  affect  measures  (worry, sadness and anger)")
 
-                    st.markdown("")
+                        st.markdown("")
+                if analysis_type == "Multi-class classification":
+                    if st.checkbox("Show data description", value = False, key = session_state.id):          
+                        st.markdown("**Data source:**")
+                        st.markdown("The data come from Fisher's Iris data set. See [here] (https://archive.ics.uci.edu/ml/datasets/iris) for more information.")
+                        st.markdown("**Citation:**")
+                        st.markdown("Fisher, R. A. (1936). The use of multiple measurements in taxonomic problems. Annals of Eugenics, 7(2): 179–188. doi: [10.1111/j.1469-1809.1936.tb02137.x] (https://doi.org/10.1111%2Fj.1469-1809.1936.tb02137.x)")
+                        st.markdown("**Variables in the dataset:**")
+
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("sepal length")
+                        col2.write("sepal length in cm")
+                        
+                        col1,col2=st.beta_columns(2)
+                        col1.write("sepal width")
+                        col2.write("sepal width in cm")
+                        
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("petal length")
+                        col2.write("petal length in cm")
+                        
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("petal width")
+                        col2.write("petal width in cm")
+                        
+                        col1,col2=st.beta_columns(2) 
+                        col1.write("class")
+                        col2.write("Iris Setosa, Iris Versicolour, and Iris Virginica")
+                        
+                        st.markdown("")
 
             # Show raw data & data info
             df_summary = fc.data_summary(df) 
@@ -4374,6 +4401,11 @@ def app():
                     response_var_type = "multi-class"
                     response_var_options = df.columns
                     response_var = st.selectbox("Select response variable", response_var_options, key = session_state.id)
+                    
+                    # Check how many classes the response variable has (max: 10 classes)
+                    if len(pd.unique(df[response_var])) > 10:
+                        st.error("ERROR: Your response variable has more than 10 classes. Please select a variable with less classes!")
+                        return
                     
                     # Check if response variable is numeric and has no NAs
                     response_var_message_num = False
