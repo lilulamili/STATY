@@ -893,8 +893,8 @@ def app():
                     df_to_plot=df[[x_var]]
                 else: 
                     df_to_plot=df[[x_var,y_var]]
-                df_to_plot['Index']=df.index
-                fig = px.scatter(data_frame=df_to_plot, x=x_var, y=y_var,hover_data=[x_var, y_var, 'Index'], color_discrete_sequence=['rgba(77, 121, 169, 0.7)'])
+                df_to_plot.loc[:,"Index"]=df.index                             
+                fig = px.scatter(data_frame=df_to_plot, x=x_var, y=y_var,hover_data=[x_var, y_var, "Index"], color_discrete_sequence=['rgba(77, 121, 169, 0.7)'])
                 fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',}) 
                 fig.update_layout(xaxis=dict(title=x_var, titlefont_size=14, tickfont_size=14,),)
                 fig.update_layout(yaxis=dict(title=y_var, titlefont_size=14, tickfont_size=14,),)
@@ -916,13 +916,14 @@ def app():
                 st.markdown("") 
                 st.markdown("") 
                 st.markdown("") 
-                
-                df_to_plot[bx_var]=df[bx_var]    
+                                
+                df_to_plot=df[[bx_var]]                
+                df_to_plot.loc[:,"Index"]=df.index                                         
                 fig = go.Figure()
                 fig.add_trace(go.Box( 
                     y=df[bx_var],name=bx_var,
                     boxpoints='all', jitter=0,whiskerwidth=0.2,
-                    marker_color = 'indianred', customdata=df_to_plot['Index'], marker_size=2, line_width=1)
+                    marker_color = 'indianred', customdata=df_to_plot["Index"], marker_size=2, line_width=1)
                 )
                 fig.update_traces(hovertemplate=bx_var+': %{y} <br> Index: %{customdata}') 
                 #fig = px.box(df_to_plot, y=bx_var,points='all',labels={bx_var:bx_var}, color_discrete_sequence =['indianred'], notched=False, hover_data=[bx_var,"Index"]   )
