@@ -184,7 +184,13 @@ def app():
             if start_date > end_date:
                 st.error('ERROR: End date must fall after start date.')     
         
-        dev_expander_perf = st.beta_expander("Check the stock performance")
+        
+        dev_expander_info = st.beta_expander("Stock info")
+        with dev_expander_info:
+            stock_data = yf.Ticker(selected_stock)
+            st.write(stock_data.info ['longBusinessSummary'])
+               
+        dev_expander_perf = st.beta_expander("Stock performance")
         with dev_expander_perf:
             #get data for a selected ticker symbol:
             stock_data = yf.Ticker(selected_stock)
@@ -253,7 +259,23 @@ def app():
                     st.subheader(stock_para2 + " price for " + selected_stock + " (daily)")
                     stock_dataToplot2=stock_df[stock_para2]
                     st.line_chart(stock_dataToplot2)        
+        
+        dev_expander_cf = st.beta_expander("Cashflow")
+        with dev_expander_cf:
+            stock_data_cf = yf.Ticker(selected_stock).cashflow
+            st.write(stock_data_cf)
 
+        dev_expander_bs = st.beta_expander("Balance sheet")
+        with dev_expander_bs:
+            stock_data = yf.Ticker(selected_stock)
+            stock_data_fi = stock_data.balance_sheet
+            st.write(stock_data_fi)
+
+        dev_expander_fi = st.beta_expander("Other financials")
+        with dev_expander_fi:
+            stock_data = yf.Ticker(selected_stock)
+            stock_data_fi = stock_data.financials
+            st.write(stock_data_fi)    
        
 
     if tw_classifier=='Text analysis':
