@@ -6,6 +6,7 @@ linearmodels==4.24
 matplotlib==3.3.4
 nltk==3.7
 numpy==1.19.5
+palettable==3.3.0
 pandas==1.2.0
 plotly==4.14.3
 pmdarima==1.8.2
