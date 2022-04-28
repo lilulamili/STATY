@@ -4,7 +4,7 @@ datetime==4.3
 factor-analyzer==0.3.2
 linearmodels==4.24
 matplotlib==3.3.4
-nltk==3.6.1
+nltk==3.6.6
 numpy==1.19.5
 pandas==1.2.0
 plotly==4.14.3
