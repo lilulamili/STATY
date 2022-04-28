@@ -3031,8 +3031,85 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             
         # Save model comparison
         full_model_results["model comparison"] = model_comparison
+    
+    if 'full_model_ann_sk' in locals():
+        return full_model_results, full_model_ann_sk
+    else:
+        return full_model_results 
 
-    return full_model_results  
+#---------------------------------------------------------------
+# WEIGHT MATRIX FOR ARTIFICIAL NEURAL NETWORKS
+#---------------------------------------------------------------
+def weight_matrix_func(output, expl_var, wei_matrix, coef_list):
+    # 1 hidden layer
+    if len(coef_list) == 2:
+        df_in_hi = pd.DataFrame(coef_list[0])
+        df_in_hi.index = pd.MultiIndex.from_product([["Input Layer"], expl_var])
+        df_in_hi.columns = pd.MultiIndex.from_product([["Hidden Layer 1"], list(range(1, df_in_hi.shape[1]+1))])
+        df_hi_out = pd.DataFrame(coef_list[1])
+        df_hi_out.index = pd.MultiIndex.from_product([["Hidden Layer 1"], list(range(1, df_hi_out.shape[0]+1))])
+        df_hi_out.columns = pd.MultiIndex.from_product([["Output Layer"], output])
+        if wei_matrix == "Input Layer <-> Hidden Layer 1":
+            if df_in_hi.shape[0] < df_in_hi.shape[1]:
+                df_in_hi = df_in_hi.transpose()
+            return df_in_hi
+        if wei_matrix == "Hidden Layer 1 <-> Output Layer":
+            if df_hi_out.shape[0] < df_hi_out.shape[1]:
+                df_hi_out = df_hi_out.transpose()
+            return df_hi_out
+    # 2 hidden layer
+    elif len(coef_list) == 3:
+        df_in_hi = pd.DataFrame(coef_list[0])
+        df_in_hi.index = pd.MultiIndex.from_product([["Input Layer"], expl_var])
+        df_in_hi.columns = pd.MultiIndex.from_product([["Hidden Layer 1"], list(range(1, df_in_hi.shape[1]+1))])
+        df_hi1_hi2 = pd.DataFrame(coef_list[1])
+        df_hi1_hi2.index = pd.MultiIndex.from_product([["Hidden Layer 1"], list(range(1, df_hi1_hi2.shape[0]+1))])
+        df_hi1_hi2.columns = pd.MultiIndex.from_product([["Hidden Layer 2"], list(range(1, df_hi1_hi2.shape[1]+1))])
+        df_hi_out = pd.DataFrame(coef_list[2])
+        df_hi_out.index = pd.MultiIndex.from_product([["Hidden Layer 2"], list(range(1, df_hi_out.shape[0]+1))])
+        df_hi_out.columns = pd.MultiIndex.from_product([["Output Layer"], output])
+        if wei_matrix == "Input Layer <-> Hidden Layer 1":
+            if df_in_hi.shape[0] < df_in_hi.shape[1]:
+                df_in_hi = df_in_hi.transpose()
+            return df_in_hi
+        elif wei_matrix == "Hidden Layer 1 <-> Hidden Layer 2":
+            if df_hi1_hi2.shape[0] < df_hi1_hi2.shape[1]:
+                df_hi1_hi2 = df_hi1_hi2.transpose()
+            return df_hi1_hi2
+        elif wei_matrix == "Hidden Layer 2 <-> Output Layer":
+            if df_hi_out.shape[0] < df_hi_out.shape[1]:
+                df_hi_out = df_hi_out.transpose()
+            return df_hi_out
+    # 3 hidden layer
+    elif len(coef_list) == 4:
+        df_in_hi = pd.DataFrame(coef_list[0])
+        df_in_hi.index = pd.MultiIndex.from_product([["Input Layer"], expl_var])
+        df_in_hi.columns = pd.MultiIndex.from_product([["Hidden Layer 1"], list(range(1, df_in_hi.shape[1]+1))])
+        df_hi1_hi2 = pd.DataFrame(coef_list[1])
+        df_hi1_hi2.index = pd.MultiIndex.from_product([["Hidden Layer 1"], list(range(1, df_hi1_hi2.shape[0]+1))])
+        df_hi1_hi2.columns = pd.MultiIndex.from_product([["Hidden Layer 2"], list(range(1, df_hi1_hi2.shape[1]+1))])
+        df_hi2_hi3 = pd.DataFrame(coef_list[2])
+        df_hi2_hi3.index = pd.MultiIndex.from_product([["Hidden Layer 2"], list(range(1, df_hi2_hi3.shape[0]+1))])
+        df_hi2_hi3.columns = pd.MultiIndex.from_product([["Hidden Layer 3"], list(range(1, df_hi2_hi3.shape[1]+1))])
+        df_hi_out = pd.DataFrame(coef_list[3])
+        df_hi_out.index = pd.MultiIndex.from_product([["Hidden Layer 3"], list(range(1, df_hi_out.shape[0]+1))])
+        df_hi_out.columns = pd.MultiIndex.from_product([["Output Layer"], output])
+        if wei_matrix == "Input Layer <-> Hidden Layer 1":
+            if df_in_hi.shape[0] < df_in_hi.shape[1]:
+                df_in_hi = df_in_hi.transpose()
+            return df_in_hi
+        elif wei_matrix == "Hidden Layer 1 <-> Hidden Layer 2":
+            if df_hi1_hi2.shape[0] < df_hi1_hi2.shape[1]:
+                df_hi1_hi2 = df_hi1_hi2.transpose()
+            return df_hi1_hi2
+        elif wei_matrix == "Hidden Layer 2 <-> Hidden Layer 3":
+            if df_hi2_hi3.shape[0] < df_hi2_hi3.shape[1]:
+                df_hi2_hi3 = df_hi2_hi3.transpose()
+            return df_hi2_hi3
+        elif wei_matrix == "Hidden Layer 3 <-> Output Layer":
+            if df_hi_out.shape[0] < df_hi_out.shape[1]:
+                df_hi_out = df_hi_out.transpose()
+            return df_hi_out
 
 #---------------------------------------------------------------
 # TIME SERIES DECOMPOSITION

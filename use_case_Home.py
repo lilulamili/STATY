@@ -20,7 +20,7 @@ def app():
     #------------------------------------------------------------------------------------------
     # SETTINGS
 
-    settings_expander=st.sidebar.beta_expander('Settings')
+    settings_expander=st.sidebar.expander('Settings')
     with settings_expander:
         st.caption("**Help**")
         sett_hints = st.checkbox('Show learning hints', value=False)
@@ -237,12 +237,12 @@ def app():
     #st.caption("Music by Sophonic Media, http://instrumentalsfree.com")
 
     st.write("STATY is an educational project designed and developed by [Danijela Markovic](mailto:staty@quant-works.de?subject=Staty-App-Contact%20Danijela) and [Oskar Kärcher](mailto:staty@quant-works.de?subject=Staty-App-Contact%20Oskar) with the aim of improving data literacy among students of natural and social sciences.")
-    col1, col2 = st.beta_columns([2,1])
+    col1, col2 = st.columns([2,1])
     with col1:            
         st.write("STATY is provided 'as is' without any warranties of any kind! STATY is under development, and is subject to change!")
         #st.write("Disclaimer: STATY and the related tools and data are provided for educational purposes only. Note, the project is still under development, and some features may not yet work properly! \n  Licensed under the [Apache License, Version 2.0] (https://www.apache.org/licenses/LICENSE-2.0.html).")
     
-    staty_expander=st.beta_expander('STATY - get more info')
+    staty_expander=st.expander('STATY - get more info')
     with staty_expander:
         st.write("")
         st.markdown("**Background and motivation**")

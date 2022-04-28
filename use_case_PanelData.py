@@ -22,8 +22,6 @@ from sklearn.metrics import make_scorer, mean_squared_error, r2_score, mean_abso
 from sklearn.model_selection import train_test_split
 import scipy
 import sys
-import SessionState
-from streamlit import caching
 import platform
 import base64
 from io import BytesIO
@@ -36,7 +34,7 @@ from linearmodels import PooledOLS
 def app(): 
 
     # Clear cache
-    caching.clear_cache()
+    st.legacy_caching.clear_cache()
 
     # Hide traceback in error messages (comment out for de-bugging)
     sys.tracebacklimit = 0
@@ -44,42 +42,63 @@ def app():
     # Show altair tooltip when full screen
     st.markdown('<style>#vg-tooltip-element{z-index: 1000051}</style>',unsafe_allow_html=True)
 
-    #Session state
-    session_state = SessionState.get(id = 0)
+    # workaround for Firefox bug- hide the scrollbar while keeping the scrolling functionality
+    st.markdown("""
+        <style>
+        .ReactVirtualized__Grid::-webkit-scrollbar {
+        display: none;
+        }
 
+        .ReactVirtualized__Grid {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+        }
+        </style>
+        """, unsafe_allow_html=True)
     #------------------------------------------------------------------------------------------
+
+    #++++++++++++++++++++++++++++++++++++++++++++
+    # RESET INPUT
+    
+    #Session state
+    if 'key' not in st.session_state:
+        st.session_state['key'] = 0
+    reset_clicked = st.sidebar.button("Reset all your input")
+    if reset_clicked:
+        st.session_state['key'] = st.session_state['key'] + 1
+    st.sidebar.markdown("")
     
     #++++++++++++++++++++++++++++++++++++++++++++
     # DATA IMPORT
 
     # File upload section
-    df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"])
+    df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"], key = st.session_state['key'])
     uploaded_data=None
     if df_dec == "Upload data":
         #st.subheader("Upload your data")
         #uploaded_data = st.sidebar.file_uploader("Make sure that dot (.) is a decimal separator!", type=["csv", "txt"])
-        separator_expander=st.sidebar.beta_expander('Upload settings')
+        separator_expander=st.sidebar.expander('Upload settings')
         with separator_expander:
                       
-            a4,a5=st.beta_columns(2)
+            a4,a5=st.columns(2)
             with a4:
-                dec_sep=a4.selectbox("Decimal sep.",['.',','], key = session_state.id)
+                dec_sep=a4.selectbox("Decimal sep.",['.',','], key = st.session_state['key'])
 
             with a5:
-                col_sep=a5.selectbox("Column sep.",[';',  ','  , '|', '\s+', '\t','other'], key = session_state.id)
+                col_sep=a5.selectbox("Column sep.",[';',  ','  , '|', '\s+', '\t','other'], key = st.session_state['key'])
                 if col_sep=='other':
-                    col_sep=st.text_input('Specify your column separator', key = session_state.id)     
+                    col_sep=st.text_input('Specify your column separator', key = st.session_state['key'])     
 
-            a4,a5=st.beta_columns(2)  
+            a4,a5=st.columns(2)  
             with a4:    
-                thousands_sep=a4.selectbox("Thousands x sep.",[None,'.', ' ','\s+', 'other'], key = session_state.id)
+                thousands_sep=a4.selectbox("Thousands x sep.",[None,'.', ' ','\s+', 'other'], key = st.session_state['key'])
                 if thousands_sep=='other':
-                    thousands_sep=st.text_input('Specify your thousands separator', key = session_state.id)  
+                    thousands_sep=st.text_input('Specify your thousands separator', key = st.session_state['key'])  
              
             with a5:    
-                encoding_val=a5.selectbox("Encoding",[None,'utf_8','utf_8_sig','utf_16_le','cp1140','cp1250','cp1251','cp1252','cp1253','cp1254','other'], key = session_state.id)
+                encoding_val=a5.selectbox("Encoding",[None,'utf_8','utf_8_sig','utf_16_le','cp1140','cp1250','cp1251','cp1252','cp1253','cp1254','other'], key = st.session_state['key'])
                 if encoding_val=='other':
-                    encoding_val=st.text_input('Specify your encoding', key = session_state.id)  
+                    encoding_val=st.text_input('Specify your encoding', key = st.session_state['key'])  
         
         # Error handling for separator selection:
         if dec_sep==col_sep: 
@@ -110,15 +129,15 @@ def app():
     #++++++++++++++++++++++++++++++++++++++++++++
     # SETTINGS
 
-    settings_expander=st.sidebar.beta_expander('Settings')
+    settings_expander=st.sidebar.expander('Settings')
     with settings_expander:
         st.caption("**Precision**")
-        user_precision=st.number_input('Number of digits after the decimal point',min_value=0,max_value=10,step=1,value=4)
+        user_precision=int(st.number_input('Number of digits after the decimal point',min_value=0,max_value=10,step=1,value=4, key = st.session_state['key']))
         st.caption("**Help**")
-        sett_hints = st.checkbox('Show learning hints', value=False)
+        sett_hints = st.checkbox('Show learning hints', value=False, key = st.session_state['key'])
         st.caption("**Appearance**")
-        sett_wide_mode = st.checkbox('Wide mode', value=False)
-        sett_theme = st.selectbox('Theme', ["Light", "Dark"])
+        sett_wide_mode = st.checkbox('Wide mode', value=False, key = st.session_state['key'])
+        sett_theme = st.selectbox('Theme', ["Light", "Dark"], key = st.session_state['key'])
         #sett_info = st.checkbox('Show methods info', value=False)
         #sett_prec = st.number_input('Set the number of diggits for the output', min_value=0, max_value=8, value=2)
     st.sidebar.markdown("")
@@ -133,15 +152,6 @@ def app():
     if sett_theme == "Light":
         fc.theme_func_light()
     fc.theme_func_dl_button()
-
-    #++++++++++++++++++++++++++++++++++++++++++++
-    # RESET INPUT
-
-    reset_clicked = st.sidebar.button("Reset all your input")
-    session_state = SessionState.get(id = 0)
-    if reset_clicked:
-        session_state.id = session_state.id + 1
-    st.sidebar.markdown("")
 
     #------------------------------------------------------------------------------------------
 
@@ -160,16 +170,16 @@ def app():
 
     # Specify entity and time
     st.markdown("**Panel data specification**")
-    col1, col2 = st.beta_columns(2)
+    col1, col2 = st.columns(2)
     with col1:
         entity_na_warn = False
         entity_options = df.columns
-        entity = st.selectbox("Select variable for entity", entity_options, key = session_state.id)
+        entity = st.selectbox("Select variable for entity", entity_options, key = st.session_state['key'])
     with col2:
         time_na_warn = False
         time_options = df.columns 
         time_options = list(time_options[time_options.isin(df.drop(entity, axis = 1).columns)])
-        time = st.selectbox("Select variable for time", time_options, key = session_state.id)
+        time = st.selectbox("Select variable for time", time_options, key = st.session_state['key'])
         
     if np.where(df[entity].isnull())[0].size > 0:
         entity_na_warn = "ERROR: The variable selected for entity has NAs!"
@@ -185,7 +195,7 @@ def app():
     run_models = False
     if time_na_warn == False and entity_na_warn == False:
 
-        data_empty_container = st.beta_container()
+        data_empty_container = st.container()
         with data_empty_container:
             st.empty()
             st.empty()
@@ -199,7 +209,7 @@ def app():
         # Make sure time is numeric
         df[time] = pd.to_numeric(df[time])
 
-        data_exploration_container2 = st.beta_container()
+        data_exploration_container2 = st.container()
         with data_exploration_container2:
 
             st.header("**Data screening and processing**")
@@ -212,47 +222,47 @@ def app():
             # Main panel for data summary (pre)
             #----------------------------------
 
-            dev_expander_dsPre = st.beta_expander("Explore raw panel data info and stats", expanded = False)
+            dev_expander_dsPre = st.expander("Explore raw panel data info and stats", expanded = False)
             st.empty()
             with dev_expander_dsPre:
                 # Default data description:
                 if uploaded_data == None:
-                    if st.checkbox("Show data description", value = False, key = session_state.id):          
+                    if st.checkbox("Show data description", value = False, key = st.session_state['key']):          
                         st.markdown("**Data source:**")
                         st.markdown("This is the original 11-firm data set from Grunfeld’s Ph.D. thesis (*Grunfeld, 1958, The Determinants of Corporate Investment, Department of Economics, University of Chicago*). For more details see online complements for the article [The Grunfeld Data at 50] (https://www.zeileis.org/grunfeld/).")
                         st.markdown("**Citation:**")
                         st.markdown("Kleiber C, Zeileis A (2010). “The Grunfeld Data at 50,” German Economic Review, 11(4), 404-417. [doi:10.1111/j.1468-0475.2010.00513.x] (https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1468-0475.2010.00513.x)")
                         st.markdown("**Variables in the dataset:**")
 
-                        col1,col2=st.beta_columns(2) 
+                        col1,col2=st.columns(2) 
                         col1.write("invest")
                         col2.write("Gross  investment,  defined  as  additions  to  plant  and  equipment  plus maintenance and repairs in millions of dollars deflated by the implicit price deflator of producers’ durable equipment (base 1947)")
                         
-                        col1,col2=st.beta_columns(2)
+                        col1,col2=st.columns(2)
                         col1.write("value")
                         col2.write("Market  value  of  the  firm,  defined  as  the  price  of  common  shares  at December 31 (or, for WH, IBM and CH, the average price of December  31  and  January  31  of  the  following  year)  times  the  number  of common shares outstanding plus price of preferred shares at December 31 (or average price of December 31 and January 31 of the following year) times number of preferred shares plus total book value of debt at December 31 in millions of dollars deflated by the implicit GNP price deflator (base 1947)")
                         
-                        col1,col2=st.beta_columns(2)
+                        col1,col2=st.columns(2)
                         col1.write("capital")
                         col2.write("Stock of plant and equipment, defined as the accumulated sum of net additions to plant and equipment deflated by the implicit price deflator for producers’ durable equipment (base 1947) minus depreciation allowance deflated by depreciation expense deflator (10 years moving average  of  wholesale  price  index  of  metals  and  metal  products,  base1947)")
 
-                        col1,col2=st.beta_columns(2)
+                        col1,col2=st.columns(2)
                         col1.write("firm")
                         col2.write("General Motors (GM), US Steel (US), General Electric (GE), Chrysler (CH),  Atlantic Refining (AR), IBM, Union Oil (UO), Westinghouse (WH), Goodyear (GY), Diamond Match (DM), American Steel (AS)")
 
-                        col1,col2=st.beta_columns(2)
+                        col1,col2=st.columns(2)
                         col1.write("year")
                         col2.write("Year ranging from 1935 to 1954")
                         st.markdown("")
 
                 # Show raw data & data info
                 df_summary = fc.data_summary(df) 
-                if st.checkbox("Show raw data", value = False, key = session_state.id):      
+                if st.checkbox("Show raw data", value = False, key = st.session_state['key']):      
                     st.write(df)
                     #st.info("Data shape: "+ str(n_rows) + " rows and " + str(n_cols) + " columns")
                     st.write("Data shape: ", n_rows,  " rows and ", n_cols, " columns")
                 if df[df.duplicated()].shape[0] > 0 or df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] > 0:
-                    check_nasAnddupl=st.checkbox("Show duplicates and NAs info", value = False, key = session_state.id) 
+                    check_nasAnddupl=st.checkbox("Show duplicates and NAs info", value = False, key = st.session_state['key']) 
                     if check_nasAnddupl:      
                         if df[df.duplicated()].shape[0] > 0:
                             st.write("Number of duplicates: ", df[df.duplicated()].shape[0])
@@ -262,11 +272,11 @@ def app():
                             st.write("Rows with NAs: ", ', '.join(map(str,list(pd.unique(np.where(df.isnull())[0])))))
                     
                 # Show variable info 
-                if st.checkbox('Show variable info', value = False, key = session_state.id): 
+                if st.checkbox('Show variable info', value = False, key = st.session_state['key']): 
                     st.write(df_summary["Variable types"])
             
                 # Show summary statistics (raw data)
-                if st.checkbox('Show summary statistics (raw data)', value = False, key = session_state.id): 
+                if st.checkbox('Show summary statistics (raw data)', value = False, key = st.session_state['key']): 
                     st.write(df_summary["ALL"].style.set_precision(user_precision))
                     
                     # Download link for summary statistics
@@ -292,19 +302,19 @@ def app():
 
                 
 
-            dev_expander_anovPre = st.beta_expander("ANOVA for raw panel data", expanded = False)
+            dev_expander_anovPre = st.expander("ANOVA for raw panel data", expanded = False)
             with dev_expander_anovPre:  
                 if df.shape[1] > 2:
                     # Target variable
-                    target_var = st.selectbox('Select target variable ', df.drop([entity, time], axis = 1).columns, key = session_state.id)
+                    target_var = st.selectbox('Select target variable ', df.drop([entity, time], axis = 1).columns, key = st.session_state['key'])
                     
                     if df[target_var].dtypes == "int64" or df[target_var].dtypes == "float64": 
                         class_var_options = df.columns
                         class_var_options = class_var_options[class_var_options.isin(df.drop(target_var, axis = 1).columns)]
-                        clas_var = st.selectbox('Select classifier variable ', [entity, time], key = session_state.id) 
+                        clas_var = st.selectbox('Select classifier variable ', [entity, time], key = st.session_state['key']) 
 
                         # Means and sd by entity 
-                        col1, col2 = st.beta_columns(2) 
+                        col1, col2 = st.columns(2) 
                         with col1:
                             df_anova_woTime = df.drop([time], axis = 1)
                             df_grouped_ent = df_anova_woTime.groupby(entity)
@@ -317,7 +327,7 @@ def app():
                             st.write("")
 
                         # Means and sd by time
-                        col3, col4 = st.beta_columns(2) 
+                        col3, col4 = st.columns(2) 
                         with col3:
                             df_anova_woEnt= df.drop([entity], axis = 1)
                             df_grouped_time = df_anova_woEnt.groupby(time)
@@ -331,10 +341,10 @@ def app():
                             st.write(df_grouped_time.std()[target_var])
                             st.write("")
 
-                        col9, col10 = st.beta_columns(2) 
+                        col9, col10 = st.columns(2) 
                         with col9:
                             st.write("Boxplot grouped by entity:")
-                            box_size1 = st.slider("Select box size", 1, 50, 5, key = session_state.id)
+                            box_size1 = st.slider("Select box size", 1, 50, 5, key = st.session_state['key'])
                             # Grouped boxplot by entity
                             grouped_boxplot_data = pd.DataFrame()
                             grouped_boxplot_data[entity] = df[entity]
@@ -352,7 +362,7 @@ def app():
                             st.altair_chart(grouped_boxchart_ent, use_container_width=True)
                         with col10:
                             st.write("Boxplot grouped by time:")
-                            box_size2 = st.slider("Select box size ", 1, 50, 5, key = session_state.id)
+                            box_size2 = st.slider("Select box size ", 1, 50, 5, key = st.session_state['key'])
                             # Grouped boxplot by time
                             grouped_boxplot_data = pd.DataFrame()
                             grouped_boxplot_data[entity] = df[entity]
@@ -373,7 +383,7 @@ def app():
                         st.write("")
                         
                         # Count for entity and time
-                        col5, col6 = st.beta_columns(2)
+                        col5, col6 = st.columns(2)
                         with col5:
                             st.write("Number of observations per entity:")
                             counts_ent = pd.DataFrame(df_grouped_ent.count()[target_var])
@@ -424,7 +434,7 @@ def app():
                         ano_ols_output = ano_ols.fit()
                         residuals = ano_ols_output.resid
                     
-                        col7, col8 = st.beta_columns(2)
+                        col7, col8 = st.columns(2)
                         with col7:
                             # QQ-plot
                             st.write("Normal QQ-plot:")
@@ -457,7 +467,7 @@ def app():
                             st.write("Residuals histogram:")
                             residuals_hist = pd.DataFrame(residuals)
                             residuals_hist.columns = ["residuals"]
-                            binNo_res = st.slider("Select maximum number of bins ", 5, 100, 25, key = session_state.id)
+                            binNo_res = st.slider("Select maximum number of bins ", 5, 100, 25, key = st.session_state['key'])
                             hist_plot_res = alt.Chart(residuals_hist, height = 300).mark_bar().encode(
                                 x = alt.X("residuals", title = "residuals", bin = alt.BinParams(maxbins = binNo_res), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                 y = alt.Y("count()", title = "count of records", scale = alt.Scale(zero = False), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
@@ -498,15 +508,15 @@ def app():
             # Settings for data processing
             #-------------------------------------
             
-            dev_expander_dm_sb = st.beta_expander("Specify data processing preferences", expanded = False)
+            dev_expander_dm_sb = st.expander("Specify data processing preferences", expanded = False)
             with dev_expander_dm_sb:
                 
                 n_rows_wNAs = df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0]
                 n_rows_wNAs_pre_processing = "No"
                 if n_rows_wNAs > 0:
                     n_rows_wNAs_pre_processing = "Yes"
-                    a1, a2, a3 = st.beta_columns(3)
-                else: a1, a3 = st.beta_columns(2)
+                    a1, a2, a3 = st.columns(3)
+                else: a1, a3 = st.columns(2)
 
                 sb_DM_dImp_num = None 
                 sb_DM_dImp_other = None
@@ -522,11 +532,11 @@ def app():
                     st.markdown("**Data cleaning**")
 
                     # Delete rows
-                    delRows =st.selectbox('Delete rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = session_state.id)
+                    delRows =st.selectbox('Delete rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = st.session_state['key'])
                     if delRows!='-':                                
                         if delRows=='between':
-                            row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
-                            row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                            row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'])
+                            row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'])
                             if (row_1 + 1) < row_2 :
                                 sb_DM_delRows=df.index[(df.index > row_1) & (df.index < row_2)]
                             elif (row_1 + 1) == row_2 : 
@@ -537,9 +547,9 @@ def app():
                                 st.error("ERROR: Lower limit must be smaller than upper limit!")  
                                 return                   
                         elif delRows=='equal':
-                            sb_DM_delRows = st.multiselect("to...", df.index, key = session_state.id)
+                            sb_DM_delRows = st.multiselect("to...", df.index, key = st.session_state['key'])
                         else:
-                            row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = session_state.id)                    
+                            row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = st.session_state['key'])                    
                             if delRows=='greater':
                                 sb_DM_delRows=df.index[df.index > row_1]
                                 if row_1 == len(df)-1:
@@ -563,11 +573,11 @@ def app():
                             no_delRows=n_rows-df.shape[0]
 
                     # Keep rows
-                    keepRows =st.selectbox('Keep rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = session_state.id)
+                    keepRows =st.selectbox('Keep rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = st.session_state['key'])
                     if keepRows!='-':                                
                         if keepRows=='between':
-                            row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
-                            row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = session_state.id)
+                            row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'])
+                            row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'])
                             if (row_1 + 1) < row_2 :
                                 sb_DM_keepRows=df.index[(df.index > row_1) & (df.index < row_2)]
                             elif (row_1 + 1) == row_2 : 
@@ -580,9 +590,9 @@ def app():
                                 st.error("ERROR: Lower limit must be smaller than upper limit!")  
                                 return                   
                         elif keepRows=='equal':
-                            sb_DM_keepRows = st.multiselect("to...", df.index, key = session_state.id)
+                            sb_DM_keepRows = st.multiselect("to...", df.index, key = st.session_state['key'])
                         else:
-                            row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = session_state.id)                    
+                            row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = st.session_state['key'])                    
                             if keepRows=='greater':
                                 sb_DM_keepRows=df.index[df.index > row_1]
                                 if row_1 == len(df)-1:
@@ -604,17 +614,17 @@ def app():
                             no_keptRows=df.shape[0]
 
                     # Delete columns
-                    sb_DM_delCols = st.multiselect("Select columns to delete", df.drop([entity, time], axis = 1).columns, key = session_state.id)
+                    sb_DM_delCols = st.multiselect("Select columns to delete", df.drop([entity, time], axis = 1).columns, key = st.session_state['key'])
                     df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
 
                     # Keep columns
-                    sb_DM_keepCols = st.multiselect("Select columns to keep", df.drop([entity, time], axis = 1).columns, key = session_state.id)
+                    sb_DM_keepCols = st.multiselect("Select columns to keep", df.drop([entity, time], axis = 1).columns, key = st.session_state['key'])
                     if len(sb_DM_keepCols) > 0:
                         df = df.loc[:,df.columns.isin([entity, time] + sb_DM_keepCols)]
 
                     # Delete duplicates if any exist
                     if df[df.duplicated()].shape[0] > 0:
-                        sb_DM_delDup = st.selectbox("Delete duplicate rows", ["No", "Yes"], key = session_state.id)
+                        sb_DM_delDup = st.selectbox("Delete duplicate rows", ["No", "Yes"], key = st.session_state['key'])
                         if sb_DM_delDup == "Yes":
                             n_rows_dup = df[df.duplicated()].shape[0]
                             df = df.drop_duplicates()
@@ -624,7 +634,7 @@ def app():
                     # Delete rows with NA if any exist
                     n_rows_wNAs = df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0]
                     if n_rows_wNAs > 0:
-                        sb_DM_delRows_wNA = st.selectbox("Delete rows with NAs", ["No", "Yes"], key = session_state.id)
+                        sb_DM_delRows_wNA = st.selectbox("Delete rows with NAs", ["No", "Yes"], key = st.session_state['key'])
                         if sb_DM_delRows_wNA == "Yes": 
                             df = df.dropna()
                     elif n_rows_wNAs == 0: 
@@ -632,7 +642,7 @@ def app():
 
                     # Filter data
                     st.markdown("**Data filtering**")
-                    filter_var = st.selectbox('Filter your data by a variable...', list('-')+ list(df.columns), key = session_state.id)
+                    filter_var = st.selectbox('Filter your data by a variable...', list('-')+ list(df.columns), key = st.session_state['key'])
                     if filter_var !='-':
                         
                         if df[filter_var].dtypes=="int64" or df[filter_var].dtypes=="float64": 
@@ -641,11 +651,11 @@ def app():
                             else:
                                 filter_format=None
 
-                            user_filter=st.selectbox('Select values that are ...', options=['greater','greater or equal','smaller','smaller or equal', 'equal','between'], key = session_state.id)
+                            user_filter=st.selectbox('Select values that are ...', options=['greater','greater or equal','smaller','smaller or equal', 'equal','between'], key = st.session_state['key'])
                                                     
                             if user_filter=='between':
-                                filter_1=st.number_input('Lower limit is', format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = session_state.id)
-                                filter_2=st.number_input('Upper limit is', format=filter_format, value=df[filter_var].max(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = session_state.id)
+                                filter_1=st.number_input('Lower limit is', format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = st.session_state['key'])
+                                filter_2=st.number_input('Upper limit is', format=filter_format, value=df[filter_var].max(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = st.session_state['key'])
                                 #reclassify values:
                                 if filter_1 < filter_2 :
                                     df = df[(df[filter_var] > filter_1) & (df[filter_var] < filter_2)] 
@@ -656,12 +666,12 @@ def app():
                                     st.error("ERROR: Lower limit must be smaller than upper limit!")  
                                     return                    
                             elif user_filter=='equal':                            
-                                filter_1=st.multiselect('to... ', options=df[filter_var].values, key = session_state.id)
+                                filter_1=st.multiselect('to... ', options=df[filter_var].values, key = st.session_state['key'])
                                 if len(filter_1)>0:
                                     df = df.loc[df[filter_var].isin(filter_1)]
 
                             else:
-                                filter_1=st.number_input('than... ',format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = session_state.id)
+                                filter_1=st.number_input('than... ',format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = st.session_state['key'])
                                 #reclassify values:
                                 if user_filter=='greater':
                                     df = df[df[filter_var] > filter_1]
@@ -678,7 +688,7 @@ def app():
                                 elif len(df) == n_rows:
                                     st.warning("WARNING: Data are not filtered for this value!")         
                         else:                  
-                            filter_1=st.multiselect('Filter your data by a value...', (df[filter_var]).unique(), key = session_state.id)
+                            filter_1=st.multiselect('Filter your data by a value...', (df[filter_var]).unique(), key = st.session_state['key'])
                             if len(filter_1)>0:
                                 df = df.loc[df[filter_var].isin(filter_1)]
 
@@ -690,13 +700,13 @@ def app():
                         # Select data imputation method (only if rows with NA not deleted)
                         if sb_DM_delRows_wNA == "No" and n_rows_wNAs > 0:
                             st.markdown("**Data imputation**")
-                            sb_DM_dImp_choice = st.selectbox("Replace entries with NA", ["No", "Yes"], key = session_state.id)
+                            sb_DM_dImp_choice = st.selectbox("Replace entries with NA", ["No", "Yes"], key = st.session_state['key'])
                             if sb_DM_dImp_choice == "Yes":
                                 # Numeric variables
-                                sb_DM_dImp_num = st.selectbox("Imputation method for numeric variables", ["Mean", "Median", "Random value"], key = session_state.id)
+                                sb_DM_dImp_num = st.selectbox("Imputation method for numeric variables", ["Mean", "Median", "Random value"], key = st.session_state['key'])
                                 # Other variables
-                                sb_DM_dImp_other = st.selectbox("Imputation method for other variables", ["Mode", "Random value"], key = session_state.id)
-                                group_by_num = st.selectbox("Group imputation by", ["None", "Entity", "Time"], key = session_state.id)
+                                sb_DM_dImp_other = st.selectbox("Imputation method for other variables", ["Mode", "Random value"], key = st.session_state['key'])
+                                group_by_num = st.selectbox("Group imputation by", ["None", "Entity", "Time"], key = st.session_state['key'])
                                 group_by_other = group_by_num
                                 df = fc.data_impute_panel(df, sb_DM_dImp_num, sb_DM_dImp_other, group_by_num, group_by_other, entity, time)
                         else: 
@@ -712,28 +722,28 @@ def app():
                     # Select columns for different transformation types
                     transform_options = df.drop([entity, time], axis = 1).select_dtypes([np.number]).columns
                     numCat_options = df.drop([entity, time], axis = 1).columns
-                    sb_DM_dTrans_log = st.multiselect("Select columns to transform with log", transform_options, key = session_state.id)
+                    sb_DM_dTrans_log = st.multiselect("Select columns to transform with log", transform_options, key = st.session_state['key'])
                     if sb_DM_dTrans_log is not None: 
                         df = fc.var_transform_log(df, sb_DM_dTrans_log)
-                    sb_DM_dTrans_sqrt = st.multiselect("Select columns to transform with sqrt", transform_options, key = session_state.id)
+                    sb_DM_dTrans_sqrt = st.multiselect("Select columns to transform with sqrt", transform_options, key = st.session_state['key'])
                     if sb_DM_dTrans_sqrt is not None: 
                         df = fc.var_transform_sqrt(df, sb_DM_dTrans_sqrt)
-                    sb_DM_dTrans_square = st.multiselect("Select columns for squaring", transform_options, key = session_state.id)
+                    sb_DM_dTrans_square = st.multiselect("Select columns for squaring", transform_options, key = st.session_state['key'])
                     if sb_DM_dTrans_square is not None: 
                         df = fc.var_transform_square(df, sb_DM_dTrans_square)
-                    sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options, key = session_state.id)
+                    sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options, key = st.session_state['key'])
                     if sb_DM_dTrans_cent is not None: 
                         df = fc.var_transform_cent(df, sb_DM_dTrans_cent)
-                    sb_DM_dTrans_stand = st.multiselect("Select columns for standardization", transform_options, key = session_state.id)
+                    sb_DM_dTrans_stand = st.multiselect("Select columns for standardization", transform_options, key = st.session_state['key'])
                     if sb_DM_dTrans_stand is not None: 
                         df = fc.var_transform_stand(df, sb_DM_dTrans_stand)
-                    sb_DM_dTrans_norm = st.multiselect("Select columns for normalization", transform_options, key = session_state.id)
+                    sb_DM_dTrans_norm = st.multiselect("Select columns for normalization", transform_options, key = st.session_state['key'])
                     if sb_DM_dTrans_norm is not None: 
                         df = fc.var_transform_norm(df, sb_DM_dTrans_norm)
-                    sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = session_state.id)
+                    sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = st.session_state['key'])
                     if sb_DM_dTrans_numCat:
                         if not df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist(): 
-                            sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = session_state.id)
+                            sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = st.session_state['key'])
                             if sb_DM_dTrans_numCat_sel:
                                 for var in sb_DM_dTrans_numCat_sel:
                                     if df[var].unique().size > 5: 
@@ -745,7 +755,7 @@ def app():
                                         # Save manually selected categories
                                         for i in range(0, df[var].unique().size):
                                             text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
-                                            man_cat = st.number_input(text1, value = 0, min_value=0, key = session_state.id)
+                                            man_cat = st.number_input(text1, value = 0, min_value=0, key = st.session_state['key'])
                                             manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
                                             manual_cats.loc[i]["Cat"] = man_cat
                                         
@@ -768,27 +778,27 @@ def app():
                             return
                     else:
                         sb_DM_dTrans_numCat = None
-                    sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = session_state.id)
+                    sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = st.session_state['key'])
                     if sb_DM_dTrans_mult != 0: 
                         multiplication_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_mult), columns=["Var1", "Var2"])
                         text = "Multiplication pair"
                         for i in range(0, sb_DM_dTrans_mult):
                             text1 = text + " " + str(i+1)
                             text2 = text + " " + str(i+1) + " "
-                            mult_var1 = st.selectbox(text1, transform_options, key = session_state.id)
-                            mult_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                            mult_var1 = st.selectbox(text1, transform_options, key = st.session_state['key'])
+                            mult_var2 = st.selectbox(text2, transform_options, key = st.session_state['key'])
                             multiplication_pairs.loc[i]["Var1"] = mult_var1
                             multiplication_pairs.loc[i]["Var2"] = mult_var2
                             fc.var_transform_mult(df, mult_var1, mult_var2)
-                    sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, key = session_state.id)
+                    sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, key = st.session_state['key'])
                     if sb_DM_dTrans_div != 0:
                         division_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_div), columns=["Var1", "Var2"]) 
                         text = "Division pair"
                         for i in range(0, sb_DM_dTrans_div):
                             text1 = text + " " + str(i+1) + " (numerator)"
                             text2 = text + " " + str(i+1) + " (denominator)"
-                            div_var1 = st.selectbox(text1, transform_options, key = session_state.id)
-                            div_var2 = st.selectbox(text2, transform_options, key = session_state.id)
+                            div_var1 = st.selectbox(text1, transform_options, key = st.session_state['key'])
+                            div_var2 = st.selectbox(text2, transform_options, key = st.session_state['key'])
                             division_pairs.loc[i]["Var1"] = div_var1
                             division_pairs.loc[i]["Var2"] = div_var2
                             fc.var_transform_div(df, div_var1, div_var2)
@@ -814,7 +824,7 @@ def app():
                 #--------------------------------------------------------------------------------------
                 # PROCESSING SUMMARY
 
-                if st.checkbox('Show a summary of my data processing preferences', value = False, key = session_state.id): 
+                if st.checkbox('Show a summary of my data processing preferences', value = False, key = st.session_state['key']): 
                     st.markdown("Summary of data changes:")
                     
                     #--------------------------------------------------------------------------------------
@@ -968,7 +978,7 @@ def app():
 
             # Show only if changes were made
             if any(v for v in [sb_DM_delCols, sb_DM_dImp_num, sb_DM_dImp_other, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_cent, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat ] if v is not None) or sb_DM_delDup == "Yes" or sb_DM_delRows_wNA == "Yes" or sb_DM_dTrans_mult != 0 or sb_DM_dTrans_div != 0 or filter_var != "-" or delRows!='-' or keepRows!='-' or len(sb_DM_keepCols) > 0:
-                dev_expander_dsPost = st.beta_expander("Explore cleaned and transformed panel data info and stats", expanded = False)
+                dev_expander_dsPost = st.expander("Explore cleaned and transformed panel data info and stats", expanded = False)
                 with dev_expander_dsPost:
                     if df.shape[1] > 2 and df.shape[0] > 0:
 
@@ -1042,7 +1052,7 @@ def app():
                         st.error("ERROR: No data available for preprocessing!") 
                         return
 
-                dev_expander_anovPost = st.beta_expander("ANOVA for cleaned and transformed panel data", expanded = False)
+                dev_expander_anovPost = st.expander("ANOVA for cleaned and transformed panel data", expanded = False)
                 with dev_expander_anovPost:
                     if df.shape[1] > 2 and df.shape[0] > 0:
                         
@@ -1055,7 +1065,7 @@ def app():
                             clas_var2 = st.selectbox('Select classifier variable', [entity, time],) 
 
                             # Means and sd by entity
-                            col1, col2 = st.beta_columns(2) 
+                            col1, col2 = st.columns(2) 
                             with col1:
                                 df_anova_woTime = df.drop([time], axis = 1)
                                 df_grouped_ent = df_anova_woTime.groupby(entity)
@@ -1068,7 +1078,7 @@ def app():
                                 st.write("")
 
                             # Means and sd by time
-                            col3, col4 = st.beta_columns(2) 
+                            col3, col4 = st.columns(2) 
                             with col3:
                                 df_anova_woEnt= df.drop([entity], axis = 1)
                                 df_grouped_time = df_anova_woEnt.groupby(time)
@@ -1082,7 +1092,7 @@ def app():
                                 st.write(df_grouped_time.std()[target_var2])
                                 st.write("")
 
-                            col9, col10 = st.beta_columns(2) 
+                            col9, col10 = st.columns(2) 
                             with col9:
                                 st.write("Boxplot grouped by entity:")
                                 box_size1 = st.slider("Select box size  ", 1, 50, 5)
@@ -1124,7 +1134,7 @@ def app():
                             st.write("")
                             
                             # Count for entity and time
-                            col5, col6 = st.beta_columns(2)
+                            col5, col6 = st.columns(2)
                             with col5:
                                 st.write("Number of observations per entity:")
                                 counts_ent = pd.DataFrame(df_grouped_ent.count()[target_var2])
@@ -1175,7 +1185,7 @@ def app():
                             ano_ols_output = ano_ols.fit()
                             residuals = ano_ols_output.resid
                             
-                            col7, col8 = st.beta_columns(2)
+                            col7, col8 = st.columns(2)
                             with col7:
                                 # QQ-plot
                                 st.write("Normal QQ-plot:")
@@ -1249,29 +1259,29 @@ def app():
         #++++++++++++++++++++++
         # DATA VISUALIZATION
 
-        data_visualization_container = st.beta_container()
+        data_visualization_container = st.container()
         with data_visualization_container:
             #st.write("")
             st.write("")
             st.write("")
             st.header("**Data visualization**")
 
-            dev_expander_dv = st.beta_expander("Explore visualization types", expanded = False)
+            dev_expander_dv = st.expander("Explore visualization types", expanded = False)
             
             with dev_expander_dv:
                 if df.shape[1] > 2 and df.shape[0] > 0:
                     st.write('**Variable selection**')
                     varl_sel_options = df.columns
                     varl_sel_options = varl_sel_options[varl_sel_options.isin(df.drop([entity, time], axis = 1).columns)]
-                    var_sel = st.selectbox('Select variable for visualizations', varl_sel_options, key = session_state.id)
+                    var_sel = st.selectbox('Select variable for visualizations', varl_sel_options, key = st.session_state['key'])
 
                     if df[var_sel].dtypes == "float64" or df[var_sel].dtypes == "float32" or df[var_sel].dtypes == "int64" or df[var_sel].dtypes == "int32":
-                        a4, a5 = st.beta_columns(2)
+                        a4, a5 = st.columns(2)
                         with a4:
                             st.write('**Scatterplot with LOESS line**')
                             yy_options = df.columns
                             yy_options = yy_options[yy_options.isin(df.drop([entity, time], axis = 1).columns)]
-                            yy = st.selectbox('Select variable for y-axis', yy_options, key = session_state.id)
+                            yy = st.selectbox('Select variable for y-axis', yy_options, key = st.session_state['key'])
                             if df[yy].dtypes == "float64" or df[yy].dtypes == "float32" or df[yy].dtypes == "int64" or df[yy].dtypes == "int32":
                                 fig_data = pd.DataFrame()
                                 fig_data[yy] = df[yy]
@@ -1290,7 +1300,7 @@ def app():
                             else: st.error("ERROR: Please select a numeric variable for the y-axis!")   
                         with a5:
                             st.write('**Histogram**')
-                            binNo = st.slider("Select maximum number of bins", 5, 100, 25, key = session_state.id)
+                            binNo = st.slider("Select maximum number of bins", 5, 100, 25, key = st.session_state['key'])
                             fig2 = alt.Chart(df).mark_bar().encode(
                                 x = alt.X(var_sel, title = var_sel + " (binned)", bin = alt.BinParams(maxbins = binNo), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                 y = alt.Y("count()", title = "count of records", axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
@@ -1300,7 +1310,7 @@ def app():
                             if sett_hints:
                                 st.info(str(fc.learning_hints("dv_histogram")))
 
-                        a6, a7 = st.beta_columns(2)
+                        a6, a7 = st.columns(2)
                         with a6:
                             st.write('**Boxplot**')
                             # Boxplot
@@ -1353,7 +1363,7 @@ def app():
         #++++++++++++++++++++++++++++++++++++++++++++
         # PANEL DATA MODELLING
 
-        data_modelling_container = st.beta_container()
+        data_modelling_container = st.container()
         with data_modelling_container:
             #st.write("")
             #st.write("")
@@ -1363,7 +1373,7 @@ def app():
             st.header("**Panel data modelling**")
             st.markdown("Go for creating predictive models of your panel data using panel data modelling!  STATY will take care of the modelling for you, so you can put your focus on results interpretation and communication! ")
 
-            PDM_settings = st.beta_expander("Specify model", expanded = False)
+            PDM_settings = st.expander("Specify model", expanded = False)
             with PDM_settings:
                 
                 if time_na_warn == False and entity_na_warn == False:
@@ -1391,7 +1401,7 @@ def app():
                         response_var_options = response_var_options[response_var_options.isin(df.drop(entity, axis = 1).columns)]
                         if time != "NA":
                             response_var_options = response_var_options[response_var_options.isin(df.drop(time, axis = 1).columns)]
-                        response_var = st.selectbox("Select response variable", response_var_options, key = session_state.id)
+                        response_var = st.selectbox("Select response variable", response_var_options, key = st.session_state['key'])
 
                         # Check if response variable is numeric and has no NAs
                         response_var_message_num = False
@@ -1416,7 +1426,7 @@ def app():
                         if response_var_message_num == False and response_var_message_na == False:
                             # Select explanatory variables
                             expl_var_options = response_var_options[response_var_options.isin(df.drop(response_var, axis = 1).columns)]
-                            expl_var = st.multiselect("Select explanatory variables", expl_var_options, key = session_state.id)
+                            expl_var = st.multiselect("Select explanatory variables", expl_var_options, key = st.session_state['key'])
                             var_list = list([entity]) + list([time]) + list([response_var]) + list(expl_var)
 
                             # Check if explanatory variables are numeric
@@ -1444,7 +1454,7 @@ def app():
                                 st.markdown("**Specify modelling algorithm**")
 
                                 # Algorithms selection
-                                col1, col2 = st.beta_columns(2)
+                                col1, col2 = st.columns(2)
                                 algorithms = ["Entity Fixed Effects", "Time Fixed Effects", "Two-ways Fixed Effects", "Random Effects", "Pooled"]
                                 with col1:
                                     PDM_alg = st.selectbox("Select modelling technique", algorithms)
@@ -1464,7 +1474,7 @@ def app():
                                 do_modval= st.selectbox("Use model validation", ["No", "Yes"])
 
                                 if do_modval == "Yes":
-                                    col1, col2 = st.beta_columns(2)
+                                    col1, col2 = st.columns(2)
                                     # Select training/ test ratio 
                                     with col1:
                                         train_frac = st.slider("Select training data size", 0.5, 0.95, 0.8)
@@ -2380,7 +2390,7 @@ def app():
         #--------------------------------------------------------------------------------------
         # FULL MODEL OUTPUT
 
-        full_output = st.beta_expander("Full model output", expanded = False)
+        full_output = st.expander("Full model output", expanded = False)
         with full_output:
 
             if model_full_results is not None:
@@ -2434,7 +2444,7 @@ def app():
                 # Regression output
                 st.markdown("**Regression output**")
 
-                full_out_col1, full_out_col2 = st.beta_columns(2)
+                full_out_col1, full_out_col2 = st.columns(2)
                 with full_out_col1:
                     # Entity information
                     st.write("Entity information:")
@@ -2447,7 +2457,7 @@ def app():
                     st.info(str(fc.learning_hints("mod_pd_information")))
                 st.write("")
 
-                full_out_col3, full_out_col4 = st.beta_columns(2)
+                full_out_col3, full_out_col4 = st.columns(2)
                 with full_out_col3:
                     # Regression information
                     st.write("Regression information:")
@@ -2461,7 +2471,7 @@ def app():
                 st.write("")
 
                 # Overall performance (with effects)
-                full_out_col_op1, full_out_col_op2 = st.beta_columns(2)
+                full_out_col_op1, full_out_col_op2 = st.columns(2)
                 with full_out_col_op1:
                     if PDM_alg != "Pooled":
                         st.write("Overall performance (with effects):")
@@ -2485,14 +2495,14 @@ def app():
 
                 # Effects
                 if PDM_alg != "Pooled":
-                    full_out_col5, full_out_col6 = st.beta_columns(2)
+                    full_out_col5, full_out_col6 = st.columns(2)
                     with full_out_col5:
                         st.write("Entity effects:")
                         st.write(model_full_results["Entity effects"].style.set_precision(user_precision))
                     with full_out_col6:
                         st.write("Time effects:")
                         st.write(model_full_results["Time effects"].style.set_precision(user_precision))
-                    full_out_col7, full_out_col8 = st.beta_columns(2)
+                    full_out_col7, full_out_col8 = st.columns(2)
                     with full_out_col7:
                         st.write("Combined effects:")
                         st.write(model_full_results["Combined effects"]) 
@@ -2512,7 +2522,7 @@ def app():
 
                 # Statistical tests
                 if PDM_alg == "Random Effects":
-                    full_out_col_re1, full_out_col_re2 = st.beta_columns(2)
+                    full_out_col_re1, full_out_col_re2 = st.columns(2)
                     with full_out_col_re1:
                         st.write("Variance decomposition:")
                         st.table(model_full_results["Variance decomposition"].style.set_precision(user_precision))
@@ -2559,7 +2569,7 @@ def app():
                     st.write("")          
                 
                 # Graphical output
-                full_out_col10, full_out_col11 = st.beta_columns(2)
+                full_out_col10, full_out_col11 = st.columns(2)
                 fitted_withEff = df[response_var]-panel_model_fit.resids.values
                 with full_out_col10:
                     st.write("Observed vs Fitted:")
@@ -2591,7 +2601,7 @@ def app():
                     st.info(str(fc.learning_hints("mod_md_MLR_obsResVsFit"))) 
                 st.write("")
                 if PDM_alg == "Pooled":
-                    full_out_col12, full_out_col13 = st.beta_columns(2)
+                    full_out_col12, full_out_col13 = st.columns(2)
                     with full_out_col12:
                         st.write("Normal QQ-plot:")
                         residuals = panel_model_fit.resids.values
@@ -2632,7 +2642,7 @@ def app():
                             st.info(str(fc.learning_hints("mod_md_MLR_scaleLoc"))) 
                         st.write("")
 
-                    full_out_col14, full_out_col15 = st.beta_columns(2)
+                    full_out_col14, full_out_col15 = st.columns(2)
                     Y_data_mlr = df[response_var]
                     X_data_mlr = sm.add_constant(df[expl_var])
                     full_model_mlr = sm.OLS(Y_data_mlr, X_data_mlr)
@@ -2705,9 +2715,9 @@ def app():
         #--------------------------------------------------------------------------------------
         # FULL MODEL PREDICTIONS
 
-        prediction_output = st.beta_expander("Full model predictions", expanded = False)
+        prediction_output = st.expander("Full model predictions", expanded = False)
         with prediction_output:
-            pred_col1, pred_col2 = st.beta_columns(2)
+            pred_col1, pred_col2 = st.columns(2)
             with pred_col1:
                 st.write("Predictions for original data:")
                 pred_orig = pd.DataFrame(fitted)
@@ -2747,10 +2757,10 @@ def app():
                 validation_output_name = "Validation output"
             if PDM_alg != "Pooled":
                 validation_output_name = "Validation output (with effects)"
-            val_output = st.beta_expander(validation_output_name, expanded = False)
+            val_output = st.expander(validation_output_name, expanded = False)
             with val_output:
                 if model_val_results is not None:
-                    val_col1, val_col2 = st.beta_columns(2)
+                    val_col1, val_col2 = st.columns(2)
 
                     with val_col1:
                         # Metrics
@@ -2764,7 +2774,7 @@ def app():
                         st.info(str(fc.learning_hints("mod_pd_val_metrics"))) 
                     st.write("")
                     
-                    val_col3, val_col4 = st.beta_columns(2)
+                    val_col3, val_col4 = st.columns(2)
                     with val_col3:
                         # Residuals boxplot
                         if model_val_results["residuals"] is not None:
@@ -2810,7 +2820,7 @@ def app():
                         model_val_res.loc["75%-Q"]["Value"] = model_val_results["residuals"][response_var].quantile(q = 0.75)
                         model_val_res.loc["max"]["Value"] = model_val_results["residuals"][response_var].max()
                         st.write("Residuals distribution across all validation runs:")
-                        col1, col2 = st.beta_columns(2)
+                        col1, col2 = st.columns(2)
                         with col1:
                             st.table(model_val_res.style.set_precision(user_precision))
                             if sett_hints:

@@ -87,13 +87,22 @@ def theme_func_dark():
     }}
     div[data-testid*="stTable"] > table > thead > tr > th {{
         border-color: white;
+        color: white;
+        font-weight: 550;
+        border-top: 1px solid rgba(255, 255, 255, 0.7);
+        border-left: 1px solid rgba(255, 255, 255, 0.7);
     }}
     div[data-testid*="stTable"] > table > tbody > tr > th {{
         border-color: white;
+        color: white;
+        font-weight: 550;
+        border-left: 1px solid rgba(255, 255, 255, 0.7);
     }}
     div[data-testid*="stTable"] > table > tbody > tr > td {{
         border-top: 1px solid rgba(255, 255, 255, 0.7);
         border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+        border-left: 1px solid rgba(255, 255, 255, 0.7);
+        border-right: 1px solid rgba(255, 255, 255, 0.7);
     }}
     .stDataFrame > div {{
         background-color: white;
@@ -211,6 +220,14 @@ def theme_func_light():
     }}
     .stSlider > label {{
         color: rgb(38, 39, 48);
+    }}
+    div[data-testid*="stTable"] > table > thead > tr > th {{
+        color: rgb(38, 39, 48);
+        font-weight: 550;
+    }}
+    div[data-testid*="stTable"] > table > tbody > tr > th {{
+        color: rgb(38, 39, 48);
+        font-weight: 550;
     }}
     </style> 
     
@@ -1139,6 +1156,47 @@ def regression_models(X_ini, Y_ini, expl_var,reg_technique,poly_order):
     return  mlr_reg_inf, mlr_reg_stats, mlr_reg_anova, mlr_reg_coef,X_data, Y_data, Y_pred
 
 #------------------------------------------------------------------------------------------
+#FUNCTIONS FOR STOCK DATA ANALYSIS
+def  get_stock_list(index_name,web_page,table_no, symbol_col, company_col, sector_col):
+    if index_name=='CSI300':
+        payload=pd.read_html(web_page,converters={'Index': str})
+    elif index_name=='NIKKEI225':
+        payload=pd.read_html(web_page,converters={'Code': str})
+    elif index_name=='KOSPI':
+        payload=pd.read_html(web_page,converters={'Code': str})
+    else:
+        payload=pd.read_html(web_page)    
+    first_table = payload[table_no]
+    df = first_table
+
+    df.loc[:,'Index_name'] = index_name
+
+    if index_name=='FTSE100':
+        df.iloc[:,1] = df.iloc[:,1] + '.L'
+    if index_name=='CSI300':
+        df.loc[df['Stock exchange'] == 'Shanghai','Index']=df.loc[df['Stock exchange'] == 'Shanghai','Index']+'.SS'
+        df.loc[df['Stock exchange'] == 'Shenzhen','Index']=df.loc[df['Stock exchange'] == 'Shenzhen','Index']+'.SZ'
+    if index_name=='NIKKEI225':
+        df.loc[:,'Code'] = df.loc[:,'Code'] + '.T'  
+    if index_name=='KOSPI':
+        df.loc[:,'Code'] = df.loc[:,'Code'] + '.KS'   
+    #if index_name=='S&P_TSX60':
+    #    df.loc[:,'Symbol'] = df.loc[:,'Symbol'] + '.TO'          
+    symbols = df.iloc[:,symbol_col].values.tolist()
+    companies = df.iloc[:,company_col].values.tolist()
+    sectors = df.iloc[:,sector_col].values.tolist()
+    stock_index=df.loc[:,'Index_name'].tolist()
+    #symbols_all=symbols_all+symbols
+    #company_all=company_all+companies
+    #sector_all=sector_all+sectors
+    #index_all=index_all+stock_index
+    
+    return symbols,companies,sectors,stock_index
+
+
+#----------------------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------------------
 #FUNCTION FOR TEXT PROCESSING
 
 def cv_text(user_text, word_stopwords, ngram_level,user_precision,number_remove):
@@ -1169,6 +1227,7 @@ def cv_text(user_text, word_stopwords, ngram_level,user_precision,number_remove)
     cv_output["Word length"]=[len(i) for i in cv_output.index]
 
     return  cv_output
+
 
 #---------------------------------------------------------------------------------------------
 #FUNCTION FOR LEARNING HINTS

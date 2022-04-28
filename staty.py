@@ -132,8 +132,8 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # Decoration bar color
 decoration_bar_style ="""
     <style>
-    .css-kywgdc {
-        background-image:  linear-gradient(90deg, #38bcf0, #dcf3fc);
+    div[data-testid*="stDecoration"] {
+        background-image:  linear-gradient(90deg, #38bcf0, #dcf3fa);
     }
     </style>
 """
