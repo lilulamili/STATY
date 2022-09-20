@@ -267,7 +267,7 @@ def app():
 
         st.markdown("**Acknowledgments**")
         st.write("STATY was financed through the Fund for Improvement of Study Conditions (Studienqualitätsmittel) provided by the state of Lower Saxony.")
-        st.write("Development of STATY has been rocketed by great Python libraries including  [altair] (https://altair-viz.github.io/), [plotly] (https://plotly.com/python/), [statsmodels](https://www.statsmodels.org/stable/index.html), [scikit-learn](https://scikit-learn.org/stable/), [scikit-optimize](https://scikit-optimize.github.io/stable/) and [streamlit](https://streamlit.io/)! The full list of libararies used is available [here](https://quant-works.de/staty/requirements.txt).")
+        st.write("Development of STATY has been rocketed by great Python libraries including  [altair](https://altair-viz.github.io/), [plotly](https://plotly.com/python/), [statsmodels](https://www.statsmodels.org/stable/index.html), [scikit-learn](https://scikit-learn.org/stable/), [scikit-optimize](https://scikit-optimize.github.io/stable/) and [streamlit](https://streamlit.io/)!")
         st.write("")
 
         st.markdown("**Interesting to know**")

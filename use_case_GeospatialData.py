@@ -11,8 +11,6 @@ import plotly.express as px
 import json
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-from streamlit import caching
-import SessionState
 import sys
 import platform
 import base64
@@ -157,7 +155,7 @@ def app():
             if uploaded_data == None:
                 if st.checkbox("Show data description", value = False, key = st.session_state['key']):          
                     st.markdown("**Data source:**")
-                    st.markdown("The data come from the Gallup World Poll surveys from 2018 to 2020. For more details see the [World Happiness Report 2021] (https://worldhappiness.report/).")
+                    st.markdown("The data come from the Gallup World Poll surveys from 2018 to 2020. For more details see the [World Happiness Report 2021](https://worldhappiness.report/).")
                     st.markdown("**Citation:**")
                     st.markdown("Helliwell, John F., Richard Layard, Jeffrey Sachs, and Jan-Emmanuel De Neve, eds. 2021. World Happiness Report 2021. New York: Sustainable Development Solutions Network.")
                     st.markdown("**Variables in the dataset:**")

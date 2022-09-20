@@ -174,7 +174,7 @@ def app():
             if uploaded_data == None:
                 if st.checkbox("Show data description", value = False, key = st.session_state['key']):          
                     st.markdown("**Data source:**")
-                    st.markdown("The data come from Box & Jenkins (1970), but we use the version that is integrated in the R package ['astsa'] (https://www.stat.pitt.edu/stoffer/tsa4/ ) which is a companion to the book ['Time Series Analysis and Its Applications'] (https://www.springer.com/de/book/9783319524511) by Shumway & Stoffer's (2017)  .")
+                    st.markdown("The data come from Box & Jenkins (1970), but we use the version that is integrated in the R package ['astsa'](https://www.stat.pitt.edu/stoffer/tsa4/ ) which is a companion to the book ['Time Series Analysis and Its Applications'](https://www.springer.com/de/book/9783319524511) by Shumway & Stoffer's (2017)  .")
                                        
                     st.markdown("**Citation:**")
                     st.markdown("Box, G.E.P. and G.M. Jenkins (1970).Time Series Analysis, Forecasting, and Control. Oakland,CA: Holden-Day")
@@ -791,6 +791,8 @@ def app():
     #--------------------------------------------------
     # Time-series data
     #---------------------------------------------------
+    # initialisation
+    st_dif_order=1
     data_predictiv_analysis_container = st.container()
     with data_predictiv_analysis_container:
 
@@ -855,8 +857,7 @@ def app():
                 #---------------------------------
                 # Diagnosis plots and stats
                 #---------------------------------
-                # initialisation
-                st_dif_order=1
+                
 
                 st.write("")
                 ts_expander_datavis = st.expander("Diagnosis plots and tests")
@@ -975,7 +976,7 @@ def app():
             #-----------------------------------------------------------
             # Detrending and seasonal adjustment
             #-----------------------------------------------------------
-            ts_expander_decomp = st.expander("Differencing, detrending and seasonal adjustment")
+            ts_expander_decomp = st.expander("Differencing, detrending and seasonal adjustment", expanded=True)
             with ts_expander_decomp:
                 ts_decomp = st.selectbox("Specify your time series differencing and decomposition preferences:", 
                     ["n-order differences", "detrending", "seasonal adjustment", "detrending & seasonal adjustment"], key = st.session_state['key'])

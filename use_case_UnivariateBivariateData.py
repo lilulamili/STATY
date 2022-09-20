@@ -196,7 +196,7 @@ def app():
             if uploaded_data == None:
                 if st.checkbox("Show data description", value = False, key = st.session_state['key']):          
                     st.markdown("**Data source:**")
-                    st.markdown("The data come from the World Bank's study on [financial intermediation and growth] (https://datacatalog.worldbank.org/dataset/wps2059-finance-and-sources-growth-and-financial-intermediation-and-growth). ")
+                    st.markdown("The data come from the World Bank's study on [financial intermediation and growth](https://datacatalog.worldbank.org/dataset/wps2059-finance-and-sources-growth-and-financial-intermediation-and-growth). ")
                     
                     st.markdown("**Citation:**")
                     st.markdown(" Levine, Ross; Loayza, Norman; Beck, Thorsten.1999. Financial intermediation and growth : Causality and causes (English). Policy, Research working paper ; no. WPS 2059 Washington, D.C. : World Bank Group. ")
@@ -1136,7 +1136,7 @@ def app():
 
                 #show frequency table
                 st.subheader("Frequency table")  #st.table(df_freqanal.style.set_precision(user_precision))
-                st.table(df_freqanal.style.format(precision=user_precision))
+                st.write(df_freqanal.style.set_precision(user_precision))
 
                 # xls-File download link:
                 output = BytesIO()

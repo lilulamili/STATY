@@ -6,7 +6,7 @@
 
 import streamlit as st
 import sys
-from streamlit import cli as stcli
+#from streamlit import cli as stcli
 import pandas as pd
 import numpy as np
 import plotly as dd
@@ -27,7 +27,7 @@ import use_case_FAQs
 import os 
 import platform
 import time
-from streamlit import caching
+#from streamlit import caching
 import streamlit.components.v1 as components
 from PIL import Image
 
@@ -109,15 +109,15 @@ st.sidebar.markdown("")
 page = PAGES[use_case]
 page.app()
 
+#st.markdown("check out this [link](%s)" % url)
+st.sidebar.markdown("We‘d love to hear your [feedback](%s)!" % "https://qfreeaccountssjc1.az1.qualtrics.com/jfe/form/SV_4G6JfNt6sHORUt8")
 
-st.sidebar.markdown("We‘d love to hear your [feedback] (https://qfreeaccountssjc1.az1.qualtrics.com/jfe/form/SV_4G6JfNt6sHORUt8)!")
+st.sidebar.markdown("Report a [bug](%s)!" % "https://drive.google.com/file/d/1iDLJMyYxwRGXtpQUj6H1Ose5DJ0AnICj/view?usp=sharing")
 
-st.sidebar.markdown("Report a [bug] (https://drive.google.com/file/d/1iDLJMyYxwRGXtpQUj6H1Ose5DJ0AnICj/view?usp=sharing)!")
-
-st.sidebar.write("Check the [documentation] (https://quant-works.de/staty/STATY_Documentation_v0.1.pdf)!")
+st.sidebar.write("Check the [documentation](%s)!" % "https://quant-works.de/staty/STATY_Documentation_v0.1.pdf")
 
 st.sidebar.markdown("")
-st.sidebar.markdown("Your :rocket: to data science!   \n Licensed under the [Apache License, Version 2.0] (https://www.apache.org/licenses/LICENSE-2.0.html)")
+st.sidebar.markdown("Your :rocket: to data science!   \n Licensed under the [Apache License, Version 2.0](%s)" % "https://www.apache.org/licenses/LICENSE-2.0.html")
  
 
 # Hide footer

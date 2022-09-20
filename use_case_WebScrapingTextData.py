@@ -686,7 +686,7 @@ def app():
  # ---------------------------------------------------               
     if tw_classifier=='Financial analysis': 
        
-        st.write('Check stock prices and key performance indicators for companies included in [S&P 500] (https://en.wikipedia.org/wiki/List_of_S%26P_500_companies), [DAX] (https://en.wikipedia.org/wiki/DAX), [FTSE 100] (https://en.wikipedia.org/wiki/FTSE_100_Index), [CSI 300](https://en.wikipedia.org/wiki/CSI_300_Index), [Nikkei 225] (https://de.wikipedia.org/wiki/Nikkei_225), [CAC 40] (https://en.wikipedia.org/wiki/CAC_40), [BSE SENSEX] (https://en.wikipedia.org/wiki/BSE_SENSEX) and [KOSPI](https://en.wikipedia.org/wiki/KOSPI) indexes, or for any company available via [Yahoo Finance](https://finance.yahoo.com/). Note, the bulk download and data processing may take some time!')
+        st.write('Check stock prices and key performance indicators for companies included in [S&P 500](https://en.wikipedia.org/wiki/List_of_S%26P_500_companies), [DAX](https://en.wikipedia.org/wiki/DAX), [FTSE 100](https://en.wikipedia.org/wiki/FTSE_100_Index), [CSI 300](https://en.wikipedia.org/wiki/CSI_300_Index), [Nikkei 225](https://de.wikipedia.org/wiki/Nikkei_225), [CAC 40](https://en.wikipedia.org/wiki/CAC_40), [BSE SENSEX](https://en.wikipedia.org/wiki/BSE_SENSEX) and [KOSPI](https://en.wikipedia.org/wiki/KOSPI) indexes, or for any company available via [Yahoo Finance](https://finance.yahoo.com/). Note, the bulk download and data processing may take some time!')
         
         a1,a2,a3=st.columns([1,3,1])
         with a1:

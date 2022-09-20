@@ -229,9 +229,9 @@ def app():
                 if uploaded_data == None:
                     if st.checkbox("Show data description", value = False, key = st.session_state['key']):          
                         st.markdown("**Data source:**")
-                        st.markdown("This is the original 11-firm data set from Grunfeld’s Ph.D. thesis (*Grunfeld, 1958, The Determinants of Corporate Investment, Department of Economics, University of Chicago*). For more details see online complements for the article [The Grunfeld Data at 50] (https://www.zeileis.org/grunfeld/).")
+                        st.markdown("This is the original 11-firm data set from Grunfeld’s Ph.D. thesis (*Grunfeld, 1958, The Determinants of Corporate Investment, Department of Economics, University of Chicago*). For more details see online complements for the article [The Grunfeld Data at 50](https://www.zeileis.org/grunfeld/).")
                         st.markdown("**Citation:**")
-                        st.markdown("Kleiber C, Zeileis A (2010). “The Grunfeld Data at 50,” German Economic Review, 11(4), 404-417. [doi:10.1111/j.1468-0475.2010.00513.x] (https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1468-0475.2010.00513.x)")
+                        st.markdown("Kleiber C, Zeileis A (2010). “The Grunfeld Data at 50,” German Economic Review, 11(4), 404-417. [doi:10.1111/j.1468-0475.2010.00513.x](https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1468-0475.2010.00513.x)")
                         st.markdown("**Variables in the dataset:**")
 
                         col1,col2=st.columns(2) 

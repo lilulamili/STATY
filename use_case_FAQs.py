@@ -45,7 +45,7 @@ def app():
     with general_questions_container:
         st.subheader("General questions")
         with st.expander("Which libraries were used for figures?"):
-            st.write("A combination of [plotly] (https://plotly.com/python/) and [altair] (https://altair-viz.github.io/index.html) was used for creating figures.")
+            st.write("A combination of [plotly](https://plotly.com/python/) and [altair](https://altair-viz.github.io/index.html) was used for creating figures.")
         with st.expander("Why is my data file not uploading?"):
             st.write("Data can only be uploaded as .csv or .txt file with a maximum size of 200MB.")
         with st.expander("Why are variables not identified correctly after uploading?"):
@@ -59,7 +59,7 @@ def app():
         with st.expander("Why is the model showing an error?"):
             st.write("This can have several reasons. Please make sure to read the error message carefully. In some cases this can be traced back to the model inputs. For example, highly correlated variables or the inclusion of variable x and a transformation of variable x might lead to difficulties in solving for the right model parameters.")
         with st.expander("What are robust covariance matrices and when are they needed?"):
-            st.write("For more information about robust covariance matrices please check Chapter 5.1 from 'Introduction to Econometrics' by James H. Stock and Mark W. Watson, and the [publication] (https://link.springer.com/article/10.3758/BF03192961) 'Using heteroskedasticity-consistent standard error estimators in OLS regression: An introduction and software implementation' by Andrew F. Hayes and Li Cai.")
+            st.write("For more information about robust covariance matrices please check Chapter 5.1 from 'Introduction to Econometrics' by James H. Stock and Mark W. Watson, and the [publication](https://link.springer.com/article/10.3758/BF03192961) 'Using heteroskedasticity-consistent standard error estimators in OLS regression: An introduction and software implementation' by Andrew F. Hayes and Li Cai.")
         with st.expander("What to do if heteroskedasticity is present?"):
             st.write("For guidelines on how to deal with heteroskedasticity please check Chapter 5.4 from 'Introduction to Econometrics' by James H. Stock and Mark W. Watson.")
         with st.expander("Why are the new data not loading correctly?"):
@@ -69,7 +69,7 @@ def app():
     with uniBivariate_questions_container:
         st.subheader("Uni- and bivariate data")
         with st.expander("Which libraries are used within uni- and bivariate data analyses?"):
-            st.write("ANOVA uses [statsmodels] (https://www.statsmodels.org/stable/index.html), distribution fitting is based on [scipy.stats](https://docs.scipy.org/doc/scipy/reference/stats.html), while the regression models use [sklearn] (https://scikit-learn.org/stable/).")
+            st.write("ANOVA uses [statsmodels](https://www.statsmodels.org/stable/index.html), distribution fitting is based on [scipy.stats](https://docs.scipy.org/doc/scipy/reference/stats.html), while the regression models use [sklearn](https://scikit-learn.org/stable/).")
         with st.expander("How to change the order of x-labels within the univariate frequency analysis?"):
             st.write("Select “Show additional…settings” and select the x-labels in the order in which you want them to be displayed on the charts and in the tables.")
         with st.expander("What theoretical distributions can be fitted within the 'Distribution fitting' section?"):
@@ -85,9 +85,9 @@ def app():
     with multivariate_questions_container:
         st.subheader("Multivariate data")
         with st.expander("Which libraries are used for the multivariate data regression models?"):
-            st.write("Models are based on [sklearn] (https://scikit-learn.org/stable/), [statsmodels] (https://www.statsmodels.org/stable/index.html) and [pygam] (https://pygam.readthedocs.io/en/latest/index.html). Please also check the documentation!")
+            st.write("Models are based on [sklearn](https://scikit-learn.org/stable/), [statsmodels](https://www.statsmodels.org/stable/index.html) and [pygam](https://pygam.readthedocs.io/en/latest/index.html). Please also check the documentation!")
         with st.expander("Which libraries are used for multivariate data decomposition?"):
-            st.write("Principal Component Analysis is based on [sklearn] (https://scikit-learn.org/stable/), and Factor Analysis is based on [factor-analyzer] (https://factor-analyzer.readthedocs.io/en/latest/index.html#). Please also check the documentation!")
+            st.write("Principal Component Analysis is based on [sklearn](https://scikit-learn.org/stable/), and Factor Analysis is based on [factor-analyzer](https://factor-analyzer.readthedocs.io/en/latest/index.html#). Please also check the documentation!")
         with st.expander("Which models can be tuned?"):
             st.write("Hyperparameter ranges can only be specified for Random Forest, Boosted Regression Trees and Artificial Neural Networks.")
         with st.expander("How are models tuned?"):
@@ -105,7 +105,7 @@ def app():
     with panel_questions_container:
         st.subheader("Panel data")
         with st.expander("Which python libraries are used for the panel data models?"):
-            st.write("Models are based on [linearmodels] (https://bashtage.github.io/linearmodels/doc/).  Please also check the documentation for links!")
+            st.write("Models are based on [linearmodels](https://bashtage.github.io/linearmodels/doc/).  Please also check the documentation for links!")
         with st.expander("How are effects determined for Fixed Effects models?"):
             st.write("The single effects of the entity, time or both are determined with the within estimation method. They can be additionally determined with the Least Squares Dummy Variable (LSDV) method, which leads to the same results.")
         with st.expander("How are effects determined for Random Effects models?"):
@@ -116,11 +116,11 @@ def app():
         st.subheader("Time series data")
         with st.expander("Which libraries are used for time series models?"):
             st.write("For the manual model calibration we used statsmodels [SARIMAX]( https://www.statsmodels.org/dev/examples/notebooks/generated/statespace_sarimax_stata.html).")
-            st.write("For automatic model calibration we used [pmdarima] (http://alkaline-ml.com/pmdarima/), which is equivalent of R's auto.arima functionality.")
+            st.write("For automatic model calibration we used [pmdarima](http://alkaline-ml.com/pmdarima/), which is equivalent of R's auto.arima functionality.")
         with st.expander("What is the suitable format for the time variable of my dataset?"):
-            st.write("Pandas object with a datetime index - please check [pandas.to_datetime] (https://pandas.pydata.org/docs/reference/api/pandas.to_datetime.html) requirements.")
+            st.write("Pandas object with a datetime index - please check [pandas.to_datetime](https://pandas.pydata.org/docs/reference/api/pandas.to_datetime.html) requirements.")
         with st.expander("What kind of detrending and seasonal adjustment is used in STATY?"):
-            st.write("We used the function [seasonal_decompose] (https://www.statsmodels.org/stable/generated/statsmodels.tsa.seasonal.seasonal_decompose.html) from statsmodels which is a seasonal decomposition using moving averages. Please note that this is a naive additive decomposition.")
+            st.write("We used the function [seasonal_decompose](https://www.statsmodels.org/stable/generated/statsmodels.tsa.seasonal.seasonal_decompose.html) from statsmodels which is a seasonal decomposition using moving averages. Please note that this is a naive additive decomposition.")
         with st.expander("Can I use n-order differences of my time-series as a starting points for my model?"):
             st.write("Sure- look for a drop-down menu called “Select data for further modelling” and select the data you want to use.")
         
@@ -128,12 +128,12 @@ def app():
     with webAndText_questions_container:
         st.subheader("Web scraping and text data")
         with st.expander("Which libraries are used for web scraping and text data analyses?"):
-            st.write("Text processing was mainly done using CountVectorizer from [sklearn] (https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html).")
-            st.write("For the the web-page summary we used [pysummarization] (https://code.accel-brain.com/Automatic-Summarization/), which is using a kind of natural language processing and neural network language model.")
-            st.write("WordCloud analysis is based on the library [wordcloud] (https://pypi.org/project/wordcloud/).")
-            st.write("To connect to Yahoo Finance, we used the library [yfinance] (https://pypi.org/project/yfinance/).")
+            st.write("Text processing was mainly done using CountVectorizer from [sklearn](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html).")
+            st.write("For the the web-page summary we used [pysummarization](https://code.accel-brain.com/Automatic-Summarization/), which is using a kind of natural language processing and neural network language model.")
+            st.write("WordCloud analysis is based on the library [wordcloud](https://pypi.org/project/wordcloud/).")
+            st.write("To connect to Yahoo Finance, we used the library [yfinance](https://pypi.org/project/yfinance/).")
         with st.expander("Where the data about the stocks are coming from?"):
-            st.write("We connect to [Yahoo Finance] (https://www.yahoo.com/ ) to get the data about the stock performance.")
+            st.write("We connect to [Yahoo Finance](https://www.yahoo.com/ ) to get the data about the stock performance.")
         with st.expander("Can I use any script within the WordCloud analysis?"):
             st.write("Logographic scripts are not supported.")
 
@@ -141,7 +141,7 @@ def app():
     with geospatial_questions_container:
         st.subheader("Geospatial data")
         with st.expander("Which libraries are used for geospatial data processing?"):
-            st.write("We used the library [json] (https://docs.python.org/3/library/json.html).")
+            st.write("We used the library [json](https://docs.python.org/3/library/json.html).")
         with st.expander("What data are used for country boundaries?"):
-            st.write("We used 110m resolution [geojson] (http://geojson.xyz/) based on Natural Earth Data.")
+            st.write("We used 110m resolution [geojson](http://geojson.xyz/) based on Natural Earth Data.")
 
