@@ -690,11 +690,12 @@ def app():
         
         a1,a2,a3=st.columns([1,3,1])
         with a1:
-            stock_search_option=st.radio('',['Indexes', 'Symbol'])
+            #stock_search_option=st.radio('',['Indexes', 'Symbol'])
+            stock_search_option= 'Symbol'
         with a2:
             st.markdown("")
             st.markdown("")
-            st.write("Start your analysis by either selecting companies from specific key indexes, or by entering a ticker symbol")
+            st.write("Start your analysis by entering a ticker symbol")
        
                    
         # delete session state if input widget change
