@@ -1120,7 +1120,7 @@ def app():
         tkpi_options= ['Profitability', 'Debt Capital', 'Equity Capital','Valuation', 'Capital Procurement','Capital Allocation','Procurement Market']
         tb_output=st.multiselect('Select ticker basic information',tb_options,['Stock Price', 'Balance Sheet','Cashflow','Other Financials'])
         #tkpi_output=st.multiselect('Select performance indicators',tkpi_options,['Profitability', 'Debt Capital', 'Valuation'])
-         tkpi_output = []
+        tkpi_output = []
        
         if len(selected_stock) == 0:
             st.error('Please select at least one ticker.')
