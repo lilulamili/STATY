@@ -38,6 +38,10 @@ from pysummarization.abstractabledoc.top_n_rank_abstractor import TopNRankAbstra
 from sklearn.feature_extraction.text import CountVectorizer
 from difflib import SequenceMatcher
 
+import nltk
+nltk.download('vader_lexicon')
+from nltk.sentiment import SentimentAnalyzer
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 #----------------------------------------------------------------------------------------------
 
 def app():
@@ -550,6 +554,21 @@ def app():
                         fig.update_layout(height=400,width=400)
                         st.plotly_chart(fig, use_container_width=True) 
                         st.info("Top " + str(min(len(cv2_output),10)) + " trigrams relative frequency")  
+                    # sentiment analysis per sentence
+                    st.subheader('Sentiment Analysis (English only)') 
+                                                
+                    sentences = re.findall(r"([^.]*\.)" ,user_text) 
+                    sa_table = pd.DataFrame(index = range(0, len(sentences)), columns=["Sentence", "neg","neu","pos","compound"]) 
+                   
+                    
+                    for i in range(0,len(sentences)):    
+                        sid = SentimentIntensityAnalyzer()
+                        sentence=sentences[i]                      
+                        ss = sid.polarity_scores(sentence)                       
+                        sa_table.loc[i]["Sentence"]=sentence
+                        sa_table.loc[i]["neg","neu","pos","compound"]=ss
+                       
+                    st.write(sa_table)       
 
 
                     if draw_WordCloud==True:                    
@@ -685,29 +704,36 @@ def app():
  #  Stock data analysis - Yahoo Finance
  # ---------------------------------------------------               
     if tw_classifier=='Financial analysis': 
-       
-        #st.write('Check stock prices and key performance indicators for companies included in [S&P 500](https://en.wikipedia.org/wiki/List_of_S%26P_500_companies), [DAX](https://en.wikipedia.org/wiki/DAX), [FTSE 100](https://en.wikipedia.org/wiki/FTSE_100_Index), [CSI 300](https://en.wikipedia.org/wiki/CSI_300_Index), [Nikkei 225](https://de.wikipedia.org/wiki/Nikkei_225), [CAC 40](https://en.wikipedia.org/wiki/CAC_40), [BSE SENSEX](https://en.wikipedia.org/wiki/BSE_SENSEX) and [KOSPI](https://en.wikipedia.org/wiki/KOSPI) indexes, or for any company available via [Yahoo Finance](https://finance.yahoo.com/). Note, the bulk download and data processing may take some time!')
+        # check session state
+        if 'selected_stock' not in st.session_state:
+            st.session_state['selected_stock'] = None
+        if 'load_data_button' not in st.session_state:
+            st.session_state['load_data_button'] = None
+        if 'list_years' not in st.session_state:
+            st.session_state['list_years'] = None
+        
+        # delete session state if input widget change
+        def in_wid_change():
+            st.session_state['load_data_button'] = None      
+        
+        st.write('Check stock prices and key performance indicators for companies included in [S&P 500](https://en.wikipedia.org/wiki/List_of_S%26P_500_companies), [DAX](https://en.wikipedia.org/wiki/DAX), [FTSE 100](https://en.wikipedia.org/wiki/FTSE_100_Index), [CSI 300](https://en.wikipedia.org/wiki/CSI_300_Index), [Nikkei 225](https://de.wikipedia.org/wiki/Nikkei_225), [CAC 40](https://en.wikipedia.org/wiki/CAC_40), [BSE SENSEX](https://en.wikipedia.org/wiki/BSE_SENSEX) and [KOSPI](https://en.wikipedia.org/wiki/KOSPI) indexes, or for any company available via [Yahoo Finance](https://finance.yahoo.com/). Note, the bulk download and data processing may take some time!')
+
         
         a1,a2,a3=st.columns([1,3,1])
         with a1:
-            #stock_search_option=st.radio('',['Indexes', 'Symbol'])
-            stock_search_option= 'Symbol'
+            stock_search_option=st.radio('',['Indexes', 'Symbol'], on_change=in_wid_change)
+        st.write(stock_search_option)
         with a2:
             st.markdown("")
             st.markdown("")
-            #st.write("Start your analysis by entering a ticker symbol")
+            st.write("Start your analysis by either selecting companies from specific key indexes, or by entering a ticker symbol")
        
-                   
-        # delete session state if input widget change
-        def in_wid_change():
-            st.session_state['load_data_button'] = None
-
         if stock_search_option !='Symbol':
             # select ticker for KPI-Dashboard
             co1 = st.container()
         
             st.write('Consider stocks from the following indices:')
-            c1, c2, c3,c4 = st.columns(4)
+            c1, c2, c3, c4 = st.columns(4)
             ticker_options = []
              
             SP500 = c1.checkbox('S&P 500', True, on_change=in_wid_change)
@@ -724,8 +750,11 @@ def app():
 
         else: #selected option is 'Symbol'
             selected_stock = st.text_input("Enter at least one stock ticker symbol! Please use space for ticker symbol separation!", "TSLA")
+            st.write(selected_stock)
             selected_stock=(list(selected_stock.split(" ")))
+            st.write(selected_stock)
             selected_stock = list(filter(None, selected_stock))
+            st.write(selected_stock)
             list_companies=[]
             list_symbols = []           
             list_sectors = []
@@ -804,8 +833,6 @@ def app():
             
             return df_indicesdata, symbols_SP, symbols_DAX, symbols_FTSE, symbols_BSE, symbols_CAC, symbols_CSI, symbols_KO, symbols_NIK
             
-
-        
 
         # define ticker object
         @st.cache(allow_output_mutation=True)
@@ -918,7 +945,7 @@ def app():
                 else:
                     self.ebita_interest = np.nan
                 if data_available('Total Current Liabilities', self.bs, selected_year) and data_available('Total Current Assets', self.bs, selected_year):
-                    self.current_ratio = self.bs.at['Total Current Liabilities', selected_year] / self.bs.at['Total Current Assets', selected_year]
+                    self.current_ratio = self.bs.at['Total Current Assets', selected_year] / self.bs.at['Total Current Liabilities', selected_year] 
                 else:
                     self.current_ratio = np.nan
                 if data_available('Accounts Payable', self.bs, selected_year) and data_available('Cost Of Revenue', self.fi, selected_year) :
@@ -1008,8 +1035,8 @@ def app():
                     self.labour_productivity = self.fi.at['Total Revenue', self.fi.columns[0]] / 1000 / self.info['fullTimeEmployees'] 
                 else:
                     self.labour_productivity = np.nan
-                if data_available('Total Revenue', self.fi, selected_year) and data_available('Net Receivables', self.bs, selected_year):
-                    self.asset_turnover = self.fi.at['Total Revenue', selected_year] / self.bs.at['Net Receivables', selected_year] * 100
+                if data_available('Total Revenue', self.fi, selected_year) and data_available('Total Assets', self.bs, selected_year):
+                    self.asset_turnover = self.fi.at['Total Revenue', selected_year] / self.bs.at['Total Assets', selected_year] * 100
                 else:
                     self.asset_turnover = np.nan
                 self.kpis = [self.labour_productivity, self.asset_turnover]
@@ -1017,7 +1044,6 @@ def app():
         #----------------------------------------------------------------------------------------------
         # load ticker
         if stock_search_option=='Symbol':        
-            
             df_indicesdata = pd.DataFrame({'Ticker': list_symbols, 'Company': list_companies, 'Sector': list_sectors, 'Stock index': list_stockindex})
             symbols_SP, symbols_DAX, symbols_FTSE, symbols_BSE, symbols_CAC, symbols_CSI, symbols_KO, symbols_NIK=[],[],[],[],[],[] ,[] ,[]  
         else:
@@ -1051,13 +1077,7 @@ def app():
        # suc_msg.empty()
         #ini_msg.empty()
 
-        # check session state
-        if 'selected_stock' not in st.session_state:
-            st.session_state['selected_stock'] = None
-        if 'load_data_button' not in st.session_state:
-            st.session_state['load_data_button'] = None
-        if 'list_years' not in st.session_state:
-            st.session_state['list_years'] = None
+
         #----------------------------------------------------------------------------------------------
         if stock_search_option !='Symbol':
            
@@ -1119,8 +1139,8 @@ def app():
         tb_options=['Basic info','Institutional Holders','Stock Price', 'Balance Sheet', 'Cashflow','Other Financials']
         tkpi_options= ['Profitability', 'Debt Capital', 'Equity Capital','Valuation', 'Capital Procurement','Capital Allocation','Procurement Market']
         tb_output=st.multiselect('Select ticker basic information',tb_options,['Stock Price', 'Balance Sheet','Cashflow','Other Financials'])
-        #tkpi_output=st.multiselect('Select performance indicators',tkpi_options,['Profitability', 'Debt Capital', 'Valuation'])
-        tkpi_output = []
+        tkpi_output=st.multiselect('Select performance indicators',tkpi_options,['Profitability', 'Debt Capital', 'Valuation'])
+         
        
         if len(selected_stock) == 0:
             st.error('Please select at least one ticker.')
