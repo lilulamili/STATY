@@ -750,11 +750,11 @@ def app():
 
         else: #selected option is 'Symbol'
             selected_stock = st.text_input("Enter at least one stock ticker symbol! Please use space for ticker symbol separation!", "TSLA")
-            st.write(selected_stock)
+            
             selected_stock=(list(selected_stock.split(" ")))
-            st.write(selected_stock)
-            selected_stock = list(filter(None, selected_stock))
-            st.write(selected_stock)
+            
+            #selected_stock = list(filter(None, selected_stock))
+            #st.write(selected_stock)
             list_companies=[]
             list_symbols = []           
             list_sectors = []
