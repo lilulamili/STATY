@@ -9,7 +9,7 @@ numpy==1.23.3
 palettable==3.3.0
 pandas==1.2.0
 plotly==4.14.3
-pmdarima==1.8.2
+pmdarima
 pybase64==1.1.4
 pygam==0.8.0
 pysummarization==1.1.7
