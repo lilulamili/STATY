@@ -22,7 +22,7 @@ import use_case_WebScrapingTextData
 import use_case_UnivariateBivariateData
 import use_case_Home
 import use_case_GeospatialData
-import use_case_TimeSeriesData
+#import use_case_TimeSeriesData
 import use_case_FAQs
 import os 
 import platform
@@ -99,7 +99,7 @@ PAGES = {
     "Panel data": use_case_PanelData,
     "Web scraping and text data": use_case_WebScrapingTextData,
     "Geospatial data": use_case_GeospatialData,
-    "Time series data":use_case_TimeSeriesData,
+    #"Time series data":use_case_TimeSeriesData,
     "FAQs": use_case_FAQs
 }
 #st.sidebar.subheader("Navigation")
