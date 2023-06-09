@@ -15,12 +15,12 @@ import sys
 import platform
 import base64
 from io import BytesIO
-
+from streamlit_js_eval import streamlit_js_eval
 
 def app():
 
     # Clear cache
-    st.legacy_caching.clear_cache()
+    st.runtime.legacy_caching.clear_cache()
 
     # Hide traceback in error messages (comment out for de-bugging)
     sys.tracebacklimit = 0
@@ -45,33 +45,36 @@ def app():
     if 'key' not in st.session_state:
         st.session_state['key'] = 0
     reset_clicked = st.sidebar.button("Reset all your input")
-    if reset_clicked:
-        st.session_state['key'] = st.session_state['key'] + 1
+    if reset_clicked:        
+        streamlit_js_eval(js_expressions="parent.window.location.reload()")
+        #st.experimental_rerun()
+       # st.session_state['key'] = st.session_state['key'] + 1
     st.sidebar.markdown("")
    
+    
     # File upload section
-    df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"], key = st.session_state['key'])
+    df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"])
     uploaded_data=None
     if df_dec == "Upload data":
         separator_expander=st.sidebar.expander('Upload settings')
         with separator_expander:                      
             a4,a5=st.columns(2)
             with a4:
-                dec_sep=a4.selectbox("Decimal sep.",['.',','], key = st.session_state['key'])
+                dec_sep=a4.selectbox("Decimal sep.",['.',','])
             with a5:
-                col_sep=a5.selectbox("Column sep.",[';',  ','  , '|', '\s+','\t','other'], key = st.session_state['key'])
+                col_sep=a5.selectbox("Column sep.",[';',  ','  , '|', '\s+','\t','other'])
                 if col_sep=='other':
-                    col_sep=st.text_input('Specify your column separator', key = st.session_state['key'])     
+                    col_sep=st.text_input('Specify your column separator')     
 
             a4,a5=st.columns(2)  
             with a4:    
-                thousands_sep=a4.selectbox("Thousands x sep.",[None,'.', ' ','\s+', 'other'], key = st.session_state['key'])
+                thousands_sep=a4.selectbox("Thousands x sep.",[None,'.', ' ','\s+', 'other'])
                 if thousands_sep=='other':
-                    thousands_sep=st.text_input('Specify your thousands separator', key = st.session_state['key'])  
+                    thousands_sep=st.text_input('Specify your thousands separator')  
             with a5:    
-                encoding_val=a5.selectbox("Encoding",[None,'utf_8','utf_8_sig','utf_16_le','cp1140','cp1250','cp1251','cp1252','cp1253','cp1254','other'], key = st.session_state['key'])
+                encoding_val=a5.selectbox("Encoding",[None,'utf_8','utf_8_sig','utf_16_le','cp1140','cp1250','cp1251','cp1252','cp1253','cp1254','other'])
                 if encoding_val=='other':
-                    encoding_val=st.text_input('Specify your encoding', key = st.session_state['key'])  
+                    encoding_val=st.text_input('Specify your encoding')  
         
         # Error handling for separator selection:
         if dec_sep==col_sep: 
@@ -107,10 +110,10 @@ def app():
     settings_expander=st.sidebar.expander('Settings')
     with settings_expander:
         st.caption("**Help**")
-        sett_hints = st.checkbox('Show learning hints', value=False, key = st.session_state['key'])
+        sett_hints = st.checkbox('Show learning hints', value=False)
         st.caption("**Appearance**")
-        sett_wide_mode = st.checkbox('Wide mode', value=False, key = st.session_state['key'])
-        sett_theme = st.selectbox('Theme', ["Light", "Dark"], key = st.session_state['key'])
+        sett_wide_mode = st.checkbox('Wide mode', value=False)
+        sett_theme = st.selectbox('Theme', ["Light", "Dark"])
         #sett_info = st.checkbox('Show methods info', value=False)
         #sett_prec = st.number_input('Set the number of diggits for the output', min_value=0, max_value=8, value=2)
     st.sidebar.markdown("")
@@ -140,7 +143,7 @@ def app():
 
     st.header("**Data screening and processing**")
     #------------------------------------------------------------------------------------------
-
+    
     #++++++++++++++++++++++
     # DATA SUMMARY
 
@@ -153,7 +156,7 @@ def app():
             
             # Default data description:
             if uploaded_data == None:
-                if st.checkbox("Show data description", value = False, key = st.session_state['key']):          
+                if st.checkbox("Show data description", value = False):          
                     st.markdown("**Data source:**")
                     st.markdown("The data come from the Gallup World Poll surveys from 2018 to 2020. For more details see the [World Happiness Report 2021](https://worldhappiness.report/).")
                     st.markdown("**Citation:**")
@@ -207,13 +210,14 @@ def app():
                     st.markdown("")
             # Show raw data & data info
             df_summary = fc.data_summary(df) 
-            if st.checkbox("Show raw data", value = False, key = st.session_state['key']):      
+            
+            if st.checkbox("Show raw data", value = False):      
                 #st.dataframe(df.style.apply(lambda x: ["background-color: #ffe5e5" if (not pd.isna(df_summary_mq_full.loc["1%-Q"][i]) and df_summary_vt_cat[i] == "numeric" and (v <= df_summary_mq_full.loc["1%-Q"][i] or v >= df_summary_mq_full.loc["99%-Q"][i]) or pd.isna(v)) else "" for i, v in enumerate(x)], axis = 1))
                 st.write(df)
                 st.write("Data shape: ", n_rows,  " rows and ", n_cols, " columns")
                 #st.info("** Note that NAs and numerical values below/ above the 1%/ 99% quantile are highlighted.") 
             if df[df.duplicated()].shape[0] > 0 or df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] > 0:
-                check_nasAnddupl=st.checkbox("Show duplicates and NAs info", value = False, key = st.session_state['key']) 
+                check_nasAnddupl=st.checkbox("Show duplicates and NAs info", value = False) 
                 if check_nasAnddupl:      
                     if df[df.duplicated()].shape[0] > 0:
                         st.write("Number of duplicates: ", df[df.duplicated()].shape[0])
@@ -223,28 +227,26 @@ def app():
                         st.write("Rows with NAs: ", ', '.join(map(str,list(pd.unique(np.where(df.isnull())[0])))))
                 
             # Show variable info 
-            if st.checkbox('Show variable info', value = False, key = st.session_state['key']): 
-                #st.write(df_summary["Variable types"])
-                a7, a8 = st.columns(2)
-                with a7:
-                    st.table(df_summary["Variable types"])
+            if st.checkbox('Show variable info', value = False): 
+                #st.write(df_summary["Variable types"])                
+                st.table(df_summary["Variable types"])
             # Show summary statistics (raw data)
-            if st.checkbox('Show summary statistics (raw data)', value = False, key = st.session_state['key']): 
+            if st.checkbox('Show summary statistics (raw data)', value = False): 
                 #st.write(df_summary["ALL"])
                 df_datasumstat=df_summary["ALL"]
                 #dfStyler = df_datasumstat.style.set_properties(**{'text-align': 'left'}).set_table_styles([dict(selector = 'th', props=[('text-align', 'left')])]) 
-                a7, a8 = st.columns(2)
-                with a7:
-                    st.table(df_datasumstat)
-                    if fc.get_mode(df).loc["n_unique"].any():
-                        st.caption("** Mode is not unique.")
+                
+                
+                st.table(df_datasumstat)
+                if fc.get_mode(df).loc["n_unique"].any():
+                    st.caption("** Mode is not unique.")
 
                 # Download link for summary statistics
                 output = BytesIO()
                 excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                 df_summary["Variable types"].to_excel(excel_file, sheet_name="variable_info")
                 df_summary["ALL"].to_excel(excel_file, sheet_name="summary_statistics")
-                excel_file.save()
+                excel_file.close()
                 excel_file = output.getvalue()
                 b64 = base64.b64encode(excel_file)
                 dl_file_name = "Summary statistics__" + df_name + ".xlsx"
@@ -255,7 +257,7 @@ def app():
                 unsafe_allow_html=True)
                 st.write("")
 
-
+        
         #++++++++++++++++++++++
         # DATA PROCESSING
 
@@ -286,11 +288,11 @@ def app():
                 st.markdown("**Data cleaning**")
 
                 # Delete rows
-                delRows =st.selectbox('Delete rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = st.session_state['key'])
+                delRows =st.selectbox('Delete rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'])
                 if delRows!='-':                                
                     if delRows=='between':
-                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'])
-                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'])
+                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1)
+                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1)
                         if (row_1 + 1) < row_2 :
                             sb_DM_delRows=df.index[(df.index > row_1) & (df.index < row_2)]
                         elif (row_1 + 1) == row_2 : 
@@ -301,9 +303,9 @@ def app():
                             st.error("ERROR: Lower limit must be smaller than upper limit!")  
                             return                   
                     elif delRows=='equal':
-                        sb_DM_delRows = st.multiselect("to...", df.index, key = st.session_state['key'])
+                        sb_DM_delRows = st.multiselect("to...", df.index)
                     else:
-                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = st.session_state['key'])                    
+                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1)                    
                         if delRows=='greater':
                             sb_DM_delRows=df.index[df.index > row_1]
                             if row_1 == len(df)-1:
@@ -327,11 +329,11 @@ def app():
                         no_delRows=n_rows-df.shape[0]
 
                 # Keep rows
-                keepRows =st.selectbox('Keep rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = st.session_state['key'])
+                keepRows =st.selectbox('Keep rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'])
                 if keepRows!='-':                                
                     if keepRows=='between':
-                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'])
-                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'])
+                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1)
+                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1)
                         if (row_1 + 1) < row_2 :
                             sb_DM_keepRows=df.index[(df.index > row_1) & (df.index < row_2)]
                         elif (row_1 + 1) == row_2 : 
@@ -344,9 +346,9 @@ def app():
                             st.error("ERROR: Lower limit must be smaller than upper limit!")  
                             return                   
                     elif keepRows=='equal':
-                        sb_DM_keepRows = st.multiselect("to...", df.index, key = st.session_state['key'])
+                        sb_DM_keepRows = st.multiselect("to...", df.index)
                     else:
-                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = st.session_state['key'])                    
+                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1)                    
                         if keepRows=='greater':
                             sb_DM_keepRows=df.index[df.index > row_1]
                             if row_1 == len(df)-1:
@@ -368,17 +370,17 @@ def app():
                         no_keptRows=df.shape[0]
 
                 # Delete columns
-                sb_DM_delCols = st.multiselect("Select columns to delete", df.columns, key = st.session_state['key'])
+                sb_DM_delCols = st.multiselect("Select columns to delete", df.columns)
                 df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
 
                 # Keep columns
-                sb_DM_keepCols = st.multiselect("Select columns to keep", df.columns, key = st.session_state['key'])
+                sb_DM_keepCols = st.multiselect("Select columns to keep", df.columns)
                 if len(sb_DM_keepCols) > 0:
                     df = df.loc[:,df.columns.isin(sb_DM_keepCols)]
 
                 # Delete duplicates if any exist
                 if df[df.duplicated()].shape[0] > 0:
-                    sb_DM_delDup = st.selectbox("Delete duplicate rows", ["No", "Yes"], key = st.session_state['key'])
+                    sb_DM_delDup = st.selectbox("Delete duplicate rows", ["No", "Yes"])
                     if sb_DM_delDup == "Yes":
                         n_rows_dup = df[df.duplicated()].shape[0]
                         df = df.drop_duplicates()
@@ -388,7 +390,7 @@ def app():
                 # Delete rows with NA if any exist
                 n_rows_wNAs = df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0]
                 if n_rows_wNAs > 0:
-                    sb_DM_delRows_wNA = st.selectbox("Delete rows with NAs", ["No", "Yes"], key = st.session_state['key'])
+                    sb_DM_delRows_wNA = st.selectbox("Delete rows with NAs", ["No", "Yes"])
                     if sb_DM_delRows_wNA == "Yes": 
                         df = df.dropna()
                 elif n_rows_wNAs == 0: 
@@ -396,7 +398,7 @@ def app():
 
                 # Filter data
                 st.markdown("**Data filtering**")
-                filter_var = st.selectbox('Filter your data by a variable...', list('-')+ list(df.columns), key = st.session_state['key'])
+                filter_var = st.selectbox('Filter your data by a variable...', list('-')+ list(df.columns))
                 if filter_var !='-':
                     
                     if df[filter_var].dtypes=="int64" or df[filter_var].dtypes=="float64": 
@@ -405,11 +407,11 @@ def app():
                         else:
                             filter_format=None
 
-                        user_filter=st.selectbox('Select values that are ...', options=['greater','greater or equal','smaller','smaller or equal', 'equal','between'], key = st.session_state['key'])
+                        user_filter=st.selectbox('Select values that are ...', options=['greater','greater or equal','smaller','smaller or equal', 'equal','between'])
                                                 
                         if user_filter=='between':
-                            filter_1=st.number_input('Lower limit is', format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = st.session_state['key'])
-                            filter_2=st.number_input('Upper limit is', format=filter_format, value=df[filter_var].max(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = st.session_state['key'])
+                            filter_1=st.number_input('Lower limit is', format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max())
+                            filter_2=st.number_input('Upper limit is', format=filter_format, value=df[filter_var].max(), min_value=df[filter_var].min(), max_value=df[filter_var].max())
                             #reclassify values:
                             if filter_1 < filter_2 :
                                 df = df[(df[filter_var] > filter_1) & (df[filter_var] < filter_2)] 
@@ -420,12 +422,12 @@ def app():
                                 st.error("ERROR: Lower limit must be smaller than upper limit!")  
                                 return                    
                         elif user_filter=='equal':                            
-                            filter_1=st.multiselect('to... ', options=df[filter_var].values, key = st.session_state['key'])
+                            filter_1=st.multiselect('to... ', options=df[filter_var].values)
                             if len(filter_1)>0:
                                 df = df.loc[df[filter_var].isin(filter_1)]
 
                         else:
-                            filter_1=st.number_input('than... ',format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = st.session_state['key'])
+                            filter_1=st.number_input('than... ',format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max())
                             #reclassify values:
                             if user_filter=='greater':
                                 df = df[df[filter_var] > filter_1]
@@ -442,7 +444,7 @@ def app():
                             elif len(df) == n_rows:
                                 st.warning("WARNING: Data are not filtered for this value!")         
                     else:                  
-                        filter_1=st.multiselect('Filter your data by a value...', (df[filter_var]).unique(), key = st.session_state['key'])
+                        filter_1=st.multiselect('Filter your data by a value...', (df[filter_var]).unique())
                         if len(filter_1)>0:
                             df = df.loc[df[filter_var].isin(filter_1)]
 
@@ -458,13 +460,13 @@ def app():
                     group_by_other = None
                     if sb_DM_delRows_wNA == "No" and n_rows_wNAs > 0:
                         st.markdown("**Data imputation**")
-                        sb_DM_dImp_choice = st.selectbox("Replace entries with NA", ["No", "Yes"], key = st.session_state['key'])
+                        sb_DM_dImp_choice = st.selectbox("Replace entries with NA", ["No", "Yes"])
                         if sb_DM_dImp_choice == "Yes":
                             # Numeric variables
-                            sb_DM_dImp_num = st.selectbox("Imputation method for numeric variables", ["Mean", "Median", "Random value"], key = st.session_state['key'])
+                            sb_DM_dImp_num = st.selectbox("Imputation method for numeric variables", ["Mean", "Median", "Random value"])
                             # Other variables
-                            sb_DM_dImp_other = st.selectbox("Imputation method for other variables", ["Mode", "Random value"], key = st.session_state['key'])
-                            group_by_num = st.selectbox("Group imputation by", ["None"] + list(df.columns), key = st.session_state['key'])
+                            sb_DM_dImp_other = st.selectbox("Imputation method for other variables", ["Mode", "Random value"])
+                            group_by_num = st.selectbox("Group imputation by", ["None"] + list(df.columns))
                             group_by_other = group_by_num
                             df = fc.data_impute_grouped(df, sb_DM_dImp_num, sb_DM_dImp_other, group_by_num, group_by_other)
                     else: 
@@ -480,28 +482,28 @@ def app():
                 # Select columns for different transformation types
                 transform_options = df.select_dtypes([np.number]).columns
                 numCat_options = df.columns
-                sb_DM_dTrans_log = st.multiselect("Select columns to transform with log", transform_options, key = st.session_state['key'])
+                sb_DM_dTrans_log = st.multiselect("Select columns to transform with log", transform_options)
                 if sb_DM_dTrans_log is not None: 
                     df = fc.var_transform_log(df, sb_DM_dTrans_log)
-                sb_DM_dTrans_sqrt = st.multiselect("Select columns to transform with sqrt", transform_options, key = st.session_state['key'])
+                sb_DM_dTrans_sqrt = st.multiselect("Select columns to transform with sqrt", transform_options)
                 if sb_DM_dTrans_sqrt is not None: 
                     df = fc.var_transform_sqrt(df, sb_DM_dTrans_sqrt)
-                sb_DM_dTrans_square = st.multiselect("Select columns for squaring", transform_options, key = st.session_state['key'])
+                sb_DM_dTrans_square = st.multiselect("Select columns for squaring", transform_options)
                 if sb_DM_dTrans_square is not None: 
                     df = fc.var_transform_square(df, sb_DM_dTrans_square)
-                sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options, key = st.session_state['key'])
+                sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options)
                 if sb_DM_dTrans_cent is not None: 
                     df = fc.var_transform_cent(df, sb_DM_dTrans_cent)
-                sb_DM_dTrans_stand = st.multiselect("Select columns for standardization", transform_options, key = st.session_state['key'])
+                sb_DM_dTrans_stand = st.multiselect("Select columns for standardization", transform_options)
                 if sb_DM_dTrans_stand is not None: 
                     df = fc.var_transform_stand(df, sb_DM_dTrans_stand)
-                sb_DM_dTrans_norm = st.multiselect("Select columns for normalization", transform_options, key = st.session_state['key'])
+                sb_DM_dTrans_norm = st.multiselect("Select columns for normalization", transform_options)
                 if sb_DM_dTrans_norm is not None: 
                     df = fc.var_transform_norm(df, sb_DM_dTrans_norm)
-                sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = st.session_state['key'])
+                sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options)
                 if sb_DM_dTrans_numCat:
                     if not df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist(): 
-                        sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = st.session_state['key'])
+                        sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat)
                         if sb_DM_dTrans_numCat_sel:
                             for var in sb_DM_dTrans_numCat_sel:
                                 if df[var].unique().size > 5: 
@@ -513,7 +515,7 @@ def app():
                                     # Save manually selected categories
                                     for i in range(0, df[var].unique().size):
                                         text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
-                                        man_cat = st.number_input(text1, value = 0, min_value=0, key = st.session_state['key'])
+                                        man_cat = st.number_input(text1, value = 0, min_value=0)
                                         manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
                                         manual_cats.loc[i]["Cat"] = man_cat
                                     
@@ -536,27 +538,27 @@ def app():
                         return
                 else:
                     sb_DM_dTrans_numCat = None
-                sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = st.session_state['key'])
+                sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0)
                 if sb_DM_dTrans_mult != 0: 
                     multiplication_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_mult), columns=["Var1", "Var2"])
                     text = "Multiplication pair"
                     for i in range(0, sb_DM_dTrans_mult):
                         text1 = text + " " + str(i+1)
                         text2 = text + " " + str(i+1) + " "
-                        mult_var1 = st.selectbox(text1, transform_options, key = st.session_state['key'])
-                        mult_var2 = st.selectbox(text2, transform_options, key = st.session_state['key'])
+                        mult_var1 = st.selectbox(text1, transform_options)
+                        mult_var2 = st.selectbox(text2, transform_options)
                         multiplication_pairs.loc[i]["Var1"] = mult_var1
                         multiplication_pairs.loc[i]["Var2"] = mult_var2
                         fc.var_transform_mult(df, mult_var1, mult_var2)
-                sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, key = st.session_state['key'])
+                sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0)
                 if sb_DM_dTrans_div != 0:
                     division_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_div), columns=["Var1", "Var2"]) 
                     text = "Division pair"
                     for i in range(0, sb_DM_dTrans_div):
                         text1 = text + " " + str(i+1) + " (numerator)"
                         text2 = text + " " + str(i+1) + " (denominator)"
-                        div_var1 = st.selectbox(text1, transform_options, key = st.session_state['key'])
-                        div_var2 = st.selectbox(text2, transform_options, key = st.session_state['key'])
+                        div_var1 = st.selectbox(text1, transform_options)
+                        div_var2 = st.selectbox(text2, transform_options)
                         division_pairs.loc[i]["Var1"] = div_var1
                         division_pairs.loc[i]["Var2"] = div_var2
                         fc.var_transform_div(df, div_var1, div_var2)
@@ -568,7 +570,7 @@ def app():
                     output = BytesIO()
                     excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                     df.to_excel(excel_file, sheet_name="data",index=False)    
-                    excel_file.save()
+                    excel_file.close()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
                     dl_file_name = "Data_transformation__" + df_name + ".xlsx"
@@ -582,7 +584,7 @@ def app():
             #--------------------------------------------------------------------------------------
             # PROCESSING SUMMARY
 
-            if st.checkbox('Show a summary of my data processing preferences', value = False, key = st.session_state['key']): 
+            if st.checkbox('Show a summary of my data processing preferences', value = False): 
                 st.markdown("Summary of data changes:")
                 
                 #--------------------------------------------------------------------------------------
@@ -751,7 +753,7 @@ def app():
                         output = BytesIO()
                         excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                         df.to_excel(excel_file, sheet_name="Clean. and transf. data")
-                        excel_file.save()
+                        excel_file.close()
                         excel_file = output.getvalue()
                         b64 = base64.b64encode(excel_file)
                         dl_file_name = "CleanedTransfData__" + df_name + ".xlsx"
@@ -791,7 +793,7 @@ def app():
                         df.to_excel(excel_file, sheet_name="cleaned_data")
                         df_summary_post["Variable types"].to_excel(excel_file, sheet_name="cleaned_variable_info")
                         df_summary_post["ALL"].to_excel(excel_file, sheet_name="cleaned_summary_statistics")
-                        excel_file.save()
+                        excel_file.close()
                         excel_file = output.getvalue()
                         b64 = base64.b64encode(excel_file)
                         dl_file_name = "Cleaned data summary statistics_geo_" + df_name + ".xlsx"
@@ -834,20 +836,20 @@ def app():
             map_code=[]
             a4,a5=st.columns(2)
             with a4:
-                map_code=st.selectbox('What kind of country info do you have?',['country name','country code'], key = st.session_state['key'])
-                map_loc=st.selectbox('Select the data column with the country info',objcat_cols, key = st.session_state['key'])
+                map_code=st.selectbox('What kind of country info do you have?',['country name','country code'])
+                map_loc=st.selectbox('Select the data column with the country info',objcat_cols)
                 
             with a5:
                 if not 'Ladder' in list(df.columns):
-                    map_var=st.selectbox('Select the variable to plot',num_cols, key = st.session_state['key'])
+                    map_var=st.selectbox('Select the variable to plot',num_cols)
                 else:
-                    map_var=st.selectbox('Select the variable to plot',num_cols, index=1, key = st.session_state['key']) 
-                map_time_filter=st.selectbox('Select time variable (if avaiable)',list('-')+ list(num_cols) + list(objcat_cols), key = st.session_state['key'])
+                    map_var=st.selectbox('Select the variable to plot',num_cols, index=1) 
+                map_time_filter=st.selectbox('Select time variable (if avaiable)',list('-')+ list(num_cols) + list(objcat_cols),key="trash")
                     
             if map_time_filter !='-':
-                anim_show=st.checkbox('Show animation of temporal development?',value=False, key = st.session_state['key'])
+                anim_show=st.checkbox('Show animation of temporal development?',value=False)
 
-            miss_val_show=st.checkbox('Show contours of countries with missing values?', value =False, key = st.session_state['key'])
+            miss_val_show=st.checkbox('Show contours of countries with missing values?', value =False)
             #set mapping key for the geojson data:
             if map_code=='country name':
                 fid_key='properties.name'
@@ -900,7 +902,7 @@ def app():
                     if int(df[map_time_filter][0])<3000:
                         time_to_filter = st.slider('time', min(df[map_time_filter]), max(df[map_time_filter]),min(df[map_time_filter]))
                 except ValueError:                    
-                    time_to_filter =st.selectbox('Specify the time',list(df[map_time_filter]), key = st.session_state['key'])
+                    time_to_filter =st.selectbox('Specify the time',list(df[map_time_filter]))
                 
                 filtered_data = df[df[map_time_filter]==time_to_filter]
             else:
@@ -944,7 +946,7 @@ def app():
                 all_list[1:len(all_list)-1]=all_list
                 all_list[0]= 'all data'
                         
-                rf_map_var = st.selectbox('Draw relative frequency for...?',all_list, key = st.session_state['key'])  
+                rf_map_var = st.selectbox('Draw relative frequency for...?',all_list)  
                             
                 fig, ax = plt.subplots()  
                 if rf_map_var=='all data':                     
@@ -966,7 +968,7 @@ def app():
 
             with a5:
                 #boxlot               
-                bx_map_var = st.selectbox('Draw a boxplot for ' + map_var + ' for...?', map_entities, key = st.session_state['key'])  
+                bx_map_var = st.selectbox('Draw a boxplot for ' + map_var + ' for...?', map_entities)  
                 bx_filtered_data=df[df[map_loc]==bx_map_var] 
                 
                 fig = go.Figure()

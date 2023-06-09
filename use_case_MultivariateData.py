@@ -39,10 +39,10 @@ import VisualizeNN as VisNN
 def app():
 
     # Clear cache
-    #st.legacy_caching.clear_cache()
+    #st.runtime.legacy_caching.clear_cache()
 
     # Hide traceback in error messages (comment out for de-bugging)
-    #sys.tracebacklimit = 0
+    sys.tracebacklimit = 2000
 
     # Show altair tooltip when full screen
     st.markdown('<style>#vg-tooltip-element{z-index: 1000051}</style>',unsafe_allow_html=True)
@@ -87,7 +87,7 @@ def app():
         st.session_state['ann_finalPara'] = None
         st.session_state['ann_tuning_results'] = None
         st.session_state['model_val_results'] = None
-        st.legacy_caching.clear_cache()
+        st.runtime.legacy_caching.clear_cache()
     st.sidebar.markdown("")
     
     def in_wid_change():
@@ -99,7 +99,7 @@ def app():
         st.session_state['model_val_results'] = None
 
     # Analysis type
-    analysis_type = st.selectbox("What kind of analysis would you like to conduct?", ["Regression", "Multi-class classification", "Data decomposition"], key = st.session_state['key'], on_change=in_wid_change)
+    analysis_type = st.selectbox("What kind of analysis would you like to conduct?", ["Regression", "Multi-class classification", "Data decomposition"], on_change=in_wid_change)
 
     st.header("**Multivariate data**")
 
@@ -118,7 +118,7 @@ def app():
     # DATA IMPORT
 
     # File upload section
-    df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"], key = st.session_state['key'])
+    df_dec = st.sidebar.radio("Get data", ["Use example dataset", "Upload data"])
     uploaded_data=None
     if df_dec == "Upload data":
         #st.subheader("Upload your data")
@@ -128,23 +128,23 @@ def app():
                       
             a4,a5=st.columns(2)
             with a4:
-                dec_sep=a4.selectbox("Decimal sep.",['.',','], key = st.session_state['key'])
+                dec_sep=a4.selectbox("Decimal sep.",['.',','])
 
             with a5:
-                col_sep=a5.selectbox("Column sep.",[';',  ','  , '|', '\s+', '\t','other'], key = st.session_state['key'])
+                col_sep=a5.selectbox("Column sep.",[';',  ','  , '|', '\s+', '\t','other'])
                 if col_sep=='other':
-                    col_sep=st.text_input('Specify your column separator', key = st.session_state['key'])     
+                    col_sep=st.text_input('Specify your column separator')     
 
             a4,a5=st.columns(2)  
             with a4:    
-                thousands_sep=a4.selectbox("Thousands x sep.",[None,'.', ' ','\s+', 'other'], key = st.session_state['key'])
+                thousands_sep=a4.selectbox("Thousands x sep.",[None,'.', ' ','\s+', 'other'])
                 if thousands_sep=='other':
-                    thousands_sep=st.text_input('Specify your thousands separator', key = st.session_state['key'])  
+                    thousands_sep=st.text_input('Specify your thousands separator')  
              
             with a5:    
-                encoding_val=a5.selectbox("Encoding",[None,'utf_8','utf_8_sig','utf_16_le','cp1140','cp1250','cp1251','cp1252','cp1253','cp1254','other'], key = st.session_state['key'])
+                encoding_val=a5.selectbox("Encoding",[None,'utf_8','utf_8_sig','utf_16_le','cp1140','cp1250','cp1251','cp1252','cp1253','cp1254','other'])
                 if encoding_val=='other':
-                    encoding_val=st.text_input('Specify your encoding', key = st.session_state['key'])  
+                    encoding_val=st.text_input('Specify your encoding')  
         
         # Error handling for separator selection:
         if dec_sep==col_sep: 
@@ -186,12 +186,12 @@ def app():
     settings_expander=st.sidebar.expander('Settings')
     with settings_expander:
         st.caption("**Precision**")
-        user_precision=int(st.number_input('Number of digits after the decimal point',min_value=0,max_value=10,step=1,value=4, key = st.session_state['key']))
+        user_precision=int(st.number_input('Number of digits after the decimal point',min_value=0,max_value=10,step=1,value=4))
         st.caption("**Help**")
-        sett_hints = st.checkbox('Show learning hints', value=False, key = st.session_state['key'])
+        sett_hints = st.checkbox('Show learning hints', value=False)
         st.caption("**Appearance**")
-        sett_wide_mode = st.checkbox('Wide mode', value=False, key = st.session_state['key'])
-        sett_theme = st.selectbox('Theme', ["Light", "Dark"], key = st.session_state['key'])
+        sett_wide_mode = st.checkbox('Wide mode', value=False)
+        sett_theme = st.selectbox('Theme', ["Light", "Dark"])
         #sett_info = st.checkbox('Show methods info', value=False)
         #sett_prec = st.number_input('Set the number of diggits for the output', min_value=0, max_value=8, value=2)
     st.sidebar.markdown("")
@@ -239,7 +239,7 @@ def app():
             # Default data description:
             if uploaded_data == None:
                 if analysis_type == "Regression" or analysis_type == "Data decomposition":
-                    if st.checkbox("Show data description", value = False, key = st.session_state['key']):          
+                    if st.checkbox("Show data description", value = False):          
                         st.markdown("**Data source:**")
                         st.markdown("The data come from the Gallup World Poll surveys from 2018 to 2020. For more details see the [World Happiness Report 2021](https://worldhappiness.report/).")
                         st.markdown("**Citation:**")
@@ -292,7 +292,7 @@ def app():
 
                         st.markdown("")
                 if analysis_type == "Multi-class classification":
-                    if st.checkbox("Show data description", value = False, key = st.session_state['key']):          
+                    if st.checkbox("Show data description", value = False):          
                         st.markdown("**Data source:**")
                         st.markdown("The data come from Fisher's Iris data set. See [here] (https://archive.ics.uci.edu/ml/datasets/iris) for more information.")
                         st.markdown("**Citation:**")
@@ -327,12 +327,12 @@ def app():
 
             # Show raw data & data info
             df_summary = fc.data_summary(df) 
-            if st.checkbox("Show raw data ", value = False, key = st.session_state['key']):      
+            if st.checkbox("Show raw data ", value = False):      
                 st.write(df)
 
                 st.write("Data shape: ", n_rows,  " rows and ", n_cols, " columns")
             if df[df.duplicated()].shape[0] > 0 or df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] > 0:
-                check_nasAnddupl=st.checkbox("Show duplicates and NAs info ", value = False, key = st.session_state['key']) 
+                check_nasAnddupl=st.checkbox("Show duplicates and NAs info ", value = False) 
                 if check_nasAnddupl:      
                     if df[df.duplicated()].shape[0] > 0:
                         st.write("Number of duplicates: ", df[df.duplicated()].shape[0])
@@ -342,19 +342,19 @@ def app():
                         st.write("Rows with NAs: ", ', '.join(map(str,list(pd.unique(np.where(df.isnull())[0])))))
                 
             # Show variable info 
-            if st.checkbox('Show variable info ', value = False, key = st.session_state['key']): 
+            if st.checkbox('Show variable info ', value = False): 
                 st.write(df_summary["Variable types"])
         
             # Show summary statistics (raw data)
-            if st.checkbox('Show summary statistics (raw data) ', value = False, key = st.session_state['key']): 
-                st.write(df_summary["ALL"].style.set_precision(user_precision))
+            if st.checkbox('Show summary statistics (raw data) ', value = False): 
+                st.write(df_summary["ALL"].style.format(precision=user_precision))
                 
                 # Download link for summary statistics
                 output = BytesIO()
                 excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                 df_summary["Variable types"].to_excel(excel_file, sheet_name="variable_info")
                 df_summary["ALL"].to_excel(excel_file, sheet_name="summary_statistics")
-                excel_file.save()
+                excel_file.close()
                 excel_file = output.getvalue()
                 b64 = base64.b64encode(excel_file)
                 dl_file_name = "Summary statistics__" + df_name + ".xlsx"
@@ -399,11 +399,11 @@ def app():
                 st.markdown("**Data cleaning**")
 
                 # Delete rows
-                delRows =st.selectbox('Delete rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = st.session_state['key'], on_change=in_wid_change)
+                delRows =st.selectbox('Delete rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], on_change=in_wid_change)
                 if delRows!='-':                                
                     if delRows=='between':
-                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'], on_change=in_wid_change)
-                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'], on_change=in_wid_change)
+                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, on_change=in_wid_change)
+                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, on_change=in_wid_change)
                         if (row_1 + 1) < row_2 :
                             sb_DM_delRows=df.index[(df.index > row_1) & (df.index < row_2)]
                         elif (row_1 + 1) == row_2 : 
@@ -414,9 +414,9 @@ def app():
                             st.error("ERROR: Lower limit must be smaller than upper limit!")  
                             return                   
                     elif delRows=='equal':
-                        sb_DM_delRows = st.multiselect("to...", df.index, key = st.session_state['key'], on_change=in_wid_change)
+                        sb_DM_delRows = st.multiselect("to...", df.index, on_change=in_wid_change)
                     else:
-                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = st.session_state['key'], on_change=in_wid_change)                    
+                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, on_change=in_wid_change)                    
                         if delRows=='greater':
                             sb_DM_delRows=df.index[df.index > row_1]
                             if row_1 == len(df)-1:
@@ -440,11 +440,11 @@ def app():
                         no_delRows=n_rows-df.shape[0]
 
                 # Keep rows
-                keepRows =st.selectbox('Keep rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], key = st.session_state['key'], on_change=in_wid_change)
+                keepRows =st.selectbox('Keep rows with index ...', options=['-', 'greater', 'greater or equal', 'smaller', 'smaller or equal', 'equal', 'between'], on_change=in_wid_change)
                 if keepRows!='-':                                
                     if keepRows=='between':
-                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'], on_change=in_wid_change)
-                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, key = st.session_state['key'], on_change=in_wid_change)
+                        row_1=st.number_input('Lower limit is', value=0, step=1, min_value= 0, max_value=len(df)-1, on_change=in_wid_change)
+                        row_2=st.number_input('Upper limit is', value=2, step=1, min_value= 0, max_value=len(df)-1, on_change=in_wid_change)
                         if (row_1 + 1) < row_2 :
                             sb_DM_keepRows=df.index[(df.index > row_1) & (df.index < row_2)]
                         elif (row_1 + 1) == row_2 : 
@@ -457,9 +457,9 @@ def app():
                             st.error("ERROR: Lower limit must be smaller than upper limit!")  
                             return                   
                     elif keepRows=='equal':
-                        sb_DM_keepRows = st.multiselect("to...", df.index, key = st.session_state['key'], on_change=in_wid_change)
+                        sb_DM_keepRows = st.multiselect("to...", df.index, on_change=in_wid_change)
                     else:
-                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, key = st.session_state['key'], on_change=in_wid_change)                    
+                        row_1=st.number_input('than...', step=1, value=1, min_value = 0, max_value=len(df)-1, on_change=in_wid_change)                    
                         if keepRows=='greater':
                             sb_DM_keepRows=df.index[df.index > row_1]
                             if row_1 == len(df)-1:
@@ -481,17 +481,17 @@ def app():
                         no_keptRows=df.shape[0]
 
                 # Delete columns
-                sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_delCols = st.multiselect("Select columns to delete ", df.columns, on_change=in_wid_change)
                 df = df.loc[:,~df.columns.isin(sb_DM_delCols)]
 
                 # Keep columns
-                sb_DM_keepCols = st.multiselect("Select columns to keep", df.columns, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_keepCols = st.multiselect("Select columns to keep", df.columns, on_change=in_wid_change)
                 if len(sb_DM_keepCols) > 0:
                     df = df.loc[:,df.columns.isin(sb_DM_keepCols)]
 
                 # Delete duplicates if any exist
                 if df[df.duplicated()].shape[0] > 0:
-                    sb_DM_delDup = st.selectbox("Delete duplicate rows ", ["No", "Yes"], key = st.session_state['key'], on_change=in_wid_change)
+                    sb_DM_delDup = st.selectbox("Delete duplicate rows ", ["No", "Yes"], on_change=in_wid_change)
                     if sb_DM_delDup == "Yes":
                         n_rows_dup = df[df.duplicated()].shape[0]
                         df = df.drop_duplicates()
@@ -501,7 +501,7 @@ def app():
                 # Delete rows with NA if any exist
                 n_rows_wNAs = df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0]
                 if n_rows_wNAs > 0:
-                    sb_DM_delRows_wNA = st.selectbox("Delete rows with NAs ", ["No", "Yes"], key = st.session_state['key'], on_change=in_wid_change)
+                    sb_DM_delRows_wNA = st.selectbox("Delete rows with NAs ", ["No", "Yes"], on_change=in_wid_change)
                     if sb_DM_delRows_wNA == "Yes": 
                         df = df.dropna()
                 elif n_rows_wNAs == 0: 
@@ -509,7 +509,7 @@ def app():
 
                 # Filter data
                 st.markdown("**Data filtering**")
-                filter_var = st.selectbox('Filter your data by a variable...', list('-')+ list(df.columns), key = st.session_state['key'], on_change=in_wid_change)
+                filter_var = st.selectbox('Filter your data by a variable...', list('-')+ list(df.columns), on_change=in_wid_change)
                 if filter_var !='-':
                     
                     if df[filter_var].dtypes=="int64" or df[filter_var].dtypes=="float64": 
@@ -518,11 +518,11 @@ def app():
                         else:
                             filter_format=None
 
-                        user_filter=st.selectbox('Select values that are ...', options=['greater','greater or equal','smaller','smaller or equal', 'equal','between'], key = st.session_state['key'], on_change=in_wid_change)
+                        user_filter=st.selectbox('Select values that are ...', options=['greater','greater or equal','smaller','smaller or equal', 'equal','between'], on_change=in_wid_change)
                                                 
                         if user_filter=='between':
-                            filter_1=st.number_input('Lower limit is', format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = st.session_state['key'], on_change=in_wid_change)
-                            filter_2=st.number_input('Upper limit is', format=filter_format, value=df[filter_var].max(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = st.session_state['key'], on_change=in_wid_change)
+                            filter_1=st.number_input('Lower limit is', format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), on_change=in_wid_change)
+                            filter_2=st.number_input('Upper limit is', format=filter_format, value=df[filter_var].max(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), on_change=in_wid_change)
                             #reclassify values:
                             if filter_1 < filter_2 :
                                 df = df[(df[filter_var] > filter_1) & (df[filter_var] < filter_2)] 
@@ -533,12 +533,12 @@ def app():
                                 st.error("ERROR: Lower limit must be smaller than upper limit!")  
                                 return                    
                         elif user_filter=='equal':                            
-                            filter_1=st.multiselect('to... ', options=df[filter_var].values, key = st.session_state['key'], on_change=in_wid_change)
+                            filter_1=st.multiselect('to... ', options=df[filter_var].values, on_change=in_wid_change)
                             if len(filter_1)>0:
                                 df = df.loc[df[filter_var].isin(filter_1)]
 
                         else:
-                            filter_1=st.number_input('than... ',format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), key = st.session_state['key'], on_change=in_wid_change)
+                            filter_1=st.number_input('than... ',format=filter_format, value=df[filter_var].min(), min_value=df[filter_var].min(), max_value=df[filter_var].max(), on_change=in_wid_change)
                             #reclassify values:
                             if user_filter=='greater':
                                 df = df[df[filter_var] > filter_1]
@@ -555,7 +555,7 @@ def app():
                             elif len(df) == n_rows:
                                 st.warning("WARNING: Data are not filtered for this value!")         
                     else:                  
-                        filter_1=st.multiselect('Filter your data by a value...', (df[filter_var]).unique(), key = st.session_state['key'], on_change=in_wid_change)
+                        filter_1=st.multiselect('Filter your data by a value...', (df[filter_var]).unique(), on_change=in_wid_change)
                         if len(filter_1)>0:
                             df = df.loc[df[filter_var].isin(filter_1)]
                 
@@ -567,12 +567,12 @@ def app():
                     # Select data imputation method (only if rows with NA not deleted)
                     if sb_DM_delRows_wNA == "No" and n_rows_wNAs > 0:
                         st.markdown("**Data imputation**")
-                        sb_DM_dImp_choice = st.selectbox("Replace entries with NA ", ["No", "Yes"], key = st.session_state['key'], on_change=in_wid_change)
+                        sb_DM_dImp_choice = st.selectbox("Replace entries with NA ", ["No", "Yes"], on_change=in_wid_change)
                         if sb_DM_dImp_choice == "Yes":
                             # Numeric variables
-                            sb_DM_dImp_num = st.selectbox("Imputation method for numeric variables ", ["Mean", "Median", "Random value"], key = st.session_state['key'], on_change=in_wid_change)
+                            sb_DM_dImp_num = st.selectbox("Imputation method for numeric variables ", ["Mean", "Median", "Random value"], on_change=in_wid_change)
                             # Other variables
-                            sb_DM_dImp_other = st.selectbox("Imputation method for other variables ", ["Mode", "Random value"], key = st.session_state['key'], on_change=in_wid_change)
+                            sb_DM_dImp_other = st.selectbox("Imputation method for other variables ", ["Mode", "Random value"], on_change=in_wid_change)
                             df = fc.data_impute(df, sb_DM_dImp_num, sb_DM_dImp_other)
                     else:
                         st.markdown("**Data imputation**")
@@ -587,28 +587,28 @@ def app():
                 # Select columns for different transformation types
                 transform_options = df.select_dtypes([np.number]).columns
                 numCat_options = df.columns
-                sb_DM_dTrans_log = st.multiselect("Select columns to transform with log ", transform_options, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_dTrans_log = st.multiselect("Select columns to transform with log ", transform_options, on_change=in_wid_change)
                 if sb_DM_dTrans_log is not None: 
                     df = fc.var_transform_log(df, sb_DM_dTrans_log)
-                sb_DM_dTrans_sqrt = st.multiselect("Select columns to transform with sqrt ", transform_options, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_dTrans_sqrt = st.multiselect("Select columns to transform with sqrt ", transform_options, on_change=in_wid_change)
                 if sb_DM_dTrans_sqrt is not None: 
                     df = fc.var_transform_sqrt(df, sb_DM_dTrans_sqrt)
-                sb_DM_dTrans_square = st.multiselect("Select columns for squaring ", transform_options, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_dTrans_square = st.multiselect("Select columns for squaring ", transform_options, on_change=in_wid_change)
                 if sb_DM_dTrans_square is not None: 
                     df = fc.var_transform_square(df, sb_DM_dTrans_square)
-                sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options, on_change=in_wid_change)
                 if sb_DM_dTrans_cent is not None: 
                     df = fc.var_transform_cent(df, sb_DM_dTrans_cent)
-                sb_DM_dTrans_stand = st.multiselect("Select columns for standardization ", transform_options, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_dTrans_stand = st.multiselect("Select columns for standardization ", transform_options, on_change=in_wid_change)
                 if sb_DM_dTrans_stand is not None: 
                     df = fc.var_transform_stand(df, sb_DM_dTrans_stand)
-                sb_DM_dTrans_norm = st.multiselect("Select columns for normalization ", transform_options, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_dTrans_norm = st.multiselect("Select columns for normalization ", transform_options, on_change=in_wid_change)
                 if sb_DM_dTrans_norm is not None: 
                     df = fc.var_transform_norm(df, sb_DM_dTrans_norm)
-                sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_dTrans_numCat = st.multiselect("Select columns for numeric categorization ", numCat_options, on_change=in_wid_change)
                 if sb_DM_dTrans_numCat:
                     if not df[sb_DM_dTrans_numCat].columns[df[sb_DM_dTrans_numCat].isna().any()].tolist(): 
-                        sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, key = st.session_state['key'], on_change=in_wid_change)
+                        sb_DM_dTrans_numCat_sel = st.multiselect("Select variables for manual categorization ", sb_DM_dTrans_numCat, on_change=in_wid_change)
                         if sb_DM_dTrans_numCat_sel:
                             for var in sb_DM_dTrans_numCat_sel:
                                 if df[var].unique().size > 5: 
@@ -620,7 +620,7 @@ def app():
                                     # Save manually selected categories
                                     for i in range(0, df[var].unique().size):
                                         text1 = text + str(var) + ": " + str(sorted(df[var].unique())[i])
-                                        man_cat = st.number_input(text1, value = 0, min_value=0, key = st.session_state['key'], on_change=in_wid_change)
+                                        man_cat = st.number_input(text1, value = 0, min_value=0, on_change=in_wid_change)
                                         manual_cats.loc[i]["Value"] = sorted(df[var].unique())[i]
                                         manual_cats.loc[i]["Cat"] = man_cat
                                     
@@ -643,27 +643,27 @@ def app():
                         return
                 else:
                     sb_DM_dTrans_numCat = None
-                sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_dTrans_mult = st.number_input("Number of variable multiplications ", value = 0, min_value=0, on_change=in_wid_change)
                 if sb_DM_dTrans_mult != 0: 
                     multiplication_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_mult), columns=["Var1", "Var2"])
                     text = "Multiplication pair"
                     for i in range(0, sb_DM_dTrans_mult):
                         text1 = text + " " + str(i+1)
                         text2 = text + " " + str(i+1) + " "
-                        mult_var1 = st.selectbox(text1, transform_options, key = st.session_state['key'], on_change=in_wid_change)
-                        mult_var2 = st.selectbox(text2, transform_options, key = st.session_state['key'], on_change=in_wid_change)
+                        mult_var1 = st.selectbox(text1, transform_options, on_change=in_wid_change)
+                        mult_var2 = st.selectbox(text2, transform_options, on_change=in_wid_change)
                         multiplication_pairs.loc[i]["Var1"] = mult_var1
                         multiplication_pairs.loc[i]["Var2"] = mult_var2
                         fc.var_transform_mult(df, mult_var1, mult_var2)
-                sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, key = st.session_state['key'], on_change=in_wid_change)
+                sb_DM_dTrans_div = st.number_input("Number of variable divisions ", value = 0, min_value=0, on_change=in_wid_change)
                 if sb_DM_dTrans_div != 0:
                     division_pairs = pd.DataFrame(index = range(0, sb_DM_dTrans_div), columns=["Var1", "Var2"]) 
                     text = "Division pair"
                     for i in range(0, sb_DM_dTrans_div):
                         text1 = text + " " + str(i+1) + " (numerator)"
                         text2 = text + " " + str(i+1) + " (denominator)"
-                        div_var1 = st.selectbox(text1, transform_options, key = st.session_state['key'], on_change=in_wid_change)
-                        div_var2 = st.selectbox(text2, transform_options, key = st.session_state['key'], on_change=in_wid_change)
+                        div_var1 = st.selectbox(text1, transform_options, on_change=in_wid_change)
+                        div_var2 = st.selectbox(text2, transform_options, on_change=in_wid_change)
                         division_pairs.loc[i]["Var1"] = div_var1
                         division_pairs.loc[i]["Var2"] = div_var2
                         fc.var_transform_div(df, div_var1, div_var2)
@@ -675,7 +675,7 @@ def app():
                     output = BytesIO()
                     excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                     df.to_excel(excel_file, sheet_name="data",index=False)    
-                    excel_file.save()
+                    excel_file.close()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
                     dl_file_name = "Data_transformation__" + df_name + ".xlsx"
@@ -689,7 +689,7 @@ def app():
             #--------------------------------------------------------------------------------------
             # PROCESSING SUMMARY
             
-            if st.checkbox('Show a summary of my data processing preferences ', value = False, key = st.session_state['key']): 
+            if st.checkbox('Show a summary of my data processing preferences ', value = False): 
                 st.markdown("Summary of data changes:")
 
                 #--------------------------------------------------------------------------------------
@@ -848,7 +848,7 @@ def app():
 
                     # Show cleaned and transformed data & data info
                     df_summary_post = fc.data_summary(df)
-                    if st.checkbox("Show cleaned and transformed data ", value = False, key = st.session_state['key']):  
+                    if st.checkbox("Show cleaned and transformed data ", value = False):  
                         n_rows_post = df.shape[0]
                         n_cols_post = df.shape[1]
                         st.dataframe(df)
@@ -858,7 +858,7 @@ def app():
                         output = BytesIO()
                         excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                         df.to_excel(excel_file, sheet_name="Clean. and transf. data")
-                        excel_file.save()
+                        excel_file.close()
                         excel_file = output.getvalue()
                         b64 = base64.b64encode(excel_file)
                         dl_file_name = "CleanedTransfData__" + df_name + ".xlsx"
@@ -870,7 +870,7 @@ def app():
                         st.write("")
                     
                     if df[df.duplicated()].shape[0] > 0 or df.iloc[list(pd.unique(np.where(df.isnull())[0]))].shape[0] > 0:
-                        check_nasAnddupl2 = st.checkbox("Show duplicates and NAs info (processed) ", value = False, key = st.session_state['key']) 
+                        check_nasAnddupl2 = st.checkbox("Show duplicates and NAs info (processed) ", value = False) 
                         if check_nasAnddupl2:
                             index_c = []
                             for c in df.columns:
@@ -885,12 +885,12 @@ def app():
                                 st.write("Rows with NAs: ", ', '.join(map(str,list(pd.unique(sorted(index_c))))))
 
                     # Show cleaned and transformed variable info
-                    if st.checkbox("Show cleaned and transformed variable info ", value = False, key = st.session_state['key']): 
+                    if st.checkbox("Show cleaned and transformed variable info ", value = False): 
                         st.write(df_summary_post["Variable types"])
 
                     # Show summary statistics (cleaned and transformed data)
-                    if st.checkbox('Show summary statistics (cleaned and transformed data) ', value = False, key = st.session_state['key']):
-                        st.write(df_summary_post["ALL"].style.set_precision(user_precision))
+                    if st.checkbox('Show summary statistics (cleaned and transformed data) ', value = False):
+                        st.write(df_summary_post["ALL"].style.format(precision=user_precision))
 
                         # Download link
                         output = BytesIO()
@@ -898,7 +898,7 @@ def app():
                         df.to_excel(excel_file, sheet_name="cleaned_data")
                         df_summary_post["Variable types"].to_excel(excel_file, sheet_name="cleaned_variable_info")
                         df_summary_post["ALL"].to_excel(excel_file, sheet_name="cleaned_summary_statistics")
-                        excel_file.save()
+                        excel_file.close()
                         excel_file = output.getvalue()
                         b64 = base64.b64encode(excel_file)
                         dl_file_name = "Cleaned data summary statistics_multi_" + df_name + ".xlsx"
@@ -934,14 +934,14 @@ def app():
             
                 st.write('**Variable selection**')
                 varl_sel_options = df.columns
-                var_sel = st.selectbox('Select variable for visualizations', varl_sel_options, key = st.session_state['key'])
+                var_sel = st.selectbox('Select variable for visualizations', varl_sel_options)
 
                 if df[var_sel].dtypes == "float64" or df[var_sel].dtypes == "float32" or df[var_sel].dtypes == "int64" or df[var_sel].dtypes == "int32":
                     a4, a5 = st.columns(2)
                     with a4:
                         st.write('**Scatterplot with LOESS line**')
                         yy_options = df.columns
-                        yy = st.selectbox('Select variable for y-axis', yy_options, key = st.session_state['key'])
+                        yy = st.selectbox('Select variable for y-axis', yy_options)
                         if df[yy].dtypes == "float64" or df[yy].dtypes == "float32" or df[yy].dtypes == "int64" or df[yy].dtypes == "int32":
                             fig_data = pd.DataFrame()
                             fig_data[yy] = df[yy]
@@ -958,7 +958,7 @@ def app():
                         else: st.error("ERROR: Please select a numeric variable for the y-axis!")   
                     with a5:
                         st.write('**Histogram**')
-                        binNo = st.slider("Select maximum number of bins", 5, 100, 25, key = st.session_state['key'])
+                        binNo = st.slider("Select maximum number of bins", 5, 100, 25)
                         fig2 = alt.Chart(df).mark_bar().encode(
                             x = alt.X(var_sel, title = var_sel + " (binned)", bin = alt.BinParams(maxbins = binNo), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                             y = alt.Y("count()", title = "count of records", axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
@@ -1014,7 +1014,7 @@ def app():
             if len(num_cols)>1:
                 show_scatter_matrix=st.checkbox('Show scatter matrix',value=False,key= st.session_state['key'])
                 if show_scatter_matrix==True:
-                    multi_var_sel = st.multiselect('Select variables for scatter matrix', num_cols, num_cols, key = st.session_state['key'])
+                    multi_var_sel = st.multiselect('Select variables for scatter matrix', num_cols, num_cols)
 
                     if len(multi_var_sel)<2:
                         st.error("ERROR: Please choose at least two variables fro a scatterplot")
@@ -1088,7 +1088,7 @@ def app():
                     
                     # Response variable
                     response_var_options = df.columns
-                    response_var = st.selectbox("Select response variable", response_var_options, key = st.session_state['key'], on_change=in_wid_change)
+                    response_var = st.selectbox("Select response variable", response_var_options, on_change=in_wid_change)
                     
                     # Check if response variable is numeric and has no NAs
                     response_var_message_num = False
@@ -1112,7 +1112,7 @@ def app():
                         # Select explanatory variables
                         expl_var_options = df.columns
                         expl_var_options = expl_var_options[expl_var_options.isin(df.drop(response_var, axis = 1).columns)]
-                        expl_var = st.multiselect("Select explanatory variables", expl_var_options, key = st.session_state['key'], on_change=in_wid_change)
+                        expl_var = st.multiselect("Select explanatory variables", expl_var_options, on_change=in_wid_change)
                         var_list = list([response_var]) + list(expl_var)
 
                         # Check if explanatory variables are numeric
@@ -1776,7 +1776,7 @@ def app():
                                     output = BytesIO()
                                     excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                                     df.to_excel(excel_file, sheet_name="modelling_data")
-                                    excel_file.save()
+                                    excel_file.close()
                                     excel_file = output.getvalue()
                                     b64 = base64.b64encode(excel_file)
                                     dl_file_name= "Modelling data__" + df_name + ".xlsx"
@@ -1798,7 +1798,7 @@ def app():
                                             output = BytesIO()
                                             excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                                             df_new.to_excel(excel_file, sheet_name="new_data")
-                                            excel_file.save()
+                                            excel_file.close()
                                             excel_file = output.getvalue()
                                             b64 = base64.b64encode(excel_file)
                                             dl_file_name= "New data for predictions__" + df_name + ".xlsx"
@@ -2089,30 +2089,30 @@ def app():
                             fm_mlr_reg_col1, fm_mlr_reg_col2 = st.columns(2)
                             with fm_mlr_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["MLR information"].style.set_precision(user_precision))
+                                st.table(model_full_results["MLR information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_mlr_reg_col2:
                                 st.write("Regression statistics:")
-                                st.table(model_full_results["MLR statistics"].style.set_precision(user_precision))
+                                st.table(model_full_results["MLR statistics"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_MLR_regStat")))
                             st.write("")
                             # Coefficients
                             st.write("Coefficients:")
-                            st.table(model_full_results["MLR coefficients"].style.set_precision(user_precision))
+                            st.table(model_full_results["MLR coefficients"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_MLR_coef")))
                             st.write("")
                             # ANOVA
                             st.write("ANOVA:")
-                            st.table(model_full_results["MLR ANOVA"].style.set_precision(user_precision))
+                            st.table(model_full_results["MLR ANOVA"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_MLR_ANOVA")))
                             st.write("")
                             # Heteroskedasticity tests
                             if MLR_intercept == "Yes":
                                 st.write("Heteroskedasticity tests:")
-                                st.table(model_full_results["MLR hetTest"].style.set_precision(user_precision))
+                                st.table(model_full_results["MLR hetTest"].style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_MLR_hetTest")))
                                 st.write("")
@@ -2121,7 +2121,7 @@ def app():
                             with fm_mlr_reg2_col1: 
                                 st.write("Variable importance (via permutation):")
                                 mlr_varImp_table = model_full_results["MLR variable importance"]
-                                st.table(mlr_varImp_table.style.set_precision(user_precision))
+                                st.table(mlr_varImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_mlr_reg2_col2: 
                                 st.write("")
@@ -2246,7 +2246,7 @@ def app():
                             model_full_results["MLR ANOVA"].to_excel(excel_file, sheet_name="ANOVA")
                             model_full_results["MLR hetTest"].to_excel(excel_file, sheet_name="heteroskedasticity_tests")
                             mlr_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name= "MLR full model output__" + df_name + ".xlsx"
@@ -2265,17 +2265,17 @@ def app():
                             # Regression information
                             with fm_gam_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["GAM information"].style.set_precision(user_precision))
+                                st.table(model_full_results["GAM information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_gam_reg_col2:
                                 st.write("Regression statistics:")
-                                st.table(model_full_results["GAM statistics"].style.set_precision(user_precision))
+                                st.table(model_full_results["GAM statistics"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_GAM_regStat")))
                             st.write("")
                             # Feature significance
                             st.write("Feature significance:")
-                            st.table(model_full_results["GAM feature significance"].style.set_precision(user_precision))
+                            st.table(model_full_results["GAM feature significance"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_GAM_featSig")))
                             st.write("")
@@ -2284,7 +2284,7 @@ def app():
                             with fm_gam_figs1_col1:
                                 st.write("Variable importance (via permutation):")
                                 gam_varImp_table = model_full_results["GAM variable importance"]
-                                st.table(gam_varImp_table.style.set_precision(user_precision))
+                                st.table(gam_varImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_gam_figs1_col2:
                                 st.write("")
@@ -2386,7 +2386,7 @@ def app():
                             model_full_results["GAM statistics"].to_excel(excel_file, sheet_name="regression_statistics")
                             model_full_results["GAM feature significance"].to_excel(excel_file, sheet_name="feature_significance")
                             gam_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "GAM full model output__" + df_name + ".xlsx"
@@ -2405,7 +2405,7 @@ def app():
                             # Regression information
                             with fm_rf_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["RF information"].style.set_precision(user_precision))
+                                st.table(model_full_results["RF information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_rf_reg_col2:
                                 st.write("Regression statistics:")
@@ -2414,7 +2414,7 @@ def app():
                                 rf_error_est.loc["RMSE"] = model_full_results["model comparison"].loc["RMSE"]["Random Forest"]
                                 rf_error_est.loc["MAE"] =  model_full_results["model comparison"].loc["MAE"]["Random Forest"]
                                 rf_error_est.loc["Residual SE"] = model_full_results["RF Residual SE"]
-                                st.table(rf_error_est.style.set_precision(user_precision))
+                                st.table(rf_error_est.style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_RF_regStat")))
                             st.write("")
@@ -2423,7 +2423,7 @@ def app():
                             with fm_rf_figs1_col1:
                                 st.write("Variable importance (via permutation):")
                                 rf_varImp_table = model_full_results["RF variable importance"]
-                                st.table(rf_varImp_table.style.set_precision(user_precision))
+                                st.table(rf_varImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_rf_figs1_col2:
                                 st.write("")
@@ -2443,7 +2443,7 @@ def app():
                             with fm_rf_figs2_col1:
                                 st.write("Feature importance (impurity-based):")
                                 rf_featImp_table = model_full_results["RF feature importance"]
-                                st.table(rf_featImp_table.style.set_precision(user_precision))
+                                st.table(rf_featImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_rf_figs2_col2:
                                 st.write("")
@@ -2465,8 +2465,10 @@ def app():
                             fm_rf_figs3_col1, fm_rf_figs3_col2 = st.columns(2)
                             for pd_var in expl_var:
                                 pd_data_rf = pd.DataFrame(columns = [pd_var])
-                                pd_data_rf[pd_var] = model_full_results["RF partial dependence"][pd_var][1][0]
-                                pd_data_rf["Partial dependence"] = model_full_results["RF partial dependence"][pd_var][0][0]
+                                pd_data_rf[pd_var] = model_full_results["RF partial dependence"][pd_var]["values"][0]
+                                pd_data_rf["Partial dependence"] = model_full_results["RF partial dependence"][pd_var]["average"][0]
+
+
                                 pd_chart_rf = alt.Chart(pd_data_rf, height = 200).mark_line(color = "darkred").encode(
                                     x = alt.X(pd_var, axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                     y = alt.Y("Partial dependence", title = "partial dependence", scale = alt.Scale(domain = [model_full_results["RF partial dependence min/max"]["min"].min(), model_full_results["RF partial dependence min/max"]["max"].max()]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
@@ -2527,7 +2529,7 @@ def app():
                             rf_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             rf_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
                             rf_featImp_table.to_excel(excel_file, sheet_name="feature_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "RF full model output__" + df_name + ".xlsx"
@@ -2546,7 +2548,7 @@ def app():
                             # Regression information
                             with fm_brt_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["BRT information"].style.set_precision(user_precision))
+                                st.table(model_full_results["BRT information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_brt_reg_col2:
                                 st.write("Regression statistics:")
@@ -2555,7 +2557,7 @@ def app():
                                 brt_error_est.loc["RMSE"] = model_full_results["model comparison"].loc["RMSE"]["Boosted Regression Trees"]
                                 brt_error_est.loc["MAE"] =  model_full_results["model comparison"].loc["MAE"]["Boosted Regression Trees"]
                                 brt_error_est.loc["Residual SE"] = model_full_results["BRT Residual SE"]
-                                st.table(brt_error_est.style.set_precision(user_precision))
+                                st.table(brt_error_est.style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_BRT_regStat")))
                             st.write("")
@@ -2576,7 +2578,7 @@ def app():
                             with fm_brt_figs1_col1:
                                 st.write("Variable importance (via permutation):")
                                 brt_varImp_table = model_full_results["BRT variable importance"]
-                                st.table(brt_varImp_table.style.set_precision(user_precision))
+                                st.table(brt_varImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_brt_figs1_col2:
                                 st.write("")
@@ -2596,7 +2598,7 @@ def app():
                             with fm_brt_figs2_col1:
                                 st.write("Feature importance (impurity-based):")
                                 brt_featImp_table = model_full_results["BRT feature importance"]
-                                st.table(brt_featImp_table.style.set_precision(user_precision))
+                                st.table(brt_featImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_brt_figs2_col2:
                                 st.write("")
@@ -2617,9 +2619,9 @@ def app():
                             st.write("Partial dependence plots:")    
                             fm_brt_figs3_col1, fm_brt_figs3_col2 = st.columns(2)
                             for pd_var in expl_var:
-                                pd_data_brt = pd.DataFrame(columns = [pd_var])
-                                pd_data_brt[pd_var] = model_full_results["BRT partial dependence"][pd_var][1][0]
-                                pd_data_brt["Partial dependence"] = model_full_results["BRT partial dependence"][pd_var][0][0]
+                                pd_data_brt = pd.DataFrame(columns = [pd_var])                           
+                                pd_data_brt[pd_var] = model_full_results["BRT partial dependence"][pd_var]["values"][0]
+                                pd_data_brt["Partial dependence"] = model_full_results["BRT partial dependence"][pd_var]["average"][0]                                                           
                                 pd_chart_brt = alt.Chart(pd_data_brt, height = 200).mark_line(color = "darkred").encode(
                                     x = alt.X(pd_var, axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                     y = alt.Y("Partial dependence", title = "partial dependence", scale = alt.Scale(domain = [model_full_results["BRT partial dependence min/max"]["min"].min(), model_full_results["BRT partial dependence min/max"]["max"].max()]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
@@ -2680,7 +2682,7 @@ def app():
                             brt_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             brt_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
                             brt_featImp_table.to_excel(excel_file, sheet_name="feature_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "BRT full model output__" + df_name + ".xlsx"
@@ -2699,7 +2701,7 @@ def app():
                             # Regression information
                             with fm_ann_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["ANN information"].style.set_precision(user_precision))
+                                st.table(model_full_results["ANN information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_ann_reg_col2:
                                 st.write("Regression statistics:")
@@ -2710,7 +2712,7 @@ def app():
                                 ann_error_est.loc["Residual SE"] = model_full_results["ANN Residual SE"]
                                 if ann_finalPara["weight optimization solver"][0] != "lbfgs":
                                     ann_error_est.loc["Best loss"] = model_full_results["ANN loss"]
-                                st.table(ann_error_est.style.set_precision(user_precision))
+                                st.table(ann_error_est.style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_ANN_regStat")))
                             st.write("")
@@ -2832,7 +2834,7 @@ def app():
                             with fm_ann_figs1_col1:
                                 st.write("Variable importance (via permutation):")
                                 ann_varImp_table = model_full_results["ANN variable importance"]
-                                st.table(ann_varImp_table.style.set_precision(user_precision))
+                                st.table(ann_varImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_ann_figs1_col2:
                                 st.write("")
@@ -2854,8 +2856,8 @@ def app():
                             fm_ann_figs2_col1, fm_ann_figs2_col2 = st.columns(2)
                             for pd_var in expl_var:
                                 pd_data_ann = pd.DataFrame(columns = [pd_var])
-                                pd_data_ann[pd_var] = (model_full_results["ANN partial dependence"][pd_var][1][0]*(df[pd_var].std()))+df[pd_var].mean()
-                                pd_data_ann["Partial dependence"] = model_full_results["ANN partial dependence"][pd_var][0][0]
+                                pd_data_ann[pd_var] = (model_full_results["ANN partial dependence"][pd_var]["values"][0]*(df[pd_var].std()))+df[pd_var].mean()
+                                pd_data_ann["Partial dependence"] = model_full_results["ANN partial dependence"][pd_var]["average"][0]
                                 pd_chart_ann = alt.Chart(pd_data_ann, height = 200).mark_line(color = "darkred").encode(
                                 x = alt.X(pd_var, axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                 y = alt.Y("Partial dependence", title = "partial dependence", scale = alt.Scale(domain = [model_full_results["ANN partial dependence min/max"]["min"].min(), model_full_results["ANN partial dependence min/max"]["max"].max()]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
@@ -2915,7 +2917,7 @@ def app():
                             model_full_results["ANN information"].to_excel(excel_file, sheet_name="regression_information")
                             ann_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             ann_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "ANN full model output__" + df_name + ".xlsx"
@@ -2931,7 +2933,7 @@ def app():
                         st.write("Performance metrics:")
                         model_comp_sort_enable = (model_full_results["model comparison"]).transpose()
                         
-                        st.write(model_comp_sort_enable.style.set_precision(user_precision))
+                        st.write(model_comp_sort_enable.style.format(precision=user_precision))
                         if len(sb_ML_alg) > 1:
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_modCompPerf")))  
@@ -2944,7 +2946,7 @@ def app():
                             model_full_res.loc["75%-Q"][m] = model_full_results["residuals"][m].quantile(q = 0.75)
                             model_full_res.loc["max"][m] = model_full_results["residuals"][m].max()
                         st.write("Residuals distribution:")
-                        st.write((model_full_res).transpose().style.set_precision(user_precision))
+                        st.write((model_full_res).transpose().style.format(precision=user_precision))
                         if len(sb_ML_alg) > 1:
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_modCompRes")))
@@ -2955,7 +2957,7 @@ def app():
                         excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                         model_comp_sort_enable.to_excel(excel_file, sheet_name="performance_metrics")
                         model_full_res.transpose().to_excel(excel_file, sheet_name="residuals_distribution")
-                        excel_file.save()
+                        excel_file.close()
                         excel_file = output.getvalue()
                         b64 = base64.b64encode(excel_file)
                         dl_file_name = "Model comparison full model output__" + df_name + ".xlsx"
@@ -2978,30 +2980,30 @@ def app():
                             fm_mlr_reg_col1, fm_mlr_reg_col2 = st.columns(2)
                             with fm_mlr_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["MLR information"].style.set_precision(user_precision))
+                                st.table(model_full_results["MLR information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_mlr_reg_col2:
                                 st.write("Regression statistics:")
-                                st.table(model_full_results["MLR statistics"].style.set_precision(user_precision))
+                                st.table(model_full_results["MLR statistics"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_MLR_regStat")))
                             st.write("")
                             # Coefficients
                             st.write("Coefficients:")
-                            st.table(model_full_results["MLR coefficients"].style.set_precision(user_precision))
+                            st.table(model_full_results["MLR coefficients"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_MLR_coef")))
                             st.write("")
                             # ANOVA
                             st.write("ANOVA:")
-                            st.table(model_full_results["MLR ANOVA"].style.set_precision(user_precision))
+                            st.table(model_full_results["MLR ANOVA"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_MLR_ANOVA")))
                             st.write("")
                             # Heteroskedasticity tests
                             if MLR_intercept == "Yes":
                                 st.write("Heteroskedasticity tests:")
-                                st.table(model_full_results["MLR hetTest"].style.set_precision(user_precision))
+                                st.table(model_full_results["MLR hetTest"].style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_MLR_hetTest")))
                                 st.write("")
@@ -3010,7 +3012,7 @@ def app():
                             with fm_mlr_reg2_col1: 
                                 st.write("Variable importance (via permutation):")
                                 mlr_varImp_table = model_full_results["MLR variable importance"]
-                                st.table(mlr_varImp_table.style.set_precision(user_precision))
+                                st.table(mlr_varImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_mlr_reg2_col2: 
                                 st.write("")
@@ -3135,7 +3137,7 @@ def app():
                             model_full_results["MLR ANOVA"].to_excel(excel_file, sheet_name="ANOVA")
                             model_full_results["MLR hetTest"].to_excel(excel_file, sheet_name="heteroskedasticity_tests")
                             mlr_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "MLR full model output__" + df_name + ".xlsx"
@@ -3153,17 +3155,17 @@ def app():
                             fm_lr_reg_col1, fm_lr_reg_col2 = st.columns(2)
                             with fm_lr_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["LR information"].style.set_precision(user_precision))
+                                st.table(model_full_results["LR information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_lr_reg_col2:
                                 st.write("Regression statistics:")
-                                st.table(model_full_results["LR statistics"].style.set_precision(user_precision))
+                                st.table(model_full_results["LR statistics"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_LR_regStat")))
                             st.write("")  
                             # Coefficients
                             st.write("Coefficients:")
-                            st.table(model_full_results["LR coefficients"].style.set_precision(user_precision))
+                            st.table(model_full_results["LR coefficients"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_LR_coef")))
                             st.write("")
@@ -3172,7 +3174,7 @@ def app():
                             with fm_lr_fig1_col1: 
                                 st.write("Variable importance (via permutation):")
                                 lr_varImp_table = model_full_results["LR variable importance"]
-                                st.table(lr_varImp_table.style.set_precision(user_precision))
+                                st.table(lr_varImp_table.style.format(precision=user_precision))
                             with fm_lr_fig1_col2: 
                                 st.write("")
                                 st.write("")
@@ -3260,7 +3262,7 @@ def app():
                             model_full_results["LR statistics"].to_excel(excel_file, sheet_name="regression_statistics")
                             model_full_results["LR coefficients"].to_excel(excel_file, sheet_name="coefficients")
                             lr_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "LR full model output__" + df_name + ".xlsx"
@@ -3279,17 +3281,17 @@ def app():
                             # Regression information
                             with fm_gam_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["GAM information"].style.set_precision(user_precision))
+                                st.table(model_full_results["GAM information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_gam_reg_col2:
                                 st.write("Regression statistics:")
-                                st.table(model_full_results["GAM statistics"].style.set_precision(user_precision))
+                                st.table(model_full_results["GAM statistics"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_GAM_regStat_bin")))
                             st.write("")
                             # Feature significance
                             st.write("Feature significance:")
-                            st.table(model_full_results["GAM feature significance"].style.set_precision(user_precision))
+                            st.table(model_full_results["GAM feature significance"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_GAM_featSig_bin")))
                             st.write("")
@@ -3298,7 +3300,7 @@ def app():
                             with fm_gam_figs1_col1:
                                 st.write("Variable importance (via permutation):")
                                 gam_varImp_table = model_full_results["GAM variable importance"]
-                                st.table(gam_varImp_table.style.set_precision(user_precision))
+                                st.table(gam_varImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_gam_figs1_col2:
                                 st.write("")
@@ -3408,7 +3410,7 @@ def app():
                             model_full_results["GAM statistics"].to_excel(excel_file, sheet_name="regression_statistics")
                             model_full_results["GAM feature significance"].to_excel(excel_file, sheet_name="feature_significance")
                             gam_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "GAM full model output__" + df_name + ".xlsx"
@@ -3427,7 +3429,7 @@ def app():
                             # Regression information
                             with fm_rf_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["RF information"].style.set_precision(user_precision))
+                                st.table(model_full_results["RF information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_rf_reg_col2:
                                 st.write("Regression statistics:")
@@ -3436,7 +3438,7 @@ def app():
                                 rf_error_est.loc["AP"] = model_full_results["model comparison thresInd"].loc["AP"]["Random Forest"]
                                 rf_error_est.loc["AUC PRC"] =  model_full_results["model comparison thresInd"].loc["AUC PRC"]["Random Forest"]
                                 rf_error_est.loc["LOG-LOSS"] = model_full_results["model comparison thresInd"].loc["LOG-LOSS"]["Random Forest"]
-                                st.table(rf_error_est.style.set_precision(user_precision))
+                                st.table(rf_error_est.style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_RF_regStat_bin"))) 
                             st.write("")
@@ -3445,7 +3447,7 @@ def app():
                             with fm_rf_figs1_col1:
                                 st.write("Variable importance (via permutation):")
                                 rf_varImp_table = model_full_results["RF variable importance"]
-                                st.table(rf_varImp_table.style.set_precision(user_precision))
+                                st.table(rf_varImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_rf_figs1_col2:
                                 st.write("")
@@ -3465,7 +3467,7 @@ def app():
                             with fm_rf_figs2_col1:
                                 st.write("Feature importance (impurity-based):")
                                 rf_featImp_table = model_full_results["RF feature importance"]
-                                st.table(rf_featImp_table.style.set_precision(user_precision))
+                                st.table(rf_featImp_table.style.format(precision=user_precision))
                             with fm_rf_figs2_col2:
                                 st.write("")
                                 st.write("")
@@ -3555,7 +3557,7 @@ def app():
                             rf_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             rf_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
                             rf_featImp_table.to_excel(excel_file, sheet_name="feature_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "RF full model output__" + df_name + ".xlsx"
@@ -3574,7 +3576,7 @@ def app():
                             # Regression information
                             with fm_brt_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["BRT information"].style.set_precision(user_precision))
+                                st.table(model_full_results["BRT information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_brt_reg_col2:
                                 st.write("Regression statistics:")
@@ -3583,7 +3585,7 @@ def app():
                                 brt_error_est.loc["AP"] = model_full_results["model comparison thresInd"].loc["AP"]["Boosted Regression Trees"]
                                 brt_error_est.loc["AUC PRC"] =  model_full_results["model comparison thresInd"].loc["AUC PRC"]["Boosted Regression Trees"]
                                 brt_error_est.loc["LOG-LOSS"] = model_full_results["model comparison thresInd"].loc["LOG-LOSS"]["Boosted Regression Trees"]
-                                st.table(brt_error_est.style.set_precision(user_precision))
+                                st.table(brt_error_est.style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_BRT_regStat_bin"))) 
                             st.write("")
@@ -3605,7 +3607,7 @@ def app():
                             with fm_brt_figs1_col1:
                                 st.write("Variable importance (via permutation):")
                                 brt_varImp_table = model_full_results["BRT variable importance"]
-                                st.table(brt_varImp_table.style.set_precision(user_precision))
+                                st.table(brt_varImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_brt_figs1_col2:
                                 st.write("")
@@ -3625,7 +3627,7 @@ def app():
                             with fm_brt_figs2_col1:
                                 st.write("Feature importance (impurity-based):")
                                 brt_featImp_table = model_full_results["BRT feature importance"]
-                                st.table(brt_featImp_table.style.set_precision(user_precision))
+                                st.table(brt_featImp_table.style.format(precision=user_precision))
                             with fm_brt_figs2_col2:
                                 st.write("")
                                 st.write("")
@@ -3716,7 +3718,7 @@ def app():
                             brt_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             brt_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
                             brt_featImp_table.to_excel(excel_file, sheet_name="feature_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "BRT full model output__" + df_name + ".xlsx"
@@ -3735,7 +3737,7 @@ def app():
                             # Regression information
                             with fm_ann_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["ANN information"].style.set_precision(user_precision))
+                                st.table(model_full_results["ANN information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_ann_reg_col2:
                                 st.write("Regression statistics:")
@@ -3746,7 +3748,7 @@ def app():
                                 ann_error_est.loc["LOG-LOSS"] =  model_full_results["model comparison thresInd"].loc["LOG-LOSS"]["Artificial Neural Networks"]
                                 if ann_finalPara["weight optimization solver"][0] != "lbfgs":
                                     ann_error_est.loc["Best loss"] =  model_full_results["ANN loss"]
-                                st.table(ann_error_est.style.set_precision(user_precision))
+                                st.table(ann_error_est.style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_ANN_regStat_bin")))
                             st.write("")
@@ -3869,7 +3871,7 @@ def app():
                             with fm_ann_figs1_col1:
                                 st.write("Variable importance (via permutation):")
                                 ann_varImp_table = model_full_results["ANN variable importance"]
-                                st.table(ann_varImp_table.style.set_precision(user_precision))
+                                st.table(ann_varImp_table.style.format(precision=user_precision))
                             with fm_ann_figs1_col2:
                                 st.write("")
                                 st.write("")
@@ -3959,7 +3961,7 @@ def app():
                             model_full_results["ANN information"].to_excel(excel_file, sheet_name="regression_information")
                             ann_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             ann_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "ANN full model output__" + df_name + ".xlsx"
@@ -3974,16 +3976,16 @@ def app():
                         if any(a for a in sb_ML_alg if a == "Logistic Regression" or a == "Random Forest" or a == "Generalized Additive Models" or a == "Boosted Regression Trees" or a == "Artificial Neural Networks"):
                             st.markdown("**Model comparison**")
                             st.write("Threshold-independent metrics:")
-                            st.write((model_full_results["model comparison thresInd"]).transpose().style.set_precision(user_precision))
+                            st.write((model_full_results["model comparison thresInd"]).transpose().style.format(precision=user_precision))
                             if len(sb_ML_alg) > 1:
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_modCompThresInd")))
                             st.write("")
                             st.write("Thresholds:")
-                            st.table(model_full_results["model comparison thres"].transpose().style.set_precision(user_precision))
+                            st.table(model_full_results["model comparison thres"].transpose().style.format(precision=user_precision))
                             st.write("")
                             st.write("Threshold-dependent metrics:")
-                            st.write((model_full_results["model comparison thresDep"]).transpose().style.set_precision(user_precision))
+                            st.write((model_full_results["model comparison thresDep"]).transpose().style.format(precision=user_precision))
                             if len(sb_ML_alg) > 1:
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_modCompThresDep")))
@@ -3995,7 +3997,7 @@ def app():
                             model_full_results["model comparison thresInd"].transpose().to_excel(excel_file, sheet_name="thresh_independent_metrics")
                             model_full_results["model comparison thres"].to_excel(excel_file, sheet_name="thresholds")
                             model_full_results["model comparison thresDep"].transpose().to_excel(excel_file, sheet_name="thresh_dependent_metrics")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "Model comparison full model output__" + df_name + ".xlsx"
@@ -4032,13 +4034,13 @@ def app():
                                 st.write("Predictions for original data:")
                                 MLR_pred_orig = pd.DataFrame(columns = [response_var])
                                 MLR_pred_orig[response_var] = model_full_results["MLR fitted"]
-                                st.write(MLR_pred_orig.style.set_precision(user_precision))
+                                st.write(MLR_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     MLR_pred_new = pd.DataFrame(columns = [response_var])
                                     MLR_pred_new[response_var] = model_full_results["MLR prediction"]
-                                    st.write(MLR_pred_new.style.set_precision(user_precision))
+                                    st.write(MLR_pred_new.style.format(precision=user_precision))
 
                         # GAM specific output
                         if any(a for a in sb_ML_alg if a == "Generalized Additive Models"):
@@ -4049,13 +4051,13 @@ def app():
                                 st.write("Predictions for original data:")
                                 GAM_pred_orig = pd.DataFrame(columns = [response_var])
                                 GAM_pred_orig[response_var] = model_full_results["GAM fitted"]
-                                st.write(GAM_pred_orig.style.set_precision(user_precision))
+                                st.write(GAM_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     GAM_pred_new = pd.DataFrame(columns = [response_var])
                                     GAM_pred_new[response_var] = model_full_results["GAM prediction"]
-                                    st.write(GAM_pred_new.style.set_precision(user_precision))
+                                    st.write(GAM_pred_new.style.format(precision=user_precision))
                         
                         # RF specific output
                         if any(a for a in sb_ML_alg if a == "Random Forest"):
@@ -4066,13 +4068,13 @@ def app():
                                 st.write("Predictions for original data:")
                                 RF_pred_orig = pd.DataFrame(columns = [response_var])
                                 RF_pred_orig[response_var] = model_full_results["RF fitted"]
-                                st.write(RF_pred_orig.style.set_precision(user_precision))
+                                st.write(RF_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     RF_pred_new = pd.DataFrame(columns = [response_var])
                                     RF_pred_new[response_var] = model_full_results["RF prediction"]
-                                    st.write(RF_pred_new.style.set_precision(user_precision))
+                                    st.write(RF_pred_new.style.format(precision=user_precision))
                         
                         # BRT specific output
                         if any(a for a in sb_ML_alg if a == "Boosted Regression Trees"):
@@ -4083,13 +4085,13 @@ def app():
                                 st.write("Predictions for original data:")
                                 BRT_pred_orig = pd.DataFrame(columns = [response_var])
                                 BRT_pred_orig[response_var] = model_full_results["BRT fitted"]
-                                st.write(BRT_pred_orig.style.set_precision(user_precision))
+                                st.write(BRT_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     BRT_pred_new = pd.DataFrame(columns = [response_var])
                                     BRT_pred_new[response_var] = model_full_results["BRT prediction"]
-                                    st.write(BRT_pred_new.style.set_precision(user_precision))
+                                    st.write(BRT_pred_new.style.format(precision=user_precision))
                         
                         # ANN specific output
                         if any(a for a in sb_ML_alg if a == "Artificial Neural Networks"):
@@ -4100,13 +4102,13 @@ def app():
                                 st.write("Predictions for original data:")
                                 ANN_pred_orig = pd.DataFrame(columns = [response_var])
                                 ANN_pred_orig[response_var] = model_full_results["ANN fitted"]
-                                st.write(ANN_pred_orig.style.set_precision(user_precision))
+                                st.write(ANN_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     ANN_pred_new = pd.DataFrame(columns = [response_var])
                                     ANN_pred_new[response_var] = model_full_results["ANN prediction"]
-                                    st.write(ANN_pred_new.style.set_precision(user_precision))                        
+                                    st.write(ANN_pred_new.style.format(precision=user_precision))                        
 
                     #-------------------------------------------------------------
 
@@ -4122,13 +4124,13 @@ def app():
                                 st.write("Predictions for original data:")
                                 MLR_pred_orig = pd.DataFrame(columns = [response_var])
                                 MLR_pred_orig[response_var] = model_full_results["MLR fitted"]
-                                st.write(MLR_pred_orig.style.set_precision(user_precision))
+                                st.write(MLR_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     MLR_pred_new = pd.DataFrame(columns = [response_var])
                                     MLR_pred_new[response_var] = model_full_results["MLR prediction"]
-                                    st.write(MLR_pred_new.style.set_precision(user_precision))
+                                    st.write(MLR_pred_new.style.format(precision=user_precision))
                             st.write("")
 
                         # LR specific output
@@ -4141,14 +4143,14 @@ def app():
                                 LR_pred_orig = pd.DataFrame(columns = [response_var])
                                 LR_pred_orig[response_var] = model_full_results["LR fitted"][:, 1]
                                 LR_pred_orig[response_var + "_binary"] = model_full_results["LR fitted binary"]
-                                st.write(LR_pred_orig.style.set_precision(user_precision))
+                                st.write(LR_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     LR_pred_new = pd.DataFrame(columns = [response_var])
                                     LR_pred_new[response_var] = model_full_results["LR prediction"][:, 1]
                                     LR_pred_new[response_var + "_binary"] = model_full_results["LR prediction binary"]
-                                    st.write(LR_pred_new.style.set_precision(user_precision))
+                                    st.write(LR_pred_new.style.format(precision=user_precision))
                             st.write("")
 
                         # GAM specific output
@@ -4161,14 +4163,14 @@ def app():
                                 GAM_pred_orig = pd.DataFrame(columns = [response_var])
                                 GAM_pred_orig[response_var] = model_full_results["GAM fitted"]
                                 GAM_pred_orig[response_var + "_binary"] = model_full_results["GAM fitted binary"]
-                                st.write(GAM_pred_orig.style.set_precision(user_precision))
+                                st.write(GAM_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     GAM_pred_new = pd.DataFrame(columns = [response_var])
                                     GAM_pred_new[response_var] = model_full_results["GAM prediction"]
                                     GAM_pred_new[response_var + "_binary"] = model_full_results["GAM prediction binary"]
-                                    st.write(GAM_pred_new.style.set_precision(user_precision))
+                                    st.write(GAM_pred_new.style.format(precision=user_precision))
                             st.write("")
 
                         # RF specific output
@@ -4181,14 +4183,14 @@ def app():
                                 RF_pred_orig = pd.DataFrame(columns = [response_var])
                                 RF_pred_orig[response_var] = model_full_results["RF fitted"][:, 1]
                                 RF_pred_orig[response_var + "_binary"] = model_full_results["RF fitted binary"]
-                                st.write(RF_pred_orig.style.set_precision(user_precision))
+                                st.write(RF_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     RF_pred_new = pd.DataFrame(columns = [response_var])
                                     RF_pred_new[response_var] = model_full_results["RF prediction"][:, 1]
                                     RF_pred_new[response_var + "_binary"] = model_full_results["RF prediction binary"]
-                                    st.write(RF_pred_new.style.set_precision(user_precision))
+                                    st.write(RF_pred_new.style.format(precision=user_precision))
                             st.write("")
                         
                         # BRT specific output
@@ -4201,14 +4203,14 @@ def app():
                                 BRT_pred_orig = pd.DataFrame(columns = [response_var])
                                 BRT_pred_orig[response_var] = model_full_results["BRT fitted"][:, 1]
                                 BRT_pred_orig[response_var + "_binary"] = model_full_results["BRT fitted binary"]
-                                st.write(BRT_pred_orig.style.set_precision(user_precision))
+                                st.write(BRT_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     BRT_pred_new = pd.DataFrame(columns = [response_var])
                                     BRT_pred_new[response_var] = model_full_results["BRT prediction"][:, 1]
                                     BRT_pred_new[response_var + "_binary"] = model_full_results["BRT prediction binary"]
-                                    st.write(BRT_pred_new.style.set_precision(user_precision))
+                                    st.write(BRT_pred_new.style.format(precision=user_precision))
                             st.write("")
                         
                         # ANN specific output
@@ -4221,14 +4223,14 @@ def app():
                                 ANN_pred_orig = pd.DataFrame(columns = [response_var])
                                 ANN_pred_orig[response_var] = model_full_results["ANN fitted"][:, 1]
                                 ANN_pred_orig[response_var + "_binary"] = model_full_results["ANN fitted binary"]
-                                st.write(ANN_pred_orig.style.set_precision(user_precision))
+                                st.write(ANN_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     ANN_pred_new = pd.DataFrame(columns = [response_var])
                                     ANN_pred_new[response_var] = model_full_results["ANN prediction"][:, 1]
                                     ANN_pred_new[response_var + "_binary"] = model_full_results["ANN prediction binary"]
-                                    st.write(ANN_pred_new.style.set_precision(user_precision))
+                                    st.write(ANN_pred_new.style.format(precision=user_precision))
                             st.write("")
                     
                     #-------------------------------------------------------------
@@ -4260,7 +4262,7 @@ def app():
                         ANN_pred_orig.to_excel(predictions_excel, sheet_name="ANN_pred_orig")
                         if do_modprednew == "Yes":
                             ANN_pred_new.to_excel(predictions_excel, sheet_name="ANN_pred_new")
-                    predictions_excel.save()
+                    predictions_excel.close()
                     predictions_excel = output.getvalue()
                     b64 = base64.b64encode(predictions_excel)
                     dl_file_name = "Full model predictions__" + df_name + ".xlsx"
@@ -4286,12 +4288,12 @@ def app():
 
                             # Metrics means
                             st.write("Means of metrics across validation runs:")
-                            st.write(model_val_results["mean"].transpose().style.set_precision(user_precision))
+                            st.write(model_val_results["mean"].transpose().style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_val_means")))
                             # Metrics sd
                             st.write("SDs of metrics across validation runs:")
-                            st.write(model_val_results["sd"].transpose().style.set_precision(user_precision))
+                            st.write(model_val_results["sd"].transpose().style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_val_sds")))
                             st.write("")
@@ -4336,10 +4338,10 @@ def app():
                             # Variable importance (via permutation)
                             st.write("Means of variable importances:")
                             varImp_table_mean = model_val_results["variable importance mean"]
-                            st.write(varImp_table_mean.transpose().style.set_precision(user_precision))
+                            st.write(varImp_table_mean.transpose().style.format(precision=user_precision))
                             st.write("SDs of variable importances:")
                             varImp_table_sd = model_val_results["variable importance sd"]
-                            st.write(varImp_table_sd.transpose().style.set_precision(user_precision))
+                            st.write(varImp_table_sd.transpose().style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_val_varImp")))
                             st.write("")
@@ -4354,7 +4356,7 @@ def app():
                                     model_val_res.loc["75%-Q"][m] = model_val_results["residuals"][m].quantile(q = 0.75)
                                     model_val_res.loc["max"][m] = model_val_results["residuals"][m].max()
                                 st.write("Residuals distribution across all validation runs:")
-                                st.write(model_val_res.transpose().style.set_precision(user_precision))
+                                st.write(model_val_res.transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_val_res")))
                             st.write("")
@@ -4367,7 +4369,7 @@ def app():
                             varImp_table_mean.to_excel(excel_file, sheet_name="variable_importance_mean")
                             varImp_table_sd.to_excel(excel_file, sheet_name="variable_importance_sd")
                             model_val_res.transpose().to_excel(excel_file, sheet_name="residuals_distribution")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "Validation output__" + df_name + ".xlsx"
@@ -4390,7 +4392,7 @@ def app():
                                 st.write("")
                             else:
                                 st.write("Means of threshold-independent metrics across validation runs:")
-                                st.write(model_val_results["mean_ind"].transpose().style.set_precision(user_precision))
+                                st.write(model_val_results["mean_ind"].transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_val_means_thresInd")))
                             # Metrics (independent)
@@ -4398,7 +4400,7 @@ def app():
                                 st.write("")
                             else:
                                 st.write("SDs of threshold-independent metrics across validation runs:")
-                                st.write(model_val_results["sd_ind"].transpose().style.set_precision(user_precision))
+                                st.write(model_val_results["sd_ind"].transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_val_sds_thresInd")))
                                 st.write("")
@@ -4448,10 +4450,10 @@ def app():
                             # Variable importance
                             st.write("Means of variable importances:")
                             varImp_table_mean = model_val_results["variable importance mean"]
-                            st.write(varImp_table_mean.style.set_precision(user_precision))
+                            st.write(varImp_table_mean.style.format(precision=user_precision))
                             st.write("SDs of variable importances:")
                             varImp_table_sd = model_val_results["variable importance sd"]
-                            st.write(varImp_table_sd.style.set_precision(user_precision))
+                            st.write(varImp_table_sd.style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_val_varImp_bin")))
                             st.write("")
@@ -4462,7 +4464,7 @@ def app():
                                 st.write("")
                             else:
                                 st.write("Means of threshold-dependent metrics across validation runs:")
-                                st.write(model_val_results["mean_dep"].transpose().style.set_precision(user_precision))
+                                st.write(model_val_results["mean_dep"].transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_val_means_thresDep")))
                             # Metrics (dependent)
@@ -4470,7 +4472,7 @@ def app():
                                 st.write("")
                             else:
                                 st.write("SDs of threshold-dependent metrics across validation runs:")
-                                st.write(model_val_results["sd_dep"].transpose().style.set_precision(user_precision))
+                                st.write(model_val_results["sd_dep"].transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_val_sds_thresDep")))
                             st.write("")
@@ -4484,7 +4486,7 @@ def app():
                             varImp_table_sd.to_excel(excel_file, sheet_name="variable_importance_sd")
                             model_val_results["mean_dep"].transpose().to_excel(excel_file, sheet_name="thresh_dependent_metrics_mean")
                             model_val_results["sd_dep"].transpose().to_excel(excel_file, sheet_name="thresh_dependent_metrics_sd")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "Validation output__" + df_name + ".xlsx"
@@ -4534,7 +4536,7 @@ def app():
                                 rf_finalTuneMetrics["mean cv score"] = [rf_tuning_results.loc["value"]["mean score"]]
                                 rf_finalTuneMetrics["standard deviation cv score"] = [rf_tuning_results.loc["value"]["std score"]]
                                 rf_finalTuneMetrics["test data score"] = [rf_tuning_results.loc["value"]["test score"]]
-                                st.table(rf_finalTuneMetrics.transpose().style.set_precision(user_precision))
+                                st.table(rf_finalTuneMetrics.transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_hypeTune_RF_details")))
                                 st.write("")
@@ -4563,7 +4565,7 @@ def app():
                                 brt_finalTuneMetrics["mean cv score"] = [brt_tuning_results.loc["value"]["mean score"]]
                                 brt_finalTuneMetrics["standard deviation cv score"] = [brt_tuning_results.loc["value"]["std score"]]
                                 brt_finalTuneMetrics["test data score"] = [brt_tuning_results.loc["value"]["test score"]]
-                                st.table(brt_finalTuneMetrics.transpose().style.set_precision(user_precision))
+                                st.table(brt_finalTuneMetrics.transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_hypeTune_BRT_details")))
                                 st.write("")
@@ -4592,7 +4594,7 @@ def app():
                                 ann_finalTuneMetrics["mean cv score"] = [ann_tuning_results.loc["value"]["mean score"]]
                                 ann_finalTuneMetrics["standard deviation cv score"] = [ann_tuning_results.loc["value"]["std score"]]
                                 ann_finalTuneMetrics["test data score"] = [ann_tuning_results.loc["value"]["test score"]]
-                                st.table(ann_finalTuneMetrics.transpose().style.set_precision(user_precision))
+                                st.table(ann_finalTuneMetrics.transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_hypeTune_ANN_details")))
                                 st.write("")
@@ -4612,7 +4614,7 @@ def app():
                         ann_finalPara.to_excel(excel_file, sheet_name="ANN_final_hyperparameters")
                         if do_hypTune == "Yes":
                             ann_finalTuneMetrics.to_excel(excel_file, sheet_name="ANN_tuning_details")
-                    excel_file.save()
+                    excel_file.close()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
                     if do_hypTune == "Yes":
@@ -4688,7 +4690,7 @@ def app():
                     # Response variable
                     response_var_type = "multi-class"
                     response_var_options = df.columns
-                    response_var = st.selectbox("Select response variable", response_var_options, key = st.session_state['key'], on_change=in_wid_change)
+                    response_var = st.selectbox("Select response variable", response_var_options, on_change=in_wid_change)
                     
                     # Check how many classes the response variable has (max: 10 classes)
                     if len(pd.unique(df[response_var])) > 10:
@@ -4721,7 +4723,7 @@ def app():
                         # Select explanatory variables
                         expl_var_options = df.columns
                         expl_var_options = expl_var_options[expl_var_options.isin(df.drop(response_var, axis = 1).columns)]
-                        expl_var = st.multiselect("Select explanatory variables", expl_var_options, key = st.session_state['key'], on_change=in_wid_change)
+                        expl_var = st.multiselect("Select explanatory variables", expl_var_options, on_change=in_wid_change)
                         var_list = list([response_var]) + list(expl_var)
 
                         # Check if explanatory variables are numeric
@@ -5003,6 +5005,7 @@ def app():
 
                                             # List of log-transformed variables that are included as explanatory variables
                                             tv_list = []
+                                            
                                             for tv in sb_DM_dTrans_log:
                                                 if "log_"+tv in expl_var:
                                                     tv_list.append(tv)
@@ -5248,7 +5251,7 @@ def app():
                                     output = BytesIO()
                                     excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                                     df.to_excel(excel_file, sheet_name="modelling_data")
-                                    excel_file.save()
+                                    excel_file.close()
                                     excel_file = output.getvalue()
                                     b64 = base64.b64encode(excel_file)
                                     dl_file_name= "Modelling data__" + df_name + ".xlsx"
@@ -5270,7 +5273,7 @@ def app():
                                             output = BytesIO()
                                             excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                                             df_new.to_excel(excel_file, sheet_name="new_data")
-                                            excel_file.save()
+                                            excel_file.close()
                                             excel_file = output.getvalue()
                                             b64 = base64.b64encode(excel_file)
                                             dl_file_name= "New data for predictions__" + df_name + ".xlsx"
@@ -5507,14 +5510,14 @@ def app():
                             # Regression information
                             with fm_rf_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["RF information"].style.set_precision(user_precision))
+                                st.table(model_full_results["RF information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_rf_reg_col2:
                                 st.write("Regression statistics:")
                                 rf_error_est = pd.DataFrame(index = ["ACC", "BAL ACC"], columns = ["Value"])
                                 rf_error_est.loc["ACC"] = model_full_results["model comparison"].loc["ACC"]["Random Forest"]
                                 rf_error_est.loc["BAL ACC"] = model_full_results["model comparison"].loc["BAL ACC"]["Random Forest"]
-                                st.table(rf_error_est.style.set_precision(user_precision))
+                                st.table(rf_error_est.style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_RF_regStat_mult"))) 
                             st.write("")
@@ -5523,7 +5526,7 @@ def app():
                             with fm_rf_figs1_col1:
                                 st.write("Variable importance (via permutation):")
                                 rf_varImp_table = model_full_results["RF variable importance"]
-                                st.table(rf_varImp_table.style.set_precision(user_precision))
+                                st.table(rf_varImp_table.style.format(precision=user_precision))
                                 st.write("")
                             with fm_rf_figs1_col2:
                                 st.write("")
@@ -5543,7 +5546,7 @@ def app():
                             with fm_rf_figs2_col1:
                                 st.write("Feature importance (impurity-based):")
                                 rf_featImp_table = model_full_results["RF feature importance"]
-                                st.table(rf_featImp_table.style.set_precision(user_precision))
+                                st.table(rf_featImp_table.style.format(precision=user_precision))
                             with fm_rf_figs2_col2:
                                 st.write("")
                                 st.write("")
@@ -5595,7 +5598,7 @@ def app():
                             st.write("") 
                             # Classification report
                             st.write("Classification report:")
-                            st.table(model_full_results["RF classification report"].style.set_precision(user_precision))
+                            st.table(model_full_results["RF classification report"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_RF_classRep_mult"))) 
                             st.write("") 
@@ -5609,7 +5612,7 @@ def app():
                             rf_featImp_table.to_excel(excel_file, sheet_name="feature_importance")
                             model_full_results["RF confusion"].to_excel(excel_file, sheet_name="confusion_matrix")
                             model_full_results["RF classification report"].to_excel(excel_file, sheet_name="classification_report")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "RF full model output__" + df_name + ".xlsx"
@@ -5628,7 +5631,7 @@ def app():
                             # Regression information
                             with fm_ann_reg_col1:
                                 st.write("Regression information:")
-                                st.table(model_full_results["ANN information"].style.set_precision(user_precision))
+                                st.table(model_full_results["ANN information"].style.format(precision=user_precision))
                             # Regression statistics
                             with fm_ann_reg_col2:
                                 st.write("Regression statistics:")
@@ -5637,7 +5640,7 @@ def app():
                                 ann_error_est.loc["BAL ACC"] = model_full_results["model comparison"].loc["BAL ACC"]["Artificial Neural Networks"]
                                 if ann_finalPara["weight optimization solver"][0] != "lbfgs":
                                     ann_error_est.loc["Best loss"] =  model_full_results["ANN loss"]
-                                st.table(ann_error_est.style.set_precision(user_precision))
+                                st.table(ann_error_est.style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_ANN_regStat_mult")))
                             st.write("")
@@ -5759,7 +5762,7 @@ def app():
                             with fm_ann_figs1_col1:
                                 st.write("Variable importance (via permutation):")
                                 ann_varImp_table = model_full_results["ANN variable importance"]
-                                st.table(ann_varImp_table.style.set_precision(user_precision))
+                                st.table(ann_varImp_table.style.format(precision=user_precision))
                             with fm_ann_figs1_col2:
                                 st.write("")
                                 st.write("")
@@ -5811,7 +5814,7 @@ def app():
                             st.write("") 
                             # Classification report
                             st.write("Classification report:")
-                            st.table(model_full_results["ANN classification report"].style.set_precision(user_precision))
+                            st.table(model_full_results["ANN classification report"].style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_ANN_classRep_mult"))) 
                             st.write("") 
@@ -5824,7 +5827,7 @@ def app():
                             ann_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
                             model_full_results["ANN confusion"].to_excel(excel_file, sheet_name="confusion_matrix")
                             model_full_results["ANN classification report"].to_excel(excel_file, sheet_name="classification_report")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "ANN full model output__" + df_name + ".xlsx"
@@ -5838,7 +5841,7 @@ def app():
                         # Performance metrics across all models
                         if any(a for a in sb_ML_alg if a == "Random Forest" or a == "Artificial Neural Networks"):
                             st.markdown("**Model comparison**")
-                            st.write((model_full_results["model comparison"]).transpose().style.set_precision(user_precision))
+                            st.write((model_full_results["model comparison"]).transpose().style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_modComp_mult"))) 
                             st.write("")
@@ -5847,7 +5850,7 @@ def app():
                             output = BytesIO()
                             excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                             model_full_results["model comparison"].transpose().to_excel(excel_file, sheet_name="model_comparison")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "Model comparison full model output__" + df_name + ".xlsx"
@@ -5885,14 +5888,14 @@ def app():
                                 RF_pred_orig = pd.DataFrame(columns = [response_var])
                                 RF_pred_orig[response_var] = model_full_results["RF fitted"]
                                 RF_pred_orig = RF_pred_orig.join(pd.DataFrame(model_full_results["RF fitted proba"]))
-                                st.write(RF_pred_orig.style.set_precision(user_precision))
+                                st.write(RF_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
                                     RF_pred_new = pd.DataFrame(columns = [response_var])
                                     RF_pred_new[response_var] = model_full_results["RF prediction"]
                                     RF_pred_new = RF_pred_new.join(pd.DataFrame(model_full_results["RF prediction proba"]))
-                                    st.write(RF_pred_new.style.set_precision(user_precision))
+                                    st.write(RF_pred_new.style.format(precision=user_precision))
                             st.write("")
                         
                         # ANN specific output
@@ -5905,7 +5908,7 @@ def app():
                                 ANN_pred_orig = pd.DataFrame(columns = [response_var])
                                 ANN_pred_orig[response_var] = model_full_results["ANN fitted"]
                                 ANN_pred_orig = ANN_pred_orig.join(pd.DataFrame(model_full_results["ANN fitted proba"]))
-                                st.write(ANN_pred_orig.style.set_precision(user_precision))
+                                st.write(ANN_pred_orig.style.format(precision=user_precision))
                             with pred_col2:
                                 if do_modprednew == "Yes":
                                     st.write("Predictions for new data:")
@@ -5928,7 +5931,7 @@ def app():
                         ANN_pred_orig.to_excel(predictions_excel, sheet_name="ANN_pred_orig")
                         if do_modprednew == "Yes":
                             ANN_pred_new.to_excel(predictions_excel, sheet_name="ANN_pred_new")
-                    predictions_excel.save()
+                    predictions_excel.close()
                     predictions_excel = output.getvalue()
                     b64 = base64.b64encode(predictions_excel)
                     dl_file_name = "Full model predictions__" + df_name + ".xlsx"
@@ -5959,7 +5962,7 @@ def app():
                                     st.write("")
                                 else:
                                     st.write("Means across validation runs:")
-                                    st.write(model_val_results["mean"].transpose().style.set_precision(user_precision))
+                                    st.write(model_val_results["mean"].transpose().style.format(precision=user_precision))
                                     if sett_hints:
                                         st.info(str(fc.learning_hints("mod_md_val_means_mult")))
                                     st.write("")
@@ -5968,7 +5971,7 @@ def app():
                                     st.write("")
                                 else:
                                     st.write("SDs across validation runs:")
-                                    st.write(model_val_results["sd"].transpose().style.set_precision(user_precision))
+                                    st.write(model_val_results["sd"].transpose().style.format(precision=user_precision))
                                     if sett_hints:
                                         st.info(str(fc.learning_hints("mod_md_val_sds_mult")))
                                     st.write("")
@@ -6017,10 +6020,10 @@ def app():
                             # Variable importance
                             st.write("Means of variable importances:")
                             varImp_table_mean = model_val_results["variable importance mean"]
-                            st.write(varImp_table_mean.style.set_precision(user_precision))
+                            st.write(varImp_table_mean.style.format(precision=user_precision))
                             st.write("SDs of variable importances:")
                             varImp_table_sd = model_val_results["variable importance sd"]
-                            st.write(varImp_table_sd.style.set_precision(user_precision))
+                            st.write(varImp_table_sd.style.format(precision=user_precision))
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_val_varImp_mult")))
                             st.write("")
@@ -6033,7 +6036,7 @@ def app():
                             model_val_results["sd"].transpose().to_excel(excel_file, sheet_name="metrics_sd")
                             varImp_table_mean.to_excel(excel_file, sheet_name="variable_importance_mean")
                             varImp_table_sd.to_excel(excel_file, sheet_name="variable_importance_sd")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "Validation output__" + df_name + ".xlsx"
@@ -6083,7 +6086,7 @@ def app():
                                 rf_finalTuneMetrics["mean cv score"] = [rf_tuning_results.loc["value"]["mean score"]]
                                 rf_finalTuneMetrics["standard deviation cv score"] = [rf_tuning_results.loc["value"]["std score"]]
                                 rf_finalTuneMetrics["test data score"] = [rf_tuning_results.loc["value"]["test score"]]
-                                st.table(rf_finalTuneMetrics.transpose().style.set_precision(user_precision))
+                                st.table(rf_finalTuneMetrics.transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_hypeTune_RF_details")))
                                 st.write("")
@@ -6112,7 +6115,7 @@ def app():
                                 brt_finalTuneMetrics["mean cv score"] = [brt_tuning_results.loc["value"]["mean score"]]
                                 brt_finalTuneMetrics["standard deviation cv score"] = [brt_tuning_results.loc["value"]["std score"]]
                                 brt_finalTuneMetrics["test data score"] = [brt_tuning_results.loc["value"]["test score"]]
-                                st.table(brt_finalTuneMetrics.transpose().style.set_precision(user_precision))
+                                st.table(brt_finalTuneMetrics.transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_hypeTune_BRT_details")))
                                 st.write("")
@@ -6141,7 +6144,7 @@ def app():
                                 ann_finalTuneMetrics["mean cv score"] = [ann_tuning_results.loc["value"]["mean score"]]
                                 ann_finalTuneMetrics["standard deviation cv score"] = [ann_tuning_results.loc["value"]["std score"]]
                                 ann_finalTuneMetrics["test data score"] = [ann_tuning_results.loc["value"]["test score"]]
-                                st.table(ann_finalTuneMetrics.transpose().style.set_precision(user_precision))
+                                st.table(ann_finalTuneMetrics.transpose().style.format(precision=user_precision))
                                 if sett_hints:
                                     st.info(str(fc.learning_hints("mod_md_hypeTune_ANN_details")))
                                 st.write("")
@@ -6161,7 +6164,7 @@ def app():
                         ann_finalPara.to_excel(excel_file, sheet_name="ANN_final_hyperparameters")
                         if do_hypTune == "Yes":
                             ann_finalTuneMetrics.to_excel(excel_file, sheet_name="ANN_tuning_details")
-                    excel_file.save()
+                    excel_file.close()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
                     if do_hypTune == "Yes":
@@ -6209,17 +6212,17 @@ def app():
                     # Select variables
                     var_options = list(df.select_dtypes(['number']).columns)
                     if len(var_options)>0:
-                        decomp_var = st.multiselect("Select variables for decomposition", var_options, var_options, key = st.session_state['key'], on_change=in_wid_change)
+                        decomp_var = st.multiselect("Select variables for decomposition", var_options, var_options, on_change=in_wid_change)
                     else:
                         st.error("ERROR: No numeric variables in dataset!")
                         return
                     
                     # Include response variable in output?
-                    resp_var_dec = st.selectbox("Include response variable in transformed data output", ["No", "Yes"], key = st.session_state['key'], on_change=in_wid_change)
+                    resp_var_dec = st.selectbox("Include response variable in transformed data output", ["No", "Yes"], on_change=in_wid_change)
                     if resp_var_dec == "Yes":
                         resp_var_options = df.columns
                         resp_var_options = resp_var_options[resp_var_options.isin(df.drop(decomp_var, axis = 1).columns)]
-                        resp_var = st.selectbox("Select response variable for transformed data output", resp_var_options, key = st.session_state['key'], on_change=in_wid_change)
+                        resp_var = st.selectbox("Select response variable for transformed data output", resp_var_options, on_change=in_wid_change)
 
                     # Filter data according to selected variables
                     if len(decomp_var) < 2:
@@ -6285,7 +6288,7 @@ def app():
                             output = BytesIO()
                             excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                             df.to_excel(excel_file, sheet_name="decomposition_data")
-                            excel_file.save()
+                            excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name= "Decomposition data__" + df_name + ".xlsx"
@@ -6473,19 +6476,19 @@ def app():
                     st.write("")
                 else:
                     st.write("Correlation matrix:")
-                    st.write(corr_matrix.style.set_precision(user_precision))
+                    st.write(corr_matrix.style.format(precision=user_precision))
                     st.write("")
 
                 # Principal Component Analysis Output
                 if DEC_alg == "Principal Component Analysis":
 
                     st.write("Eigenvalues and explained variance:")
-                    st.table(decomp_results["eigenvalues and explained variance"].style.set_precision(user_precision))
+                    st.table(decomp_results["eigenvalues and explained variance"].style.format(precision=user_precision))
                     if sett_hints:
                         st.info(str(fc.learning_hints("decomp_pca_eigval")))
                     st.write("")
                     st.write("Eigenvectors:")
-                    st.table(decomp_results["eigenvectors"].style.set_precision(user_precision))
+                    st.table(decomp_results["eigenvectors"].style.format(precision=user_precision))
                     if sett_hints:
                         st.info(str(fc.learning_hints("decomp_pca_eigvec")))
                     st.write("")
@@ -6538,7 +6541,7 @@ def app():
                     corr_matrix.to_excel(excel_file, sheet_name="correlation_matrix")
                     decomp_results["eigenvalues and explained variance"].to_excel(excel_file, sheet_name="eigval_and_explained_variance")
                     decomp_results["eigenvectors"].to_excel(excel_file, sheet_name="eigenvectors")
-                    excel_file.save()
+                    excel_file.close()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
                     dl_file_name= "Decomposition output__PCA__" + df_name + ".xlsx"
@@ -6555,31 +6558,31 @@ def app():
                     col1, col2 = st.columns(2)
                     with col1:
                         st.write("Bartlett's Sphericity test:")
-                        st.table(decomp_results["BST"].style.set_precision(user_precision))
+                        st.table(decomp_results["BST"].style.format(precision=user_precision))
                     with col2:
                         st.write("Kaiser-Meyer-Olkin criterion:")
-                        st.table(decomp_results["KMO"].style.set_precision(user_precision))
+                        st.table(decomp_results["KMO"].style.format(precision=user_precision))
                     if sett_hints:
                         st.info(str(fc.learning_hints("decomp_fa_adeqtests")))
                     st.write("")
 
                     st.write("Eigenvalues:")
-                    st.table(decomp_results["eigenvalues"].style.set_precision(user_precision))
+                    st.table(decomp_results["eigenvalues"].style.format(precision=user_precision))
                     if sett_hints:
                         st.info(str(fc.learning_hints("decomp_fa_eigval")))
                     st.write("")
                     st.write("Explained variance:")
-                    st.table(decomp_results["loadings and explained variance"].style.set_precision(user_precision))
+                    st.table(decomp_results["loadings and explained variance"].style.format(precision=user_precision))
                     if sett_hints:
                         st.info(str(fc.learning_hints("decomp_fa_explvar")))
                     st.write("")
                     st.write("Communalities and uniquenesses:")
-                    st.table(decomp_results["communalities and uniqueness"].style.set_precision(user_precision))
+                    st.table(decomp_results["communalities and uniqueness"].style.format(precision=user_precision))
                     if sett_hints:
                         st.info(str(fc.learning_hints("decomp_fa_comuniq")))
                     st.write("")
                     st.write("Loadings:")
-                    st.table(decomp_results["loadings"].style.set_precision(user_precision))
+                    st.table(decomp_results["loadings"].style.format(precision=user_precision))
                     if sett_hints:
                         st.info(str(fc.learning_hints("decomp_fa_loadings")))
                     st.write("")                 
@@ -6624,7 +6627,7 @@ def app():
                     decomp_results["loadings and explained variance"].to_excel(excel_file, sheet_name="explained_variance")
                     decomp_results["communalities and uniqueness"].to_excel(excel_file, sheet_name="communalities_uniqueness")
                     decomp_results["loadings"].to_excel(excel_file, sheet_name="loadings")
-                    excel_file.save()
+                    excel_file.close()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
                     if farotation is not None:
@@ -6644,14 +6647,14 @@ def app():
                 # Principal Component Analysis Output
                 if DEC_alg == "Principal Component Analysis":
 
-                    st.write(decomp_results["transformed data"].style.set_precision(user_precision))
+                    st.write(decomp_results["transformed data"].style.format(precision=user_precision))
                     st.write("Data shape: ", decomp_results["transformed data"].shape[0],  " rows and ", decomp_results["transformed data"].shape[1], " columns")
                     
                     # Download link for transformed data
                     output = BytesIO()
                     excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                     decomp_results["transformed data"].to_excel(excel_file, sheet_name="transformed_data")
-                    excel_file.save()
+                    excel_file.close()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
                     dl_file_name= "Transformed data__PCA__" + df_name + ".xlsx"
@@ -6665,14 +6668,14 @@ def app():
                 # Factor Analysis Output
                 if DEC_alg == "Factor Analysis":
 
-                    st.write(decomp_results["transformed data"].style.set_precision(user_precision))
+                    st.write(decomp_results["transformed data"].style.format(precision=user_precision))
                     st.write("Data shape: ", decomp_results["transformed data"].shape[0],  " rows and ", decomp_results["transformed data"].shape[1], " columns")
                     
                     # Download link for transformed data
                     output = BytesIO()
                     excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                     decomp_results["transformed data"].to_excel(excel_file, sheet_name="transformed_data")
-                    excel_file.save()
+                    excel_file.close()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
                     if farotation is not None:

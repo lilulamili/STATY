@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import scipy
 from scipy import stats
+from io import BytesIO
 import sklearn
 from sklearn.metrics import make_scorer, mean_squared_error, r2_score, mean_absolute_error
 from sklearn.linear_model import LinearRegression
@@ -16,7 +17,36 @@ import statsmodels.api as sm
 import plotly.graph_objects as go
 import streamlit as st
 from random import randint
+import nltk
+nltk.download('punkt') 
+import PyPDF2
+from docx import Document
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer
+from pysummarization.nlpbase.auto_abstractor import AutoAbstractor
+from pysummarization.tokenizabledoc.simple_tokenizer import SimpleTokenizer
+from pysummarization.web_scraping import WebScraping
+from pysummarization.abstractabledoc.top_n_rank_abstractor import TopNRankAbstractor
+import sumy
+from sumy.parsers.html import HtmlParser 
+from sumy.nlp.tokenizers import Tokenizer 
+from sumy.summarizers.lsa import LsaSummarizer as Summarizer
+from sumy.summarizers.edmundson import EdmundsonSummarizer
+from sumy.summarizers.luhn import LuhnSummarizer
+from sumy.summarizers.lex_rank import LexRankSummarizer
+from sumy.summarizers.text_rank import TextRankSummarizer
+from sumy.summarizers.sum_basic import SumBasicSummarizer
+from sumy.summarizers.kl import KLSummarizer
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.stemmers import Stemmer 
+from sumy.utils import get_stop_words
+import mediawiki
+from bs4 import BeautifulSoup
+import requests
+import regex as re
+import os, platform
+
 
 #----------------------------------------------------------------------------------------------
 #FUNCTION FOR WIDE MODE
@@ -234,7 +264,14 @@ def theme_func_light():
     """,
         unsafe_allow_html=True,
     )
+#----------------------------------------------------------------------------------------------
+#FUNCTION FOR HOST CHECK
 
+def is_localhost():
+    #Determines if app is running on the localhost or not    
+    localhost_use=False if platform.processor()=="" else True
+
+    return localhost_use
 #----------------------------------------------------------------------------------------------
 #FUNCTION FOR DOWNLOAD BUTTON THEME
 
@@ -892,14 +929,16 @@ def data_summary(data):
         
     # Measures of central tendency
     df_summary_ct = pd.DataFrame(index = ["mean", "mode", "median"], columns = list(data))
-    df_summary_ct.loc["mean"] = data.mean()
+    
+    df_summary_ct.loc["mean"] = data.mean(numeric_only=True)
+    
     df_summary_ct.loc["mode"] = get_mode(data).loc["mode"]
-    df_summary_ct.loc["median"] = data.median()
+    df_summary_ct.loc["median"] = data.median(numeric_only=True)
 
     # Measures of dispersion
     df_summary_mod = pd.DataFrame(index = ["standard deviation", "variance"], columns = list(data))
-    df_summary_mod.loc["standard deviation"] = data.std()
-    df_summary_mod.loc["variance"] = data.var()
+    df_summary_mod.loc["standard deviation"] = data.std(numeric_only=True)
+    df_summary_mod.loc["variance"] = data.var(numeric_only=True)
 
     # Measures of shape
     df_summary_mos = get_shape(data)
@@ -1155,49 +1194,75 @@ def regression_models(X_ini, Y_ini, expl_var,reg_technique,poly_order):
 
     return  mlr_reg_inf, mlr_reg_stats, mlr_reg_anova, mlr_reg_coef,X_data, Y_data, Y_pred
 
+
 #------------------------------------------------------------------------------------------
-#FUNCTIONS FOR STOCK DATA ANALYSIS
-def  get_stock_list(index_name,web_page,table_no, symbol_col, company_col, sector_col):
-    if index_name=='CSI300':
-        payload=pd.read_html(web_page,converters={'Index': str})
-    elif index_name=='NIKKEI225':
-        payload=pd.read_html(web_page,converters={'Code': str})
-    elif index_name=='KOSPI':
-        payload=pd.read_html(web_page,converters={'Code': str})
-    else:
-        payload=pd.read_html(web_page)    
-    first_table = payload[table_no]
-    df = first_table
-
-    df.loc[:,'Index_name'] = index_name
-
-    if index_name=='FTSE100':
-        df.iloc[:,1] = df.iloc[:,1] + '.L'
-    if index_name=='CSI300':
-        df.loc[df['Stock exchange'] == 'Shanghai','Index']=df.loc[df['Stock exchange'] == 'Shanghai','Index']+'.SS'
-        df.loc[df['Stock exchange'] == 'Shenzhen','Index']=df.loc[df['Stock exchange'] == 'Shenzhen','Index']+'.SZ'
-    if index_name=='NIKKEI225':
-        df.loc[:,'Code'] = df.loc[:,'Code'] + '.T'  
-    if index_name=='KOSPI':
-        df.loc[:,'Code'] = df.loc[:,'Code'] + '.KS'   
-    #if index_name=='S&P_TSX60':
-    #    df.loc[:,'Symbol'] = df.loc[:,'Symbol'] + '.TO'          
-    symbols = df.iloc[:,symbol_col].values.tolist()
-    companies = df.iloc[:,company_col].values.tolist()
-    sectors = df.iloc[:,sector_col].values.tolist()
-    stock_index=df.loc[:,'Index_name'].tolist()
-    #symbols_all=symbols_all+symbols
-    #company_all=company_all+companies
-    #sector_all=sector_all+sectors
-    #index_all=index_all+stock_index
+# FUNCTION FOR STOP WORDS EXTRACTION FROM USER INPUT
+def get_stop_words(user_stopwords):
     
-    return symbols,companies,sectors,stock_index
+    stopwords_cv = CountVectorizer()
+    stopwords_cv_fit=stopwords_cv.fit_transform([user_stopwords])                    
+    added_stop_words=stopwords_cv.get_feature_names()
 
-
-#----------------------------------------------------------------------------------------------
+    return added_stop_words
 
 #------------------------------------------------------------------------------------------
 #FUNCTION FOR TEXT PROCESSING
+
+def text_preprocessing(user_text,text_prep_ops,user_language):
+   
+    if 'lowercase' in text_prep_ops:
+        user_text=user_text.lower()
+
+    if 'remove whitespaces' in text_prep_ops:
+        user_text=re.sub("\s+"," ",user_text)
+        
+    if 'remove abbreviations' in text_prep_ops:
+        if user_language=="de":
+            abbreviations=['am.','amtl.','Anh.','Ank.','Anl.','Anm.','anschl.','a.o.','App.','App.','a.Rh.','Art.','Aufl.','Ausg.','Bd.','Bde.','beil.','bes.','bspw.','Best.-Nr.','Best.','Betr.','Bev.','Bez.','Bhf.','brit.','b.w.','bzgl.','bzw.','ca.','Chr.','d.Ä.','dazw.','desgl.','dgl.','d.h.','d.i.','Dipl.','Dipl.-Ing.','Dipl.-Kfm.','Dir.','Dir.','Dir.','d.J.','d.M.','d.O.','d.o.','Dr.','Dr. med.','Dr. phil.','Dr. sc. nat.','dt.','Dtzd.','e.h.','ehem.','eigtl.','einschl.','engl.','entspr.','erb.','Erw.','erw.','ev.','e.V.','evtl.','e.Wz.','exkl.','f.','ff.','f.','Fa.','Fam.','Forts. f.','F.f.','Ffm.','Fr.','fr.','Frl.','Frfr.','frz.','geb.','Gebr.','gedr.','gegr.','gek.','Ges.','gesch.','geschl.','geschr.','ges.gesch.','gest.','gez.','ggf.','ggfs.','Hbf.','hpts.','Hptst.','Hr.','Hrn.','Hrsg.','i.A.','i.b.','i.B.','i.D.','i.H.','i.J.','Ing.','Inh.','Inh.','inkl.','i.R.','i.V.','i.V.','i.V.','inzw.','jew.','Jh.','jhrl.','k.A.','Kap.','kath.','Kfm.','kfm.','kgl.','Kl.','kompl.','l.','led.','L.m.a.A','m.a.W.','max.','m.E.','Mil.','Mio.','m.M.n.','m.M.','möbl.','Mrd.','Msp.','mtl.','mdl.','m.ü.M.','m.W.','MwSt.','Mw.-St.','n.','näml.','n.Chr.','n.J.','nördl.','norw.','Nr.','n.u.Z.','o.','o.','o.','o.A.','o.a.','o.ä.','o.B.','od.','o.g.','österr.','p.Adr.','Pfd.','Pkt.','Pl.','r.','Reg.-Bez.','r.k','röm.-kath.','röm.','S.','s.','s.','s.a.','Sa.','schles.','schwäb.','schweiz.','sek.','s.o.','sog.','St.','St.','Std.','Str.','StR.','s.u.','südd.','tägl.','Tel.','u.','u.a.','u.a.','u.Ä.','u.ä.','u.a.m.','u.A.w.g.','übl.','üblw.','usw.','u.v.a.(m)','u.U.','u.zw.','V.','v.','v.a.','v.Chr.','Verf.','verh.','verw.','vgl.','v.H.','vorm.','vorm.','v.R.w.','v.T.','v.u.Z.','wstl.','w.o.','Z.','Z.','z.','z.B.','z.Hd.','Zi.','z.T.','Ztr.','zur.','zus.','zzgl.','z.Z.','z.Zt.']
+        elif user_language=="en": 
+            abbreviations = ["a.m.", "p.m.", "A.D.", "B.C.", "e.g.", "i.e.", "etc.", "Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Jr.", "Sr.", "St.", "Ave.", "Blvd.", "Rd.", "Co.", "Corp.", "Inc.", "Ltd.", "LLC.","L.L.C.", "GmbH.", "vs.", "Ph.D.", "M.A.", "B.A.", "M.Sc.", "B.Sc.", "i.v.", "et al.", "esp.", "cf.", "i.v.m.", "resp.", "vol.", "viz.", "vs.", "v.", "ult.", "seq.", "sec.", "pt.", "op.", "no.", "N.B.", "M.D.", "D.D.S.", "O.D.", "Pharm.D.", "RN.", "MD.", "DO.", "DDS.", "OD.", "PharmD.", "CEO.", "CFO.", "CTO.", "VP.", "Prof.", "Asst.", "Assoc.", "Gen.", "Rep.", "Sen.", "Amb.", "Gov.", "Pres.", "Rev.", "Lt.", "Col.", "Maj.", "Capt.", "Cmdr.", "Adm.", "Sgt.", "Cpl.", "M.", "Mme.", "Mlle.", "Miss.", "Msgr.", "Fr.", "Sr.", "Br.", "Dcn.", "Maj.Gen.", "Sgt.Maj.", "Capt.", "Capt.(N).", "Lt.Col.", "Flt.Lt.", "Sqn.Ldr.", "Wg.Cdr.", "Cdr.", "Brig.", "Col.", "Maj.Gen.", "Lt.Gen.", "Gen.", "HE.", "HRH.", "HM.", "HMG.", "HMA.", "HMC.", "HMH.", "P.C.", "Q.C.", "O.B.E.", "M.B.E.", "K.B.E.", "D.B.E.", "C.B.E.", "G.C.B.", "G.B.E.", "D.S.O.", "D.F.C.", "A.F.C.", "A.M.", "F.R.C.S.", "F.R.C.P.", "F.R.C.O.G.", "F.R.A.C.S.", "F.I.Mech.E.", "B.E.", "M.I.T.", "B.Sc.Eng.", "M.Eng.", "P.Eng."]
+        else:
+            abbreviations=[]           
+        for abbr in abbreviations:                       
+            user_text=re.sub(r'\b' + re.escape(abbr), abbr.replace('.','').lower(), user_text, flags=re.IGNORECASE) 
+       
+    if 'remove urls' in text_prep_ops:
+        #starting with http etc
+        user_text=re.sub(r'(http|https|ftp|ssh)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?', '' , user_text)
+        # starting with www.
+        user_text=re.sub(r'([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?', '' , user_text)
+           
+    if 'remove html tags' in text_prep_ops:
+        user_text=re.sub('<.*?>','',user_text)
+         
+    if 'remove emails' in text_prep_ops:
+        user_text=re.sub(r'([a-z0-9+._-]+@[a-z0-9+._-]+\.[a-z0-9+_-]+)',"", user_text)
+                
+    if 'remove symbols' in text_prep_ops:
+        #remove special chracters
+        user_text=re.sub('[^a-zA-Z0-9 \n\.]', '', user_text)
+        # remove numbers in squared brackets
+        user_text=re.sub(r'\[\d+\]', '', user_text)       
+            
+    if 'remove numbers' in text_prep_ops:
+        #numbers but not years like 60s or 2023 or dates like 14th will be removed!        
+        user_text=re.sub(r'(?<![a-zA-Z])(?:(?<!\d)(?:15\d{2}|1[6-9]\d{2}|2\d{3}|3(?:(?:0[0-9])|[01][0-9])\d{1}|3500)(?!\d)|\d+(?:st|nd|rd|th)?\b)','', user_text)
+        
+        #(r'\b(?!((?<!\d)(1[5-9]\d{2}|[2-9]\d{3}|2[0-9]{2}[0-9s]|[3-9][0-9]s)(?!\d)))\d+\b', '', user_text)
+        #Explaination:        
+        #1[5-9]\d{2} matches any four-digit number from 1500 to 1999
+        # (?<![a-zA-Z]) is a negative lookbehind that ensures that the match is not preceded by any letter.
+        #(?:...) is a non-capturing group that contains two alternatives.
+        #(?<!\d) is a negative lookbehind that ensures that the match is not preceded by any digit.
+        #(?:15\d{2}|1[6-9]\d{2}|2\d{3}|3(?:(?:0[0-9])|[01][0-9])\d{1}|3500) matches a year between 1500 and 3000.
+        #(?!\d) is a negative lookahead that ensures that the match is not followed by any digit.
+        #\d+(?:st|nd|rd|th)?\b matches any sequence of digits followed by an optional suffix ("st", "nd", "rd", or "th") and a word boundary.
+                                                          
+    return user_text                        
+
+
+#------------------------------------------------------------------------------------------
+# CountVectorizer
 
 def cv_text(user_text, word_stopwords, ngram_level,user_precision,number_remove):
     
@@ -1227,6 +1292,233 @@ def cv_text(user_text, word_stopwords, ngram_level,user_precision,number_remove)
     cv_output["Word length"]=[len(i) for i in cv_output.index]
 
     return  cv_output
+
+#------------------------------------------------------------------------------------------
+# FUNCTION for web scraping
+
+def read_html_soup(url):
+
+    page = requests.get(url)
+
+    # scrape webpage
+    soup = BeautifulSoup(page.content, 'html.parser')
+
+    # find all p tags in the html document and return the text   
+    text = ''
+    for paragraph in soup.find_all('p'):
+        text += paragraph.text
+    
+
+    return text
+
+
+#------------------------------------------------------------------------------------------
+#FUNCTION FOR pysummarization of the web page
+
+def pysumMain(url,limit_var):
+    web_scrape = WebScraping()
+    # Web-scraping:
+    document = web_scrape.scrape(url)
+    auto_abstractor = AutoAbstractor()
+    auto_abstractor.tokenizable_doc = SimpleTokenizer()
+    # Set delimiter for a sentence:
+    auto_abstractor.delimiter_list = [".", "\n"]
+
+    abstractable_doc = TopNRankAbstractor()
+    # Summarize a document:
+    result_dict = auto_abstractor.summarize(document, abstractable_doc)
+
+    # Set the limit for the number of output sentences:
+    limit = limit_var
+    i = 1
+
+    sentences= ""
+    for sentence in result_dict["summarize_result"]:
+        sentences+=sentence
+        if i >= limit:
+            break
+        i += 1
+    return sentences
+
+#------------------------------------------------------------------------------------------
+#FUNCTION FOR preprocessing and reading pdf and word file
+
+def read_pdf_word(uploaded_file):    
+    text_read=[]
+
+    # PDF Document    
+    if uploaded_file.name.endswith('.pdf'):
+        try:
+            with BytesIO(uploaded_file.read()) as f:
+                pdf_reader = PyPDF2.PdfReader(f)
+                text=pdf_read(pdf_reader)
+                text_read=True                
+        except Exception as e:
+            st.error("The file you uploaded is not a valid .pdf file")                                      
+    
+    # Word Document    
+    elif uploaded_file.name.endswith('.docx'):  
+        try:      
+            doc = Document(uploaded_file)
+            text = ""
+            for para in doc.paragraphs:
+                text += para.text  
+                
+            text_read=True  
+        
+        except Exception as e:
+            st.error("The file you uploaded is not a valid .docx file")  
+        
+    else:
+        st.error("The file you uploaded is not a valid .pdf or .docx file") 
+    
+    return text_read, text       
+
+#------------------------------------------------------------------------------------------
+#FUNCTION for pdf reading using PyPDF2
+
+def pdf_read(pdf_reader):
+    
+    # Get the number of pages in the PDF
+    num_pages = len(pdf_reader.pages)
+    # Initialize text holder
+    text = ""
+    # Read all pages
+    for page_num in range(num_pages):
+        # Get the page object
+        page = pdf_reader.pages[page_num]
+        page_text = page.extract_text()
+        text += page_text
+    return(text) 
+
+#------------------------------------------------------------------------------------------
+#FUNCTION for extractive summary of a web-page using SUMY's LSA
+
+def sumy_htmlsummary(text,  url):            
+        
+    # Tokenize the content using the Linguistic Studies Analyzer (LSA) 
+    parser = HtmlParser.from_string(text, url, Tokenizer("english")) 
+    stemmer = Stemmer("english") 
+    summarizer = Summarizer(stemmer) 
+    summarizer.stop_words = get_stop_words("english")
+    
+    # Generate a summary of the paper
+    summary = ''
+    no_sentence=min(len(nltk.sent_tokenize(text)),5)
+    for sentence in summarizer(parser.document, no_sentence):
+        summary += str(sentence)
+   
+    return(summary)
+
+#------------------------------------------------------------------------------------------
+#FUNCTION for extractive summary of a plain text using all summarization methods within sumy
+
+def sumy_summary(text,extr_method, extr_length,user_language):            
+# summarization methods: "Luhn",  "Edmunson", "LSA",  "LexRank", "TextRank", "SumBasic","KL-Sum"      
+   
+    # language check & parser/stemmer
+    lang_used="english" if user_language=="en" else "german"
+    parser = PlaintextParser.from_string(text, Tokenizer(lang_used))
+    stemmer = Stemmer(lang_used)
+      
+    # Summarization with different methods
+    if extr_method=="LSA":
+        summarizer = Summarizer(stemmer) 
+    if extr_method=="LexRank" :
+        summarizer = LexRankSummarizer(stemmer)     
+    if extr_method=="Edmunson":
+        summarizer = EdmundsonSummarizer(stemmer)
+        summarizer.bonus_words = ("summarization", "text")
+        summarizer.stigma_words = ("example", "tool")
+        summarizer.null_words = get_stop_words(lang_used)
+    if extr_method=="Luhn":
+        summarizer = LuhnSummarizer(stemmer)      
+    if extr_method=="TextRank":
+        summarizer = TextRankSummarizer(stemmer)   
+    if extr_method=="SumBasic":
+        summarizer = SumBasicSummarizer(stemmer)      
+    if extr_method=="KL-Sum":
+        summarizer = KLSummarizer(stemmer)
+    
+    if extr_method !="Edmunson": summarizer.stop_words = get_stop_words(lang_used)
+    
+   # Generate a summary
+    summary = ''    
+    for sentence in summarizer(parser.document, extr_length):
+        summary += str(sentence)
+
+    return(summary)
+ 
+ 
+
+#------------------------------------------------------------------------------------------
+#FUNCTION for Abstractive Summary using T5
+
+def t5_summary(text,model,tokenizer):  
+    
+    tokens_input = tokenizer.encode("summarize: " + text,
+                        return_tensors='pt',
+                        max_length=tokenizer.model_max_length,
+                        truncation=True)
+    summary_ids = model.generate(tokens_input, min_length=80, 
+                    max_length=150, length_penalty=15, 
+                    num_beams=2)
+    summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    return(summary)
+
+#------------------------------------------------------------------------------------------
+# Function for getting a cosine similarity between user_query and Wiki page
+#  
+
+def get_topic_index(query, model, results, user_language):
+    
+    # Instantiate MediaWiki object with user's preferred language
+    wiki = mediawiki.MediaWiki(lang=user_language)
+    
+    # Clean the query
+    query = query.lower()
+    
+    # Get the content of each page and compute the cosine similarity with the query
+    page_content = []
+    for page_id in range(5):
+        match = results[page_id]
+        p = wiki.page(match)
+        page_content.append(p.content)
+    
+    # Calculate cosine similarity for each page
+    embeddings = model.encode(page_content)
+    query_embedding = model.encode([query])[0]
+    similarities = cosine_similarity(embeddings, [query_embedding])
+    
+    # Find index of page with highest similarity to query
+    bestmatch_index = similarities.argmax()
+    
+    # Get the content of the page that matches best the query
+    page = wiki.page(results[bestmatch_index])
+    content = page.content
+    
+    # Paragraph based similarity analysis    
+    match_unit = content.split('\n\n')   
+    
+    # Sentence based similarity analysis  
+    #match_unit = nltk.sent_tokenize(content)       
+
+    # Calculate cosine similarity 
+    embeddings = model.encode(match_unit)
+    query_embedding = model.encode([query])[0]
+    similarities = cosine_similarity(embeddings, [query_embedding])
+    
+    # Find index of paragraph with highest similarity to query
+    match_index = similarities.argmax()
+    
+    # Return the paragraph with highest similarity to query
+    return bestmatch_index, match_unit[match_index]
+
+
+
+
+
+
 
 
 #---------------------------------------------------------------------------------------------

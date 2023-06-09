@@ -1032,7 +1032,8 @@ def model_val(data, algorithms, MLR_model, train_frac, val_runs, response_var_ty
             # Residuals 
             residuals_collection = pd.DataFrame(columns =[response_var])
             for x in resdiuals_allruns: 
-                residuals_collection = residuals_collection.append(pd.DataFrame(resdiuals_allruns[x]), ignore_index = True)
+                #residuals_collection = residuals_collection.append(pd.DataFrame(resdiuals_allruns[x]), ignore_index = True)
+                residuals_collection =pd.concat([residuals_collection,pd.DataFrame(resdiuals_allruns[x])])
             resdiuals_allmodels_allruns[model] = residuals_collection[response_var]
             # Variable importances (mean & sd)
             for v in expl_var:
@@ -1843,8 +1844,8 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             rf_partDep = plot_partial_dependence(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
             for varPd in expl_var:
                 rf_pd[varPd] = rf_partDep[expl_var.index(varPd)]
-                rf_pd_min_max.loc[varPd]["min"] = rf_partDep[expl_var.index(varPd)][0].min()
-                rf_pd_min_max.loc[varPd]["max"] = rf_partDep[expl_var.index(varPd)][0].max()              
+                rf_pd_min_max.loc[varPd]["min"] = rf_partDep[expl_var.index(varPd)]["average"].min()
+                rf_pd_min_max.loc[varPd]["max"] = rf_partDep[expl_var.index(varPd)]["average"].max()              
             
             # Save tables
             full_model_results["RF information"] = rf_reg_inf
@@ -1913,10 +1914,11 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             brt_pd = {}
             brt_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
             brt_partDep = plot_partial_dependence(full_model_brt_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
-            for varPd in expl_var:
-                brt_pd[varPd] = brt_partDep[expl_var.index(varPd)]
-                brt_pd_min_max.loc[varPd]["min"] = brt_partDep[expl_var.index(varPd)][0].min()
-                brt_pd_min_max.loc[varPd]["max"] = brt_partDep[expl_var.index(varPd)][0].max()              
+            for varPd in expl_var:                              
+                brt_pd[varPd] = brt_partDep[expl_var.index(varPd)] #st.sidebar.write(brt_partDep[expl_var.index(varPd)])
+                brt_pd_min_max.loc[varPd]["min"] = brt_partDep[expl_var.index(varPd)]["average"].min()
+                brt_pd_min_max.loc[varPd]["max"] = brt_partDep[expl_var.index(varPd)]["average"].max()              
+            #######
             
             # Save tables
             full_model_results["BRT information"] = brt_reg_inf
@@ -1995,8 +1997,8 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             ann_partDep = plot_partial_dependence(full_model_ann_sk, X = X_data_ann, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
             for varPd in expl_var:
                 ann_pd[varPd] = ann_partDep[expl_var.index(varPd)]
-                ann_pd_min_max.loc[varPd]["min"] = ann_partDep[expl_var.index(varPd)][0].min()
-                ann_pd_min_max.loc[varPd]["max"] = ann_partDep[expl_var.index(varPd)][0].max()    
+                ann_pd_min_max.loc[varPd]["min"] = ann_partDep[expl_var.index(varPd)]["average"].min()
+                ann_pd_min_max.loc[varPd]["max"] = ann_partDep[expl_var.index(varPd)]["average"].max()    
 
             # Save tables
             full_model_results["ANN information"] = ann_reg_inf
