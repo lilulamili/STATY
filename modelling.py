@@ -3003,7 +3003,7 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             weigh_avg.loc["weighted avg"]["SUPPORT"] = weigh_avg_values["support"]
             #ann_class_rep = ann_class_rep.append(macro_avg, ignore_index=False)
             #ann_class_rep = ann_class_rep.append(weigh_avg, ignore_index=False)
-            ann_class_rep = pd.concat([ann_class_rep.,macro_avg])
+            ann_class_rep = pd.concat([ann_class_rep,macro_avg])
             ann_class_rep = pd.concat([ann_class_rep,weigh_avg])
 
             # Save tables
