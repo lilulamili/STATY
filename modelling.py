@@ -2895,8 +2895,10 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             weigh_avg.loc["weighted avg"]["RECALL"] = weigh_avg_values["recall"]
             weigh_avg.loc["weighted avg"]["F1"] = weigh_avg_values["f1-score"]
             weigh_avg.loc["weighted avg"]["SUPPORT"] = weigh_avg_values["support"]
-            rf_class_rep = rf_class_rep.append(macro_avg, ignore_index=False)
-            rf_class_rep = rf_class_rep.append(weigh_avg, ignore_index=False)                     
+            rf_class_rep = pd.concat([rf_class_rep,macro_avg])
+            #rf_class_rep = rf_class_rep.append(macro_avg, ignore_index=False)
+            rf_class_rep = pd.concat([rf_class_rep,weigh_avg]) 
+            #rf_class_rep = rf_class_rep.append(weigh_avg, ignore_index=False)                     
             
             # Save tables
             full_model_results["RF information"] = rf_reg_inf
@@ -2999,8 +3001,10 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             weigh_avg.loc["weighted avg"]["RECALL"] = weigh_avg_values["recall"]
             weigh_avg.loc["weighted avg"]["F1"] = weigh_avg_values["f1-score"]
             weigh_avg.loc["weighted avg"]["SUPPORT"] = weigh_avg_values["support"]
-            ann_class_rep = ann_class_rep.append(macro_avg, ignore_index=False)
-            ann_class_rep = ann_class_rep.append(weigh_avg, ignore_index=False)
+            #ann_class_rep = ann_class_rep.append(macro_avg, ignore_index=False)
+            #ann_class_rep = ann_class_rep.append(weigh_avg, ignore_index=False)
+            ann_class_rep = pd.concat([ann_class_rep.,macro_avg])
+            ann_class_rep = pd.concat([ann_class_rep,weigh_avg])
 
             # Save tables
             full_model_results["ANN information"] = ann_reg_inf
