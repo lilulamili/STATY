@@ -745,7 +745,7 @@ def app():
                                                       
                             sa_table.loc[i]["neg"]=ss["neg"]
                             sa_table.loc[i]["neu"]=ss["neu"]
-                            sa_table.loc[i]["pos"]=ss["neg"]
+                            sa_table.loc[i]["pos"]=ss["pos"]
                             sa_table.loc[i]["compound"]=ss["compound"]
                            
                             st.session_state['sentiment']=sa_table
