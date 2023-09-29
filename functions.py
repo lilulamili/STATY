@@ -56,7 +56,7 @@ def wide_mode_func():
     st.markdown(
         f"""
     <style>
-    .reportview-container .main .block-container{{
+    .appview-container .main .block-container{{
         {max_width_str}
     }}
     </style>    
