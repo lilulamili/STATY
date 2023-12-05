@@ -2529,8 +2529,10 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             rf_partDep = plot_partial_dependence(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
             for varPd in expl_var:
                 rf_pd[varPd] = rf_partDep[expl_var.index(varPd)]
-                rf_pd_min_max.loc[varPd]["min"] = rf_partDep[expl_var.index(varPd)][0].min()
-                rf_pd_min_max.loc[varPd]["max"] = rf_partDep[expl_var.index(varPd)][0].max()                      
+                rf_pd_min_max.loc[varPd]["min"] = rf_partDep[expl_var.index(varPd)]["average"].min()
+                #rf_pd_min_max.loc[varPd]["min"] = rf_partDep[expl_var.index(varPd)]["average"][0].min()
+                rf_pd_min_max.loc[varPd]["max"] = rf_partDep[expl_var.index(varPd)]["average"].max()   
+                #rf_pd_min_max.loc[varPd]["max"] = rf_partDep[expl_var.index(varPd)][0].max()                    
             
             # Save tables
             full_model_results["RF information"] = rf_reg_inf
@@ -2636,8 +2638,10 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             brt_partDep = plot_partial_dependence(full_model_brt_sk, X = X_data, features = expl_var, percentiles = (0, 1), method = "brute", response_method = "predict_proba").pd_results
             for varPd in expl_var:
                 brt_pd[varPd] = brt_partDep[expl_var.index(varPd)]
-                brt_pd_min_max.loc[varPd]["min"] = brt_partDep[expl_var.index(varPd)][0].min()
-                brt_pd_min_max.loc[varPd]["max"] = brt_partDep[expl_var.index(varPd)][0].max()              
+                brt_pd_min_max.loc[varPd]["min"] = brt_partDep[expl_var.index(varPd)]["average"].min()
+                brt_pd_min_max.loc[varPd]["max"] = brt_partDep[expl_var.index(varPd)]["average"].max()  
+                #brt_pd_min_max.loc[varPd]["min"] = brt_partDep[expl_var.index(varPd)][0].min()
+                #brt_pd_min_max.loc[varPd]["max"] = brt_partDep[expl_var.index(varPd)][0].max()              
             
             # Save tables
             full_model_results["BRT information"] = brt_reg_inf
@@ -2756,8 +2760,10 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             ann_partDep = plot_partial_dependence(full_model_ann_sk, X = X_data_ann, features = expl_var, percentiles = (0, 1), method = "brute", response_method = "predict_proba").pd_results
             for varPd in expl_var:
                 ann_pd[varPd] = ann_partDep[expl_var.index(varPd)]
-                ann_pd_min_max.loc[varPd]["min"] = ann_partDep[expl_var.index(varPd)][0].min()
-                ann_pd_min_max.loc[varPd]["max"] = ann_partDep[expl_var.index(varPd)][0].max()    
+                ann_pd_min_max.loc[varPd]["min"] = ann_partDep[expl_var.index(varPd)]["average"].min()
+                ann_pd_min_max.loc[varPd]["max"] = ann_partDep[expl_var.index(varPd)]["average"].max()  
+                #ann_pd_min_max.loc[varPd]["min"] = ann_partDep[expl_var.index(varPd)][0].min()
+                #ann_pd_min_max.loc[varPd]["max"] = ann_partDep[expl_var.index(varPd)][0].max()    
 
             # Save tables
             full_model_results["ANN information"] = ann_reg_inf

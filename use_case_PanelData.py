@@ -38,7 +38,7 @@ def app():
     st.runtime.legacy_caching.clear_cache()
 
     # Hide traceback in error messages (comment out for de-bugging)
-    sys.tracebacklimit = 0
+    sys.tracebacklimit = 10
 
     # Show altair tooltip when full screen
     st.markdown('<style>#vg-tooltip-element{z-index: 1000051}</style>',unsafe_allow_html=True)
@@ -1846,7 +1846,7 @@ def app():
                                             return
 
                                     # Define clustered cov matrix "entity", "time", "both"
-                                    cluster_entity = True
+                                    cluster_entity = False 
                                     cluster_time = False
                                     if PDM_cov_type == "clustered":
                                         if PDM_cov_type2 == "entity":
@@ -1864,7 +1864,7 @@ def app():
                                     Y_data = data[response_var]
                                     X_data1 = data[expl_var] # for efe, tfe, twfe
                                     X_data2 = sm.add_constant(data[expl_var]) # for re, pool
-
+                                    
                                     # Model validation
                                     if do_modval == "Yes":
 
@@ -1894,7 +1894,7 @@ def app():
                                         model_eval_sd = pd.DataFrame(index = ["% VE", "MSE", "RMSE", "MAE", "MaxErr", "EVRS", "SSR"], columns = ["Value"])
 
                                         # Collect all residuals in test runs
-                                        resdiuals_allruns = {}
+                                        residuals_allruns = {}
 
                                         for val in range(val_runs):
                                             
@@ -1921,11 +1921,11 @@ def app():
                                             # re
                                             if PDM_alg == "Random Effects":
                                                 panel_model_re_val = RandomEffects(Y_train, X_train)
-                                                panel_model_fit_re_val = panel_model_re_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True)
+                                                panel_model_fit_re_val = panel_model_re_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True)
                                             # pool
                                             if PDM_alg == "Pooled":
                                                 panel_model_pool_val = PooledOLS(Y_train, X_train)
-                                                panel_model_fit_pool_val = panel_model_pool_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True)                   
+                                                panel_model_fit_pool_val = panel_model_pool_val.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True)                   
                                             # save selected model
                                             if PDM_alg == "Entity Fixed Effects":
                                                 panel_model_fit_val = panel_model_fit_efe_val
@@ -1948,7 +1948,7 @@ def app():
                                             if PDM_alg == "Entity Fixed Effects":
                                                 X_train_mlr = pd.concat([X_train.reset_index(drop = True), pd.get_dummies(X_train.reset_index()[entity])], axis = 1)
                                                 Y_train_mlr = Y_train.reset_index(drop = True)
-                                                model_mlr_val = sm.OLS(Y_train_mlr, X_train_mlr)
+                                                model_mlr_val = sm.OLS(Y_train_mlr, X_train_mlr.astype(float))
                                                 model_mlr_fit_val = model_mlr_val.fit()
                                                 for e in ent_effects.index:
                                                     ent_effects.loc[e]["Value"] = model_mlr_fit_val.params[e]
@@ -1957,7 +1957,7 @@ def app():
                                             if PDM_alg == "Time Fixed Effects":
                                                 X_train_mlr = pd.concat([X_train.reset_index(drop = True), pd.get_dummies(X_train.reset_index()[time])], axis = 1)
                                                 Y_train_mlr = Y_train.reset_index(drop = True)
-                                                model_mlr_val = sm.OLS(Y_train_mlr, X_train_mlr)
+                                                model_mlr_val = sm.OLS(Y_train_mlr, X_train_mlr.astype(float))
                                                 model_mlr_fit_val = model_mlr_val.fit()
                                                 for e in ent_effects.index:
                                                     ent_effects.loc[e]["Value"] = 0
@@ -1966,7 +1966,7 @@ def app():
                                             if PDM_alg == "Two-ways Fixed Effects":
                                                 X_train_mlr = pd.concat([X_train.reset_index(drop = True), pd.get_dummies(X_train.reset_index()[entity]), pd.get_dummies(X_train.reset_index()[time])], axis = 1)
                                                 Y_train_mlr = Y_train.reset_index(drop = True)
-                                                model_mlr_val = sm.OLS(Y_train_mlr, X_train_mlr)
+                                                model_mlr_val = sm.OLS(Y_train_mlr, X_train_mlr.astype(float))
                                                 model_mlr_fit_val = model_mlr_val.fit()
                                                 for e in ent_effects.index:
                                                     ent_effects.loc[e]["Value"] = model_mlr_fit_val.params[e]
@@ -2034,7 +2034,7 @@ def app():
 
                                             # Save residual values for test data 
                                             res = Y_test-Y_test_pred
-                                            resdiuals_allruns[val] = res
+                                            residuals_allruns[val] = res
 
                                             progress1 += 1
                                             my_bar.progress(progress1/(val_runs))
@@ -2058,8 +2058,8 @@ def app():
                                         model_eval_sd.loc["SSR"]["Value"] = model_eval_ssr["Value"].std()
                                         # Residuals 
                                         residuals_collection = pd.DataFrame()
-                                        for x in resdiuals_allruns: 
-                                            residuals_collection = residuals_collection.append(pd.DataFrame(resdiuals_allruns[x]), ignore_index = True)
+                                        for x in residuals_allruns: 
+                                            residuals_collection = residuals_collection = pd.concat([residuals_collection, pd.DataFrame(residuals_allruns[x])], ignore_index=True)
                                         residuals_collection.columns = [response_var]
                                     
                                         # Collect validation results
@@ -2074,33 +2074,38 @@ def app():
                                     st.info("Full model progress")
                                     my_bar_fm = st.progress(0.0)
                                     progress2 = 0
-                                    # efe
-                                    panel_model_efe = PanelOLS(Y_data, X_data1, entity_effects = True, time_effects = False)
-                                    panel_model_fit_efe = panel_model_efe.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
-                                    # tfe
-                                    panel_model_tfe = PanelOLS(Y_data, X_data1, entity_effects = False, time_effects = True)
-                                    panel_model_fit_tfe = panel_model_tfe.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
-                                    # twfe
-                                    panel_model_twfe = PanelOLS(Y_data, X_data1, entity_effects = True, time_effects = True)
-                                    panel_model_fit_twfe = panel_model_twfe.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
+                                    
+                                    #29.11 models shifted down                                
                                     # re
                                     panel_model_re = RandomEffects(Y_data, X_data2)
-                                    panel_model_fit_re = panel_model_re.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True)
-                                    # pool
-                                    panel_model_pool = PooledOLS(Y_data, X_data2)
-                                    panel_model_fit_pool = panel_model_pool.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True)                   
+                                    panel_model_fit_re = panel_model_re.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True)
+                                    
+                                    
                                     # save selected model
                                     if PDM_alg == "Entity Fixed Effects":
+                                        # efe
+                                        panel_model_efe = PanelOLS(Y_data, X_data1, entity_effects = True, time_effects = False)
+                                        panel_model_fit_efe = panel_model_efe.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
                                         panel_model_fit = panel_model_fit_efe
                                     if PDM_alg == "Time Fixed Effects":
+                                        # tfe
+                                        panel_model_tfe = PanelOLS(Y_data, X_data1, entity_effects = False, time_effects = True)
+                                        panel_model_fit_tfe = panel_model_tfe.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
                                         panel_model_fit = panel_model_fit_tfe
                                     if PDM_alg == "Two-ways Fixed Effects":
+                                        # twfe
+                                        panel_model_twfe = PanelOLS(Y_data, X_data1, entity_effects = True, time_effects = True)
+                                        panel_model_fit_twfe = panel_model_twfe.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True, auto_df = True) 
                                         panel_model_fit = panel_model_fit_twfe
                                     if PDM_alg == "Random Effects":
+                                        
                                         panel_model_fit = panel_model_fit_re
                                     if PDM_alg == "Pooled":
+                                        # pool
+                                        panel_model_pool = PooledOLS(Y_data, X_data2)
+                                        panel_model_fit_pool = panel_model_pool.fit(cov_type = PDM_cov_type, cluster_entity = cluster_entity, cluster_time = cluster_time, debiased = True)                   
                                         panel_model_fit = panel_model_fit_pool
-                                        
+                                    
                                     # Entity information
                                     ent_inf = pd.DataFrame(index = ["No. entities", "Avg observations", "Median observations", "Min observations", "Max observations"], columns = ["Value"])
                                     ent_inf.loc["No. entities"] = panel_model_fit.entity_info["total"]
@@ -2208,7 +2213,7 @@ def app():
 
                                     if PDM_alg == "Entity Fixed Effects":
                                         X_data_mlr = pd.concat([X_data_mlr, pd.get_dummies(df[entity])], axis = 1)
-                                        model_mlr = sm.OLS(Y_data_mlr, X_data_mlr)
+                                        model_mlr = sm.OLS(Y_data_mlr, X_data_mlr.astype(float)) 
                                         model_mlr_fit = model_mlr.fit()
                                         for e in reg_ent_effects.index:
                                             reg_ent_effects.loc[e]["Value"] = model_mlr_fit.params[e]
@@ -2216,7 +2221,7 @@ def app():
                                             reg_time_effects.loc[t]["Value"] = 0
                                     if PDM_alg == "Time Fixed Effects":
                                         X_data_mlr = pd.concat([X_data_mlr, pd.get_dummies(df[time])], axis = 1)
-                                        model_mlr = sm.OLS(Y_data_mlr, X_data_mlr)
+                                        model_mlr = sm.OLS(Y_data_mlr, X_data_mlr.astype(float))
                                         model_mlr_fit = model_mlr.fit()
                                         for e in reg_ent_effects.index:
                                             reg_ent_effects.loc[e]["Value"] = 0
@@ -2224,7 +2229,7 @@ def app():
                                             reg_time_effects.loc[t]["Value"] = model_mlr_fit.params[t]
                                     if PDM_alg == "Two-ways Fixed Effects":
                                         X_data_mlr = pd.concat([X_data_mlr, pd.get_dummies(df[entity]), pd.get_dummies(df[time])], axis = 1)
-                                        model_mlr = sm.OLS(Y_data_mlr, X_data_mlr)
+                                        model_mlr = sm.OLS(Y_data_mlr, X_data_mlr.astype(float))
                                         model_mlr_fit = model_mlr.fit()
                                         for e in reg_ent_effects.index:
                                             reg_ent_effects.loc[e]["Value"] = model_mlr_fit.params[e]

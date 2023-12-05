@@ -3526,8 +3526,8 @@ def app():
                             fm_rf_figs3_col1, fm_rf_figs3_col2 = st.columns(2)
                             for pd_var in expl_var:
                                 pd_data_rf = pd.DataFrame(columns = [pd_var])
-                                pd_data_rf[pd_var] = model_full_results["RF partial dependence"][pd_var][1][0]
-                                pd_data_rf["Partial dependence"] = model_full_results["RF partial dependence"][pd_var][0][0]
+                                pd_data_rf[pd_var] = model_full_results["RF partial dependence"][pd_var]["values"][0]
+                                pd_data_rf["Partial dependence"] = model_full_results["RF partial dependence"][pd_var]["average"][0]
                                 pd_chart_rf = alt.Chart(pd_data_rf, height = 200).mark_line(color = "darkred").encode(
                                     x = alt.X(pd_var, axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                     y = alt.Y("Partial dependence", title = "partial dependence", scale = alt.Scale(domain = [model_full_results["RF partial dependence min/max"]["min"].min(), model_full_results["RF partial dependence min/max"]["max"].max()]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
@@ -3687,8 +3687,8 @@ def app():
                             fm_brt_figs3_col1, fm_brt_figs3_col2 = st.columns(2)
                             for pd_var in expl_var:
                                 pd_data_brt = pd.DataFrame(columns = [pd_var])
-                                pd_data_brt[pd_var] = model_full_results["BRT partial dependence"][pd_var][1][0]
-                                pd_data_brt["Partial dependence"] = model_full_results["BRT partial dependence"][pd_var][0][0]
+                                pd_data_brt[pd_var] = model_full_results["BRT partial dependence"][pd_var]["values"][0]
+                                pd_data_brt["Partial dependence"] = model_full_results["BRT partial dependence"][pd_var]["average"][0]
                                 pd_chart_brt = alt.Chart(pd_data_brt, height = 200).mark_line(color = "darkred").encode(
                                 x = alt.X(pd_var, axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                 y = alt.Y("Partial dependence", title = "partial dependence", scale = alt.Scale(domain = [model_full_results["BRT partial dependence min/max"]["min"].min(), model_full_results["BRT partial dependence min/max"]["max"].max()]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
@@ -3931,8 +3931,8 @@ def app():
                             fm_ann_figs2_col1, fm_ann_figs2_col2 = st.columns(2)
                             for pd_var in expl_var:
                                 pd_data_ann = pd.DataFrame(columns = [pd_var])
-                                pd_data_ann[pd_var] = (model_full_results["ANN partial dependence"][pd_var][1][0]*(df[pd_var].std()))+df[pd_var].mean()
-                                pd_data_ann["Partial dependence"] = model_full_results["ANN partial dependence"][pd_var][0][0]
+                                pd_data_ann[pd_var] = (model_full_results["ANN partial dependence"][pd_var]["values"][0]*(df[pd_var].std()))+df[pd_var].mean()
+                                pd_data_ann["Partial dependence"] = model_full_results["ANN partial dependence"][pd_var]["average"][0]
                                 pd_chart_ann = alt.Chart(pd_data_ann, height = 200).mark_line(color = "darkred").encode(
                                 x = alt.X(pd_var, axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
                                 y = alt.Y("Partial dependence", title = "partial dependence", scale = alt.Scale(domain = [model_full_results["ANN partial dependence min/max"]["min"].min(), model_full_results["ANN partial dependence min/max"]["max"].max()]), axis = alt.Axis(titleFontSize = 12, labelFontSize = 11)),
@@ -5591,7 +5591,7 @@ def app():
                             # if sett_hints:
                             #     st.info(str(fc.learning_hints("mod_md_RF_partDep_bin")))
                             # Confusion matrix
-                            st.write("Confusion matrix (rows correspond to predictions):")
+                            st.write("Confusion matrix (columns correspond to predictions):")
                             st.table(model_full_results["RF confusion"])
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_RF_confu_mult"))) 
@@ -5807,7 +5807,7 @@ def app():
                             # if sett_hints:
                             #     st.info(str(fc.learning_hints("mod_md_ANN_partDep_bin")))
                             # Confusion matrix
-                            st.write("Confusion matrix (rows correspond to predictions):")
+                            st.write("Confusion matrix (columns correspond to predictions):")
                             st.table(model_full_results["ANN confusion"])
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_ANN_confu_mult"))) 

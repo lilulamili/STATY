@@ -10,11 +10,11 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import functions as fc
 import os
-import PyPDF2
+from pypdf import PdfReader 
 import requests
 import streamlit.components.v1 as components
 import yfinance as yf
-import datetime
+import datetime as dt
 from wordcloud import WordCloud
 import bs4
 from bs4 import BeautifulSoup
@@ -32,6 +32,8 @@ nltk.download('vader_lexicon')
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from sentence_transformers import SentenceTransformer
 from streamlit_js_eval import streamlit_js_eval
+
+
 #----------------------------------------------------------------------------------------------
 
 def app():
@@ -116,24 +118,27 @@ def app():
     basic_text="Let STATY do text/web processing for you and start exploring your data stories right below... "
     
     st.header('**Web scraping and text data**')
-    tw_meth = ['Text analysis',
-                'Text summarization',                  
-                'Wikipedia-based search',
-                'PLOS ONE paper access and summarization',
-                'Stock data access via yfinance'] #  'Yahoo Finance data analysis','Stock data analysis']
+    tw_options = {'Text Analysis':'Text Data',
+                'Text Summarization':'Text Summarization',                  
+                'Wikipedia-based Question Answering':'Wikipedia-based Question Answering',
+                'PLOS ONE Paper Summarizer':'PLOS ONE Paper Summarizer',
+                'Yfinance Stock Data Explorer':'Yfinance Stock Data Explorer',
+                'Tweet Data Explorer':'Tweet Data Explorer'}
+    tw_meth=list(tw_options.keys())          
+    
     tw_classifier = st.selectbox('What analysis would you like to perform?', list('-')+tw_meth, on_change=cc)
     data_read_check=None
 
     if tw_classifier in tw_meth:
         st.markdown("")
         st.markdown("")
-        st.header('**'+tw_classifier+'**')
+        st.header('**'+tw_options[tw_classifier]+'**')
         st.markdown(basic_text)
 
     #------------------------------------------------------------
     # Wiki-based search
     # -----------------------------------------------------------        
-    if tw_classifier=='Wikipedia-based search': 
+    if tw_classifier=='Wikipedia-based Question Answering': 
         
         # Clear cache
         st.runtime.legacy_caching.clear_cache()      
@@ -150,6 +155,7 @@ def app():
             lang_var=None    
         
         
+        st.write("")
         st.write("")
         run_models = st.button("Press to start data processing...")    
         if run_models:    
@@ -183,18 +189,16 @@ def app():
     
     
     #------------------------------------------------------------
-    # Text summarization
+    # Text Summarization
     # -----------------------------------------------------------  
-    if tw_classifier=='Text summarization': 
+    if tw_classifier=='Text Summarization': 
                    
         # Clear cache
         #st.runtime.legacy_caching.clear_cache()
-        if fc.is_localhost(): 
-            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-            t5_model = AutoModelForSeq2SeqLM.from_pretrained('t5-base')
-            t5_tokenizer = AutoTokenizer.from_pretrained('t5-base')  
+       
         run_text_OK = False
 
+                
         #specify data source        
         text_source=st.radio('Select data source for text analysis',['text input','PDF or Word document'],index=1)  
 
@@ -208,17 +212,16 @@ def app():
         elif text_source=="PDF or Word document":           
             #upload a document
             uploaded_file = st.file_uploader("Upload your document ", type=["pdf","docx", "doc"])
-            if uploaded_file==None:
-                st.info("Default file is a pdf of a Wikipedia article on data science (English)")    
-            
-            if uploaded_file is None:
-                pdf_reader = PyPDF2.PdfReader("default data/Data_science.pdf")
+             
+            if uploaded_file is None:  
+                st.info("Default file is a pdf of a Wikipedia article on data science (English)")                             
+                pdf_reader = PdfReader("default data/Data_science.pdf")
                 user_text=fc.pdf_read(pdf_reader)
                 run_text_OK = True                
             else:
                 #read pdf or a Word document
                 (run_text_OK,user_text)=fc.read_pdf_word(uploaded_file) 
-       
+                
         
         # Summarization settings and processing  
         if run_text_OK == True: 
@@ -226,10 +229,21 @@ def app():
             # check the number of sentences in the text:
             no_sentences=len(nltk.sent_tokenize(user_text))
 
-            #specify methods for extractive summarization      
-            extr_methods = st.multiselect("Extractive summarization methods ", ["Luhn",  "Edmunson", "LSA",  "LexRank", "TextRank", "SumBasic","KL-Sum"], ["LSA","SumBasic"], on_change=tx_sum_change)
-            extr_length=st.number_input('Specify the extractive summary length (no. sentences in the summary)',min_value=1, max_value=no_sentences,value=min(5,no_sentences))
+            #specify methods for extractive summarization  
+            st.write("")
+            st.subheader('**Extractive summarization**') 
+            a4, a5 = st.columns(2)
+            with a4:   
+                extr_methods = st.multiselect("Select summarization methods ", ["Luhn",  "Edmunson", "LSA",  "LexRank", "TextRank", "SumBasic","KL-Sum"], ["LSA","SumBasic"], on_change=tx_sum_change)
+            with a5:
+                extr_length=st.number_input('Specify summary length (no. sentences in the summary)',min_value=1, max_value=no_sentences,value=min(5,no_sentences))
             
+            if fc.is_localhost(): 
+                st.write("")
+                st.subheader('**Abstractive summarization**')  
+                ab_sumar= st.checkbox('Use abstractive summarization', value = False)    
+                
+
             #detect language           
             user_language=detect(user_text)
 
@@ -238,103 +252,112 @@ def app():
               
             else: 
                 st.write("")
+                st.write("")
                 run_text_summary = st.button("Press to start text summarization...")
                 
-                if run_text_summary:  
-                    sum_bar = st.progress(0.0)
-                    progress = 0
-                    progress_len=len(extr_methods)+2
+                if run_text_summary: 
+                    if len(extr_methods)==0 and ab_sumar==False:
+                        st.error("You need to select at least one summarization method")
+                    else:
+                        sum_bar = st.progress(0.0)
+                        progress = 0
+                        progress_len=len(extr_methods)+2
 
 
-                    #Abstractive summary T5-base
-                    progress += 1 # mask the slow process
-                    sum_bar.progress(progress/progress_len)
-                    if fc.is_localhost(): 
-                        t5_summary=fc.t5_summary(user_text,t5_model,t5_tokenizer) 
-                        st.subheader("Abstractive summarization")                 
-                        T5_output = st.expander("T5-base", expanded = False)
-                        with T5_output:
-                            st.write("**Abstractive summarization using Google's [T5](https://huggingface.co/t5-base)**")
-                            st.write(t5_summary)
-                    
-                    progress += 1
-                    sum_bar.progress(progress/progress_len)
-
-                    #Extractive Summary
-                    st.subheader("Extractive summarization")    
-                    if "LSA" in extr_methods:
-                        summy_summary=fc.sumy_summary(user_text,"LSA", extr_length,user_language)
-                        progress += 1
+                        #Abstractive summary T5-base
+                        progress += 1 # mask the slow process
                         sum_bar.progress(progress/progress_len)
-                        LSA_output = st.expander("LSA", expanded = False)
-                        with LSA_output:
-                             #provide the output
-                            st.write("**Extractive summarization using LSA within [sumy](https://pypi.org/project/sumy/)**")
-                            st.write(summy_summary)
+                        #if fc.is_localhost(): 
+                        if ab_sumar:    
+                            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+                            t5_model = AutoModelForSeq2SeqLM.from_pretrained('t5-base')
+                            t5_tokenizer = AutoTokenizer.from_pretrained('t5-base') 
+                            t5_summary=fc.t5_summary(user_text,t5_model,t5_tokenizer) 
+                            st.subheader("Abstractive summarization")                 
+                            T5_output = st.expander("T5-base", expanded = False)
+                            with T5_output:
+                                st.write("**Abstractive summarization using Google's [T5](https://huggingface.co/t5-base)**")
+                                st.write(t5_summary)
                         
-                    if "LexRank" in extr_methods:
-                        summy_summary=fc.sumy_summary(user_text,"LexRank", extr_length,user_language)
                         progress += 1
                         sum_bar.progress(progress/progress_len)
-                        LexRank_output = st.expander("LexRank", expanded = False)
-                        with LexRank_output:
-                             #provide the output
-                            st.write("**Extractive summarization using LexRank within [sumy](https://pypi.org/project/sumy/)**")
-                            st.write(summy_summary)
 
-                    if "Edmunson" in extr_methods:
-                        summy_summary=fc.sumy_summary(user_text,"Edmunson", extr_length,user_language)
-                        progress += 1
-                        sum_bar.progress(progress/progress_len)
-                        Edmunson_output = st.expander("Edmunson", expanded = False)
-                        with Edmunson_output:
-                            #provide the output
-                            st.write("**Extractive summarization using Edmunson within [sumy](https://pypi.org/project/sumy/)**")
-                            st.write(summy_summary)
-                    if "Luhn" in extr_methods:
-                        summy_summary=fc.sumy_summary(user_text,"Luhn", extr_length,user_language)
-                        progress += 1
-                        sum_bar.progress(progress/progress_len)
-                        Luhn_output = st.expander("Luhn", expanded = False)
-                        with Luhn_output:
-                            #provide the output
-                            st.write("**Extractive summarization using Luhn within [sumy](https://pypi.org/project/sumy/)**")
-                            st.write(summy_summary)   
-                    if "TextRank" in extr_methods:
-                        summy_summary=fc.sumy_summary(user_text,"TextRank", extr_length,user_language)
-                        progress += 1
-                        sum_bar.progress(progress/progress_len)
-                        TextRank_output = st.expander("TextRank", expanded = False)
-                        with TextRank_output:
-                            #provide the output
-                            st.write("**Extractive summarization using TextRank within [sumy](https://pypi.org/project/sumy/)**")
-                            st.write(summy_summary)
-                    if "SumBasic" in extr_methods:
-                        summy_summary=fc.sumy_summary(user_text,"SumBasic", extr_length,user_language)
-                        progress += 1
-                        sum_bar.progress(progress/progress_len)
-                        SumBasic_output = st.expander("SumBasic", expanded = False)
-                        with SumBasic_output:
-                             #provide the output
-                            st.write("**Extractive summarization using SumBasic within [sumy](https://pypi.org/project/sumy/)**")
-                            st.write(summy_summary) 
-                    if "KL-Sum" in extr_methods:
-                        summy_summary=fc.sumy_summary(user_text,"KL-Sum", extr_length,user_language)
-                        progress += 1
-                        sum_bar.progress(progress/progress_len)
-                        KLSum_output = st.expander("KL-Sum", expanded = False)
-                        with KLSum_output:
-                            #provide the output
-                            st.write("**Extractive summarization using KL-Sum within [sumy](https://pypi.org/project/sumy/)**")
-                            st.write(summy_summary)
+                        #Extractive Summary
+                        if len(extr_methods)>0: 
+                            st.subheader("Extractive summarization")    
+                            if "LSA" in extr_methods:
+                                summy_summary=fc.sumy_summary(user_text,"LSA", extr_length,user_language)
+                                progress += 1
+                                sum_bar.progress(progress/progress_len)
+                                LSA_output = st.expander("LSA", expanded = False)
+                                with LSA_output:
+                                    #provide the output
+                                    st.write("**Extractive summarization using LSA within [sumy](https://pypi.org/project/sumy/)**")
+                                    st.write(summy_summary)
+                                
+                            if "LexRank" in extr_methods:
+                                summy_summary=fc.sumy_summary(user_text,"LexRank", extr_length,user_language)
+                                progress += 1
+                                sum_bar.progress(progress/progress_len)
+                                LexRank_output = st.expander("LexRank", expanded = False)
+                                with LexRank_output:
+                                    #provide the output
+                                    st.write("**Extractive summarization using LexRank within [sumy](https://pypi.org/project/sumy/)**")
+                                    st.write(summy_summary)
+
+                            if "Edmunson" in extr_methods:
+                                summy_summary=fc.sumy_summary(user_text,"Edmunson", extr_length,user_language)
+                                progress += 1
+                                sum_bar.progress(progress/progress_len)
+                                Edmunson_output = st.expander("Edmunson", expanded = False)
+                                with Edmunson_output:
+                                    #provide the output
+                                    st.write("**Extractive summarization using Edmunson within [sumy](https://pypi.org/project/sumy/)**")
+                                    st.write(summy_summary)
+                            if "Luhn" in extr_methods:
+                                summy_summary=fc.sumy_summary(user_text,"Luhn", extr_length,user_language)
+                                progress += 1
+                                sum_bar.progress(progress/progress_len)
+                                Luhn_output = st.expander("Luhn", expanded = False)
+                                with Luhn_output:
+                                    #provide the output
+                                    st.write("**Extractive summarization using Luhn within [sumy](https://pypi.org/project/sumy/)**")
+                                    st.write(summy_summary)   
+                            if "TextRank" in extr_methods:
+                                summy_summary=fc.sumy_summary(user_text,"TextRank", extr_length,user_language)
+                                progress += 1
+                                sum_bar.progress(progress/progress_len)
+                                TextRank_output = st.expander("TextRank", expanded = False)
+                                with TextRank_output:
+                                    #provide the output
+                                    st.write("**Extractive summarization using TextRank within [sumy](https://pypi.org/project/sumy/)**")
+                                    st.write(summy_summary)
+                            if "SumBasic" in extr_methods:
+                                summy_summary=fc.sumy_summary(user_text,"SumBasic", extr_length,user_language)
+                                progress += 1
+                                sum_bar.progress(progress/progress_len)
+                                SumBasic_output = st.expander("SumBasic", expanded = False)
+                                with SumBasic_output:
+                                    #provide the output
+                                    st.write("**Extractive summarization using SumBasic within [sumy](https://pypi.org/project/sumy/)**")
+                                    st.write(summy_summary) 
+                            if "KL-Sum" in extr_methods:
+                                summy_summary=fc.sumy_summary(user_text,"KL-Sum", extr_length,user_language)
+                                progress += 1
+                                sum_bar.progress(progress/progress_len)
+                                KLSum_output = st.expander("KL-Sum", expanded = False)
+                                with KLSum_output:
+                                    #provide the output
+                                    st.write("**Extractive summarization using KL-Sum within [sumy](https://pypi.org/project/sumy/)**")
+                                    st.write(summy_summary)
 
 
-                    
-                    st.success('Text summarization completed!')
+                        
+                        st.success('Text summarization completed!')
     #---------------------------------------------
     #  PLOS ONE paper access and summarization
     #---------------------------------------------  
-    if tw_classifier=='PLOS ONE paper access and summarization':             
+    if tw_classifier=='PLOS ONE Paper Summarizer':             
         # Clear cache
         st.runtime.legacy_caching.clear_cache() 
         if fc.is_localhost(): 
@@ -347,6 +370,7 @@ def app():
         
         st.text("")
         if paper_url !='':
+            st.write("")
             run_paper_summary = st.button("Press to start text processing...")
                    
         if run_paper_summary:
@@ -404,7 +428,7 @@ def app():
 # ----------------------------------------------------------------
 # Text Mining
 #-----------------------------------------------------------------
-    if tw_classifier=='Text analysis':
+    if tw_classifier=='Text Analysis':
 
         # Clear cache
         #st.runtime.legacy_caching.clear_cache()
@@ -433,16 +457,16 @@ def app():
         elif word_sl=="PDF or Word document":           
             #upload a document
             uploaded_file = st.file_uploader("Upload your document ", type=["pdf","docx", "doc"])
-            if uploaded_file==None:
-                st.info("Default file is a pdf of a Wikipedia article on data science (English)")    
             
             if uploaded_file is None:
-                pdf_reader = PyPDF2.PdfReader("default data/Data_science.pdf")
+                st.info("Default file is a pdf of a Wikipedia article on data science (English)")    
+                pdf_reader = PdfReader("default data/Data_science.pdf")
                 user_text=fc.pdf_read(pdf_reader)
                 run_text_OK = True                
             else:
                 #read pdf or a Word document
                 (run_text_OK,user_text)=fc.read_pdf_word(uploaded_file) 
+                
 
         elif word_sl=='web page':
             user_path_wp = st.text_input("What web page should I analyse?","https://en.wikipedia.org/wiki/Data_mining")
@@ -467,7 +491,7 @@ def app():
         
         # text processing
         if run_text_OK == True: 
-
+            st.subheader("**Text processing**")
             #detect language           
             user_language=detect(user_text)
            
@@ -475,8 +499,7 @@ def app():
             text_cv_fit=text_cv.fit_transform([user_text])
             wordcount= pd.DataFrame(text_cv_fit.toarray().sum(axis=0), index=text_cv.get_feature_names(),columns=["Word count"])
             word_sorted=wordcount.sort_values(by=["Word count"], ascending=False)
-                                         
-            st.write("")
+           
             text_prep_options=['lowercase',
                                 'remove whitespaces',
                                 'remove abbreviations',
@@ -528,7 +551,8 @@ def app():
                     word_stopwords=fc.get_stop_words(user_stopwords)
                                         
                 st.write("")
-
+            st.write("")
+            st.subheader("**Text analysis**")
             a4,a5=st.columns(2)
             with a4:
                 # user specification of words to search
@@ -564,8 +588,8 @@ def app():
             
             st.write("")
             st.write("")
-            run_text = st.button("Press to start text processing...")
-                
+            run_text = st.button("Press to start text analysis...")
+            st.write("")   
 
             if run_text:
                 st.write("")
@@ -883,7 +907,7 @@ def app():
     #---------------------------------------------               
     # Stock data access via yfinance
     #---------------------------------------------    
-    if tw_classifier =='Stock data access via yfinance':  
+    if tw_classifier =='Yfinance Stock Data Explorer':  
 
         # Clear cache
         #st.runtime.legacy_caching.clear_cache()
@@ -918,8 +942,8 @@ def app():
             symbols_all=list('-')+symbols_all
             second_stock = st.selectbox('You can add an additional stock for comparision...',symbols_all, on_change=in_wid_change)
         with a4:
-            today = datetime.date.today()
-            last_year = today - datetime.timedelta(days=365)
+            today = dt.date.today()
+            last_year = today - dt.timedelta(days=365)
             start_date = st.date_input('Select start date', last_year, on_change=in_wid_change)
             end_date = st.date_input('Select end date', today, on_change=in_wid_change)
             if start_date > end_date:
@@ -1057,6 +1081,318 @@ def app():
      
 
 
+    #---------------------------------------------               
+    # Tweet Data Analysis
+    #---------------------------------------------      
+    if tw_classifier =='Tweet Data Explorer':
+
+        st.write("The Tweet Data Explorer is based on: Pournaki, A., Gaisbauer, F., Banisch, S., & Olbrich, E. (2021). The Twitter Explorer: A Framework for Observing Twitter through Interactive Networks. Journal of Digital Social Research, 3(1), 106–118. https://doi.org/10.33621/jdsr.v3i1.64.")
+        st.markdown("The Twitter Explorer is available as an open beta on [GitHub](https://github.com/pournaki/twitter-explorer) under the GNU GPL V3 license. For more information about the Twitter Explorer see https://twitterexplorer.org/ ")
+        from twitterexplorer.helpers import load_data, string_to_list, date_to_datetime, get_edgelist,read_apikeys,get_lang_full,get_time_range,get_mentioned_names,get_hashtags
+        from twitterexplorer.legacy import renamedict,replace_comma, convert_to_twitwi
+        from twitterexplorer.streamlitutils import ui_changes,file_selector
+        from twitterexplorer.plotting import find_out_tweet_type, tweetdf_to_timeseries,plot_timeseries,plot_tweetlanguages
+        from twitterexplorer.constants import cols_to_load, twitwi_schema
+        from twitterexplorer.__version__ import __version__
+        from twitterexplorer.networks import InteractionNetwork
+        from twitterexplorer.networks import SemanticNetwork
+        import json
+        import igraph as ig
+        from itertools import combinations
+        import louvain as louvain_method
+        
+        st.write("")
+        text_source = st.radio("Select tweets for analysis", ["Use example dataset", "Upload data"], index=0)
+        data_available = False
+        uploaded_file = None
+                 
+        #@st.cache_data
+        if text_source == "Use example dataset":
+           
+            #twitter_objects = load_data('default data/#COP27_FR.csv')                     
+            twitter_objects=pd.read_csv('default data/TweetFake.csv', dtype=twitwi_schema,usecols=cols_to_load,low_memory=False)               
+            #twitter_objects.to_csv('C:/user/dada/Programs/python/devop/staty_tt/default data/trash.csv', index=True,lineterminator='\n')
+            #st.write(twitter_objects.columns)
+
+            data_available = True
+
+        elif text_source == "Upload data":
+            uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+            st.info(
+                """
+                **Important:** Ensure your dataset includes the following columns (case-sensitive): 
+                `'timestamp_utc'`, `'user_screen_name'`, `'lang'`, `'to_username'`, `'to_userid'`, `'to_tweetid'`, 
+                `'user_id'`, `'user_name'`, `'user_followers'`, `'user_friends'`, `'retweeted_id'`, `'retweeted_user'`, 
+                `'retweeted_user_id'`, `'quoted_id'`, `'quoted_user'`, `'quoted_user_id'`, `'hashtags'`, 
+                `'mentioned_names'`, `'mentioned_ids'`, and `'collected_via'`.
+                """
+            )
+            if uploaded_file:                
+                twitter_objects = load_data(uploaded_file) 
+                
+                data_available = True
+                st.write("data read")
+        # -------------------------------------------------------------------
+
+        if data_available:
+            st.write("---")
+            st.header("**Data screening and processing**")
+            
+            langselector_iso = None
+                        
+            st.write("") 
+            
+            with st.expander("""Explore raw data info""", expanded=False):
+                st.write("")
+                if text_source == "Use example dataset":
+                    if st.checkbox("Show data description", value = False):          
+                        st.markdown("""
+                            All tweets in this dataset are generic, and any name overlap with existing user names is purely coincidental.
+                            """)
+                        st.write("")
+                
+                show_twitter_data=st.checkbox("Show raw twitter data",value=False)
+                if show_twitter_data:
+                    #st.warning("Due to a large data volume, only a part of the data will be shown")
+                    st.write(twitter_objects[['id','text','timestamp_utc', 'lang','hashtags','mentioned_names']])
+                    st.write("")
+
+                twitter_data_info=st.checkbox("Show basic data info",value=False)
+                if twitter_data_info:
+                    dataset_meta_dict = {
+                    'Language': get_lang_full(twitter_objects['lang'].value_counts().index[0]),
+                    'Time Range': get_time_range(twitter_objects['timestamp_utc']),
+                    'No. Unique Users': len(twitter_objects['user_id'].unique()),
+                    'No. Tweets': len(twitter_objects),
+                    'No. Retweets': len(twitter_objects['retweeted_user'].dropna()),
+                    'No. Replies': len(twitter_objects['to_username'].dropna()),
+                    'No. Quotes': len(twitter_objects['quoted_user'].dropna()),
+                    'No. Mentioned Names': len(get_mentioned_names(twitter_objects['mentioned_names'])),
+                    'No. Unique Mentioned Names': len((get_mentioned_names(twitter_objects['mentioned_names']).unique())),
+                    'No. Unique Hashtags': len(get_hashtags(twitter_objects['hashtags']).unique()),
+                    }
+                    dataset_meta_df = pd.DataFrame(pd.Series(dataset_meta_dict), columns=['Value'])
+                    st.write(dataset_meta_df)
+                    st.write("")
+               
+                twitter_activity_info=st.checkbox("Show activity per user",value=False)    
+                if twitter_activity_info:
+                    most_active_users = twitter_objects['user_screen_name'].value_counts().reset_index()
+                    most_active_users.index = range(1, len(most_active_users) + 1)
+                    most_active_users.columns = ['User Name', 'No. of Tweets']
+                    st.dataframe(most_active_users, height=256)
+                st.write("")
+
+            with st.expander("""Specify data processing preferences""", expanded=False):
+
+                # custom time range    
+                st.write("Specify custom timerange")                
+                timestamp_utc=twitter_objects['timestamp_utc']
+                min_timestamp = timestamp_utc.min()
+                max_timestamp = timestamp_utc.max()
+                ts0 = min_timestamp
+                ts1 = max_timestamp
+
+                tt_data_start = pd.to_datetime(min_timestamp, unit='s').date()
+                tt_data_end = pd.to_datetime(max_timestamp, unit='s').date() 
+    
+                a4, a5 = st.columns(2)
+                with a4:                          
+                    start_date = st.date_input('Select start date', value=tt_data_start,min_value=tt_data_start,max_value=tt_data_end,on_change=in_wid_change)
+                with a5:
+                    end_date = st.date_input('Select end date', value=tt_data_end,min_value=tt_data_start,max_value=tt_data_end,on_change=in_wid_change)
+            
+                if start_date > end_date:
+                    st.error('ERROR: End date must fall after start date.')     
+                else:
+                    ts0 = int(date_to_datetime(start_date).timestamp())
+                    ts1 = int(date_to_datetime(end_date).timestamp())
+                    ts1 += 86399 # to use the whole day
+                    twitter_objects = twitter_objects[(twitter_objects['timestamp_utc'] >= ts0) & (twitter_objects['timestamp_utc'] <= ts1)]
+
+                # custom language                
+                unique_lang=  twitter_objects['lang'].unique()
+                user_lan_sel=st.multiselect("Select languages",unique_lang)                             
+                if user_lan_sel:                    
+                    twitter_objects = twitter_objects[twitter_objects['lang'].isin(user_lan_sel)]
+                
+                #custom hashtags
+                unique_hashtags=twitter_objects['hashtags'].str.split('|').explode().unique()
+                user_hash_sel=st.multiselect("Select hashtagss",options=unique_hashtags)
+                if user_hash_sel:                             
+                    hashtag_filter=twitter_objects['hashtags'].str.split('|').apply(lambda x: any(hashtag in user_hash_sel for hashtag in x))
+                    twitter_objects=twitter_objects[hashtag_filter]
+                                 
+                # Display the filtered subset
+                #st.dataframe(twitter_objects)
+
+                                        
+            # -------------------------------------------------------------------
+
+            st.header("Generate Network") 
+            net_run=False   
+            with st.expander("Specify Network", expanded=False):
+                st.write("")
+                network_type=st.selectbox(label='Network type',options=['-','Interaction Network','Hashtag Network']) 
+                
+                if network_type=='Interaction Network':
+                    st.write()
+                    interaction_type = st.selectbox(label='Interaction type', options=['retweet','reply','quote','mention'])
+                    if interaction_type == 'retweet':
+                        st.warning("Directed network in which nodes are users. A link is drawn from `i` to `j` if `i` retweets `j`.")
+                    elif interaction_type == 'reply':
+                        st.warning("Directed network in which nodes are users. A link is drawn from `i` to `j` if `i` replies to `j`.")
+                    elif interaction_type == 'quote':
+                        st.warning("Directed network in which nodes are users. A link is drawn from `i` to `j` if `i` quotes `j`.")
+                    elif interaction_type == 'mention':
+                        st.warning("Directed network in which nodes are users. A link is drawn from `i` to `j` if `i` mentions `j`.")
+                    
+                    st.markdown('**Aggregation method**', help='Specify which users should be removed from the dataset')
+                                    
+                    aggregationmethod=st.selectbox('Aggregation method', ['-',"soft", "hard"])
+
+                    hard_aggregation_threshold = 0
+                    if aggregationmethod=='hard':
+                        st.warning("Hard aggregation will remove users who have received fewer interactions (like retweets, replies, quotes, or mentions) than a set limit.")
+                        thresh_rtn = st.slider("Hard aggregation threshold", 0, 20, 1, 1, key='thresh_rtn')
+                        hard_aggregation_threshold += thresh_rtn
+                    elif aggregationmethod=='soft':
+                        st.warning("Soft aggregation will remove users who haven't received any interactions (like retweets, replies, quotes, or mentions) and have only interacted with one other user.")
+                    else:
+                        aggregationmethod = None
+                    
+                                    
+                    st.markdown('**Community detection**', help='Community detection algorithms are used to identify strongly connected clusters within a network')
+                    col3_in, col4_in = st.columns(2)
+                    rtn_louvain = col3_in.checkbox("Louvain", key='rtn_louvain', help="The Louvain algorithm identifies communities by optimizing modularity, revealing groupings of nodes with denser connections internally than with the rest of the network. Read the study [here](https://doi.org/10.48550/arXiv.0803.0476).")
+                    rtn_leiden = col4_in.checkbox("Leiden", key='rtn_leiden', help="The Leiden algorithm refines community detection by iteratively improving partitions, ensuring a higher level of accuracy and resolution in identifying communities. Read the study [here](https://doi.org/10.48550/arXiv.1810.08473).")
+
+                    st.markdown('**Sentiment Analysis**')
+                    tweet_sent = st.checkbox("Apply sentiment analysis",  help="Sentiment Analysis is Applied using nltk vader and works only for tweets in english",value=False)
+
+                    st.write("")
+                    if st.button("Generate Interaction Network"):
+                        if sett_wide_mode==False:
+                            fc.wide_mode_func()
+                        with st.spinner("Creating interaction network..."):
+                            G = InteractionNetwork()
+                            G.build_network(pandas_dataframe=twitter_objects, language_filter=langselector_iso, interaction_type=interaction_type, starttime=ts0, endtime=ts1)
+                            G.reduce_network(giant_component=True, aggregation=aggregationmethod, hard_agg_threshold=hard_aggregation_threshold)                        
+                            with st.spinner("Computing communities..."):
+                                G.community_detection(louvain=rtn_louvain,leiden=rtn_leiden)
+                            G.build_d3dict(private=True)
+
+                        with st.spinner("Writing html..."):
+                            savename = "interaction_network"
+                            htmlstring = G.write_html()
+                        net_run=True                 
+                           
 
 
- 
+                            
+                        N_edges = len(G._d3dict["links"])
+
+                        if N_edges > 1e5:
+                            st.error("The network you are trying to visualize has more than 10,000 links. Consider using a stronger aggregation method if the interactive visualization is unresponsive.")
+                
+            # -------------------------------------------------------------------
+                                
+                elif network_type=='Hashtag Network':
+                    st.warning("Undirected network in which nodes are hashtags. A link is drawn between `i` and `j` if they appear in the same tweet.")
+                    st.markdown('**Options**')
+                    htn_giantcomponent = st.checkbox("Giant component", key='htn_giantcomponent', help="Reduce the network to its largest connected component.")
+                    
+                    col1_hn, col2_hn = st.columns(2)
+                    node_thresh_htn = 0
+                    link_thresh_htn = 0
+                    node_thresh_htn = col1_hn.slider("Remove hashtags that appear less than x times", 0, 100, 1, 1, key='n_thresh_htn')
+                    link_thresh_htn = col2_hn.slider("Remove edges that link hashtags less than than x times", 0, 50, 1, 1, key='l_thresh_htn')
+                    ht_to_remove = st.text_input(label="Hashtags to be removed from the graph, separated by '|'", help="It is recommended to remove the hashtag used for the query.")
+                    if ht_to_remove != "":
+                        ht_to_remove_list = ht_to_remove.split("|")
+                    else:
+                        ht_to_remove_list = None
+                    
+                    st.markdown('**Community detection**')
+                    col3_hn, col4_hn = st.columns(2)
+                    htn_louvain = col3_hn.checkbox("Louvain", key='htn_louvain', help="Community detection algorithms are used to identify strongly connected clusters within a network. The Louvain algorithm identifies communities by optimizing modularity, revealing groupings of nodes with denser connections internally than with the rest of the network. Read the study [here](https://doi.org/10.48550/arXiv.0803.0476).")
+                    htn_leiden = col4_hn.checkbox("Leiden", key='htn_leiden', help="Community detection algorithms are used to identify strongly connected clusters within a network. The Leiden algorithm refines community detection by iteratively improving partitions, ensuring a higher level of accuracy and resolution in identifying communities. Read the study [here](https://doi.org/10.48550/arXiv.1810.08473).")
+
+                    st.markdown('**Sentiment Analysis**')
+                    tweet_sent = st.checkbox("Apply sentiment analysis",  help="Sentiment Analysis is Applied using nltk vader and works only for tweets in english",value=False)
+
+                    st.write("")
+                    if st.button("Generate Hashtag Network"):
+                        if sett_wide_mode==False:
+                            fc.wide_mode_func()
+
+                        with st.spinner("Creating hashtag network..."):
+                            H = SemanticNetwork()
+                            ## build a network from the data
+                            H.build_network(pandas_dataframe=twitter_objects, language_filter=langselector_iso, hashtags_to_remove=ht_to_remove_list, starttime=ts0, endtime=ts1)
+                            H.reduce_network(giant_component=htn_giantcomponent, node_threshold=node_thresh_htn, link_threshold=link_thresh_htn)
+                            with st.spinner("Computing communities..."):
+                                H.community_detection(louvain=htn_louvain,leiden=htn_leiden)
+                            H.build_d3dict()
+
+                        with st.spinner("Writing html..."):
+                            savename = "hashtag_network"
+                            htmlstring = H.write_html()
+                        net_run=True
+                        
+            #Display the network and the tweet-net explorer
+            if net_run==True:                      
+                with st.expander(network_type, expanded=False):                                      
+
+                    st.download_button(
+                        "Download " +network_type,
+                        data=htmlstring,
+                        file_name=f"{savename}.html",
+                        mime="text/html"
+                    )
+                    components.html(htmlstring, width=2000, height=1024, scrolling=True)
+                
+                # Sentiment Analysis
+                sent_twitter = twitter_objects[twitter_objects['lang'].isin(['en'])]
+                if (tweet_sent==True and len(sent_twitter.index)>0):
+                    #Sentiment analysis for EN Tweets
+                        
+                    def preprocess_text(text):                     
+                        # Remove URLs
+                        text = re.sub(r'https?://\S+', '', text)
+                        # Remove HTML tags
+                        text = BeautifulSoup(text, 'html.parser').get_text()
+                        # Remove emails
+                        text = re.sub(r'\S+@\S+', '', text)
+                        # Remove "RT" (Retweet) from the text
+                        text = re.sub(r'\bRT\b', '', text)    
+                        # Remove user references starting with "@" and ending with ":"
+                        text = re.sub(r'@\w+:', '', text)
+                        # Remove user references starting with "@":
+                        text = re.sub(r'@\w+', '', text)
+                        return text
+
+                    # Apply preprocessing to the 'text' column                                   
+                    sent_twitter['tweet_text'] = sent_twitter['text'].apply(preprocess_text)
+                    
+                    # Sentiment analysis using VADER
+                    analyzer = SentimentIntensityAnalyzer()
+
+                    # Function to get sentiment scores
+                    def get_sentiment_scores(text):
+                        sentiment = analyzer.polarity_scores(text)
+                        return sentiment
+                    
+                    # Apply sentiment analysis to the 'text' column
+                    sent_twitter['sentiment_scores'] = sent_twitter['tweet_text'].apply(get_sentiment_scores)
+
+                    # Apply sentiment analysis to the 'text' column
+                    sent_twitter['pos'] = sent_twitter['sentiment_scores'].apply(lambda x: x['pos'])
+                    sent_twitter['neu'] = sent_twitter['sentiment_scores'].apply(lambda x: x['neu'])
+                    sent_twitter['neg'] = sent_twitter['sentiment_scores'].apply(lambda x: x['neg'])
+                        
+                    with st.expander("Sentiment Analysis", expanded=False):                        
+                        #Display the table with 'text', 'pos', 'neu', and 'neg' columns
+                        st.write("")
+                        st.dataframe(sent_twitter[['tweet_text', 'text','pos', 'neu', 'neg']])
+                     
