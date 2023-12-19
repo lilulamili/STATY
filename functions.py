@@ -17,6 +17,7 @@ import statsmodels.api as sm
 import plotly.graph_objects as go
 import streamlit as st
 from random import randint
+from io import BytesIO
 import nltk
 nltk.download('punkt') 
 from pypdf import PdfReader 
@@ -310,6 +311,7 @@ def theme_func_dl_button():
         unsafe_allow_html=True,
     )
 
+
 #----------------------------------------------------------------------------------------------
 #FUNCTION FOR DETERMINING VARIABLE CATEGORY
 
@@ -503,12 +505,12 @@ def get_mainq(data):
 
         elif col.dtypes == "bool":
             df_mainq.loc["min"][i] = col.min()
-            df_mainq.loc["1%-Q"][i] = col.quantile(q = 0.01)
-            df_mainq.loc["10%-Q"][i] = col.quantile(q = 0.1)
-            df_mainq.loc["25%-Q"][i] = col.quantile(q = 0.25)
-            df_mainq.loc["75%-Q"][i] = col.quantile(q = 0.75)
-            df_mainq.loc["90%-Q"][i] = col.quantile(q = 0.9)
-            df_mainq.loc["99%-Q"][i] = col.quantile(q = 0.99)
+            df_mainq.loc["1%-Q"][i] = col.astype(int).quantile(q = 0.01)
+            df_mainq.loc["10%-Q"][i] = col.astype(int).quantile(q = 0.1)
+            df_mainq.loc["25%-Q"][i] = col.astype(int).quantile(q = 0.25)
+            df_mainq.loc["75%-Q"][i] = col.astype(int).quantile(q = 0.75)
+            df_mainq.loc["90%-Q"][i] = col.astype(int).quantile(q = 0.9)
+            df_mainq.loc["99%-Q"][i] = col.astype(int).quantile(q = 0.99)
             df_mainq.loc["max"][i] = col.max()
 
         elif col.dtypes == "object":
@@ -769,6 +771,17 @@ def data_impute_grouped(data, numeric_method, other_method, group_num, group_oth
 
     return data
 
+#---------------------------------------------------------------------------------------------
+#FUNCTION FOR TRANSFORMING VARIABLE TO LOG_VARIABLE
+
+def var_transform_ohe(data, var_list):
+    
+    ohe_dummies = pd.get_dummies(data[var_list], prefix='ohe')
+    ohe_numeric = ohe_dummies.apply(lambda x: x.astype(int))
+    
+    #data = pd.concat([data.drop(var_list, axis=1), ohe_numeric], axis=1)
+    data[ohe_numeric.columns]=ohe_numeric
+    return data
 #---------------------------------------------------------------------------------------------
 #FUNCTION FOR TRANSFORMING VARIABLE TO LOG_VARIABLE
 

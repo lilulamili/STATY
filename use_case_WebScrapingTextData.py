@@ -1131,7 +1131,7 @@ def app():
                 twitter_objects = load_data(uploaded_file) 
                 
                 data_available = True
-                st.write("data read")
+                
         # -------------------------------------------------------------------
 
         if data_available:
@@ -1218,7 +1218,7 @@ def app():
                 
                 #custom hashtags
                 unique_hashtags=twitter_objects['hashtags'].str.split('|').explode().unique()
-                user_hash_sel=st.multiselect("Select hashtagss",options=unique_hashtags)
+                user_hash_sel=st.multiselect("Select hashtags",options=unique_hashtags)
                 if user_hash_sel:                             
                     hashtag_filter=twitter_objects['hashtags'].str.split('|').apply(lambda x: any(hashtag in user_hash_sel for hashtag in x))
                     twitter_objects=twitter_objects[hashtag_filter]

@@ -40,22 +40,29 @@ from PIL import Image
 
 staty_favi =  "default data/favicon.png"
 
-
-
 # Define page setting
 st.set_page_config(
     page_title = "STATY",
     page_icon = staty_favi,
     layout = "centered",
-    initial_sidebar_state = "collapsed",
+    initial_sidebar_state ="collapsed",
     
 )   
 
-hide_footer_style = """
+change_header_style = """
+    <style>
+    div[data-testid="stToolbar"] { display: none !important; }
+    </style>
+    """
+st.markdown(change_header_style, unsafe_allow_html=True)
+
+change_footer_style = """
 <style>
-.reportview-container .main footer {visibility: hidden;}    
+.reportview-container .main footer {visibility: hidden;}   
 """
-st.markdown(hide_footer_style, unsafe_allow_html=True)
+st.markdown(change_footer_style, unsafe_allow_html=True)
+
+
 
 # Title
 components.html("""
@@ -126,7 +133,6 @@ hide_streamlit_style = """
     footer {visibility: hidden;}
     </style>
 """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
 
 
 # Decoration bar color

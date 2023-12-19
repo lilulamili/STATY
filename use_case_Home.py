@@ -19,7 +19,7 @@ def app():
     
     #------------------------------------------------------------------------------------------
     # SETTINGS
-
+    
     settings_expander=st.sidebar.expander('Settings')
     with settings_expander:
         st.caption("**Help**")
@@ -40,8 +40,8 @@ def app():
 
     # Check if wide mode
     if sett_wide_mode:
-        #fc.wide_mode_func()
-        st.empty()
+        fc.wide_mode_func()
+        #st.empty()
 
     # Check theme
     if sett_theme == "Dark":
@@ -215,6 +215,8 @@ def app():
             unsafe_allow_html=True,
         )  
 
+   
+
     # st.markdown(
     #     f"""
     #     <style>
@@ -226,7 +228,7 @@ def app():
     #     unsafe_allow_html=True
     # )
 
-
+    
     #st.markdown("You don’t need any programming skills to get started - STATY will do data mining and machine learning for you, present you great visualisations of your data and will boost your curiosity to explore more. ")
     st.write("To get started, open the menu on the left, or check the intro video!")
     
@@ -271,7 +273,7 @@ def app():
         st.write("")
 
         st.markdown("**Interesting to know**")
-        st.write("Before STATY, we have never written a single line of code in Python. The research environments in which we lived so far are using languages such as Fortran, IDL, R and C++. To check Python’s suitability for STATY we did a short experiment. We tried to develop a STATY prototype with all the basic app-features such as data upload per drag and drop, user selection of variables and machine learning methods, model evaluation and comparison of the  goodness of fit statistics. Despite absolutely zero experience with Python, the app was ready in 2,5h! This experiment has given us a clear path towards STATY development – Python! We didn’t regret it - the first version of STATY was developed in 2,5 months! This said, some lines of code are probably awfully un-elegant!") 
+        st.write("Before STATY, we have never written a single line of code in Python. The research environments in which we lived so far are using languages such as MATLAB, C++, R and Fortran. To check Python’s suitability for STATY we did a short experiment. We tried to develop a STATY prototype with all the basic app-features such as data upload per drag and drop, user selection of variables and machine learning methods, model evaluation and comparison of the  goodness of fit statistics. Despite absolutely zero experience with Python, the app was ready in 2,5h! This experiment has given us a clear path towards STATY development – Python! We didn’t regret it - the first version of STATY was developed in 2,5 months! This said, some lines of code are probably awfully un-elegant!") 
         st.write("")
 
         st.markdown("**Citation**")
