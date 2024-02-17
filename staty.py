@@ -54,7 +54,7 @@ change_header_style = """
     div[data-testid="stToolbar"] { display: none !important; }
     </style>
     """
-st.markdown(change_header_style, unsafe_allow_html=True)
+#st.markdown(change_header_style, unsafe_allow_html=True)
 
 change_footer_style = """
 <style>
@@ -104,7 +104,7 @@ PAGES = {
     "Uni- and bivariate data": use_case_UnivariateBivariateData,
     "Multivariate data": use_case_MultivariateData,
     "Panel data": use_case_PanelData,
-    "Web scraping and text data": use_case_WebScrapingTextData,
+    "Web scraping and text data": use_case_WebScrapingTextData,    
     "Geospatial data": use_case_GeospatialData,
     "Time series data":use_case_TimeSeriesData,
     "FAQs": use_case_FAQs

@@ -65,6 +65,10 @@ def app():
         st.session_state['key'] = 0
     if 'sentiment' not in st.session_state:    
         st.session_state['sentiment']=None
+    if 'run_yahoo' not in st.session_state:    
+        st.session_state['run_yahoo']=None
+ 
+
 
     reset_clicked = st.sidebar.button("Reset all your input")
     if reset_clicked:
@@ -74,9 +78,10 @@ def app():
     st.sidebar.markdown("")
 
     def in_wid_change():        
-        st.session_state['stock_df']=None
-        st.session_state['add_stock_df']=None
+        #st.session_state['stock_df']=None
+        #st.session_state['add_stock_df']=None
         st.session_state['sentiment']=None
+        st.session_state['run_yahoo']=None
    
     #------------------------------------------------------------------------------------------
     # SETTINGS
@@ -912,7 +917,7 @@ def app():
         # Clear cache
         #st.runtime.legacy_caching.clear_cache()
 
-        # dwonload first the list of comanies in the S&P500 and DAX indices
+        # download first list of companies in the S&P500 and DAX indices
         payload=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
         first_table = payload[0]
         df = first_table
@@ -936,150 +941,196 @@ def app():
 
         #ticker specification
         st.subheader('Stock data analysis')
+        
+        symbols_all=list('-')+symbols_all
+        sel_stock = st.multiselect("Select up to five ticker symbols", symbols_all,["AAPL","MSFT"],max_selections=5,on_change=in_wid_change)
+        second_stock = st.text_input("You can add here an additional ticker symbol", "TSLA",on_change=in_wid_change)
+
+        today = dt.date.today()
+        last_year = today - dt.timedelta(days=365)
+        
         a3, a4 = st.columns(2) 
-        with a3:
-            first_stock = st.text_input("Enter a stock ticker symbol", "TSLA", on_change=in_wid_change)
-            symbols_all=list('-')+symbols_all
-            second_stock = st.selectbox('You can add an additional stock for comparision...',symbols_all, on_change=in_wid_change)
-        with a4:
-            today = dt.date.today()
-            last_year = today - dt.timedelta(days=365)
-            start_date = st.date_input('Select start date', last_year, on_change=in_wid_change)
-            end_date = st.date_input('Select end date', today, on_change=in_wid_change)
+        with a3:    
+            start_date = st.date_input('Select start date', last_year,on_change=in_wid_change)
+        with a4:     
+            end_date = st.date_input('Select end date', today,on_change=in_wid_change)
             if start_date > end_date:
                 st.error('ERROR: End date must fall after start date.')     
 
         st.markdown("")
-        add_data_show=st.checkbox("Get additional data (cashflow, balance sheet etc.)", value = False, on_change=in_wid_change)
+        add_data_show=st.checkbox("Get additional data (cashflow, balance sheet, KPIs etc.)", value = False,on_change=in_wid_change)
         if add_data_show:
             st.info("Additional data are frequently not available - yfinance is failing to decrypt Yahoo data response.")
+            tb_options=['Balance Sheet', 'Cashflow','Other Financials']
+            tkpi_options= ['Profitability', 'Debt Capital', 'Equity Capital','Valuation', 'Capital Procurement','Capital Allocation','Procurement Market']
+            tb_output=st.multiselect('Select additional ticker information',tb_options,['Cashflow'],on_change=in_wid_change)
+            tkpi_output=st.multiselect('Select performance indicators',tkpi_options,['Profitability', 'Debt Capital', 'Valuation'],on_change=in_wid_change)
+            
         st.markdown("")
         
-       
-        dev_expander_perf = st.expander("Stock performance", expanded=True)
-        with dev_expander_perf:
-            #get data for a selected ticker symbol:
-            stock_data = yf.Ticker(first_stock)
-            stock_df = stock_data.history(period='1d', start=start_date, end=end_date)
-            st.session_state['stock_df']=stock_df
-
-            if second_stock !="-":
-                add_stock_data = yf.Ticker(second_stock)
-                add_stock_df = add_stock_data.history(period='1d', start=start_date, end=end_date)
-                st.session_state['add_stock_df']=add_stock_df
-
-            #print stock values
-            if st.checkbox("Show stock data for " + first_stock, value = True): 
-                st.write(stock_df)
-            
-            if second_stock !="-":    
-                if st.checkbox("Show stock data for " + second_stock, value = False): 
-                    st.write(add_stock_df)
-                comparision_check=st.checkbox('Compare '+ first_stock + " & " + second_stock, value = True)
-            
-            #draw line chart with stock prices
-            a5, a6 = st.columns(2) 
-            with a5:
-                stock_para= st.selectbox('Select ' + first_stock + " info to draw", stock_df.columns)
-                if second_stock !="-":   
-                    if comparision_check: 
-                        st.write('Daily data comparision '+ first_stock + " & " + second_stock)
-                        
-                        c1=first_stock + " " + stock_para
-                        c2=second_stock + " " + stock_para
-                        c1_data=stock_df[[stock_para]]
-                        c1_data.rename(columns={c1_data.columns[0]: c1 }, inplace = True)
-                        c2_data=add_stock_df[[stock_para]]
-                        c2_data.rename(columns={c2_data.columns[0]: c2 }, inplace = True)
-                        stock_dataToplot=pd.concat([c1_data, c2_data], axis=1)
-                        
-                        #st.write(stock_dataToplot)
-                        st.line_chart(stock_dataToplot)
-                    else:
-                        st.write(stock_para + " price for " + first_stock + " (daily)")
-                        stock_dataToplot=stock_df[stock_para]
-                        st.line_chart(stock_dataToplot)   
-                else:    
-                    st.write(stock_para + " price for " + first_stock + " (daily)")
-                    stock_dataToplot=stock_df[stock_para]
-                    st.line_chart(stock_dataToplot)
-
-            with a6:
-                stock_para2= st.selectbox('Select ' + first_stock + " info to draw", stock_df.columns, index=3)
-                if second_stock !="-":   
-                    if comparision_check: 
-                        st.write('Daily data comparision '+ first_stock + " & " + second_stock)
-                        
-                        c3=first_stock + " " + stock_para2
-                        c4=second_stock + " " + stock_para2
-                        c3_data=stock_df[[stock_para2]]
-                        c3_data.rename(columns={c3_data.columns[0]: c3 }, inplace = True)
-                        c4_data=add_stock_df[[stock_para2]]
-                        c4_data.rename(columns={c4_data.columns[0]: c4 }, inplace = True)
-                        stock_dataToplot2=pd.concat([c3_data, c4_data], axis=1)
-                        
-                        #st.write(stock_dataToplot)
-                        st.line_chart(stock_dataToplot2)
-                    else:
-                        st.write(stock_para2 + " price for " + first_stock + " (daily)")
-                        stock_dataToplot2=stock_df[stock_para2]
-                        st.line_chart(stock_dataToplot2)   
-                else:    
-                    st.write(stock_para2 + " price for " + first_stock + " (daily)")
-                    stock_dataToplot2=stock_df[stock_para2]
-                    st.line_chart(stock_dataToplot2)        
-        
-        # Show additional stock information
-        if add_data_show:
-            
-            dev_expander_cf = st.expander("Cashflow",expanded=False)
-            with dev_expander_cf:
-                st.subheader(first_stock)
+        if (len(sel_stock)==0) and (len(second_stock)==0):
+            st.info("Select at least one ticker")
+        else: 
+            run_yahoo = st.button("Press to start stock data analysis...")
+            if run_yahoo:                     
                 
-                if len(yf.Ticker(first_stock).cashflow)==0:
-                    st.info("No data are available!")  
-                else:     
-                    st.write(yf.Ticker(first_stock).cashflow)                     
-                if second_stock !='-':
-                    st.subheader(second_stock)
-                    if len(yf.Ticker(second_stock).cashflow)==0:
-                        st.info("No data are available!")  
-                    else: 
-                        st.write(yf.Ticker(second_stock).cashflow)
+                #-----------------------------------
+                #check if the ticker exists 
+                #-----------------------------------                
+                if len(second_stock)>0:
+                    stock_data2 = yf.Ticker(second_stock)  
+                    if len(stock_data2.info)<=1:
+                        err_msg="Error: Ticker symbol '" + second_stock +  "' may not exist. Double-check that you've entered the ticker symbol accurately"
+                        second_stock="-"                                               
+                        st.error(err_msg)
+                    else:
+                        sel_stock.append(second_stock)
+                   
+                else:                                     
+                    second_stock="-"                    
+                    
+                st.session_state['run_yahoo']=run_yahoo
+      
+       #------------------------------------------------------------------
+       # Output
+       #---------------------------------------------------------------                  
+        if st.session_state['run_yahoo'] is not None:
+            st.subheader('Stock data info')
+            dev_expander_perf = st.expander("Daily data", expanded=True)
+            with dev_expander_perf:
+                
+                #get data for a selected ticker symbol:
+                for stocks in sel_stock:                        
+                    stock_data = yf.Ticker(stocks)
+                    stock_df = stock_data.history(period='1d', start=start_date, end=end_date)
+                                        
+                    #print stock values
+                    if st.checkbox("Show stock data for " + stocks, value = False): 
+                        st.write(stock_df)               
+                
 
-            dev_expander_bs = st.expander("Balance sheet", expanded=False)
-            with dev_expander_bs:                
-                st.subheader(first_stock)                
-                if len(yf.Ticker(first_stock).balance_sheet)==0:
-                    st.info("No data are available!")  
-                else:                    
-                    st.write(yf.Ticker(first_stock).balance_sheet)
-               
-                if second_stock !='-':
-                    st.subheader(second_stock)
-                    if len(yf.Ticker(second_stock).balance_sheet)==0:
-                        st.info("No data are available!")  
-                    else:                    
-                        st.write(yf.Ticker(second_stock).balance_sheet)
+                # Draw a line plot of the stock values
+                sel_stock_plot = st.multiselect("Select tickers", sel_stock,sel_stock[0])       
+                stock_para= st.selectbox('Select info to draw', stock_df.columns)
 
-            dev_expander_fi = st.expander("Other financials",expanded=False)
-            with dev_expander_fi:
-                st.subheader(first_stock)                
-                if len(yf.Ticker(first_stock).financials)==0:
-                    st.info("No data are available!")  
-                else:
-                    st.write(yf.Ticker(first_stock).financials) 
-                if second_stock !='-':
-                    st.subheader(second_stock)
-                    if len(yf.Ticker(second_stock).financials)==0:
-                        st.info("No data are available!")  
-                    else: 
-                        st.write(yf.Ticker(second_stock).financials)   
-            
-            # set session key for addtional paramaters    
-            st.session_state['add_data_show']='add_data_show_key'
-     
+                stock_dataToplot=None  
+                for stocks in sel_stock_plot:                        
+                    stock_data = yf.Ticker(stocks)
+                    stock_df = stock_data.history(period='1d', start=start_date, end=end_date)
+                    c1_data=stock_df[[stock_para]]
+                    c1_data.rename(columns={c1_data.columns[0]: stocks}, inplace = True)
+                    if stock_dataToplot is None:                        
+                        stock_dataToplot=c1_data
+                    else:                        
+                        stock_dataToplot=pd.concat([stock_dataToplot, c1_data], axis=1)
+                st.line_chart(stock_dataToplot)
 
+           
+            if add_data_show:     
+            #-------------------------------------------------------    
+            # Show additional stock information - basic info       
+            #-------------------------------------------------------           
+                #-------------------------------------------------
+                # Cashflow
+                #-------------------------------------------------
+                if 'Cashflow' in tb_output:
+                    dev_expander_cf = st.expander("Cashflow",expanded=False)
+                    with dev_expander_cf: 
+                        for stocks in sel_stock:                                     
+                            try:                                 
+                                stock_data_cf = yf.Ticker(stocks).cashflow
+                            except Exception as e:
+                                st.error(f"Error fetching data: {e}")    
+                        
+                            stock_data_cf.columns = pd.to_datetime(stock_data_cf.columns).year 
+                            st.subheader(stocks)  
+                            st.write(stock_data_cf)
+
+                       
+                
+                #-------------------------------------------------
+                # Balance Sheet
+                #-------------------------------------------------                        
+                if 'Balance Sheet' in tb_output:
+                    dev_expander_bs = st.expander("Balance sheet", expanded=False)
+                    with dev_expander_bs: 
+                        for stocks in sel_stock:                                     
+                            try:                                 
+                                stock_data_bs = yf.Ticker(stocks).balance_sheet
+                            except Exception as e:
+                                st.error(f"Error fetching data: {e}")    
+                            stock_data_bs.columns = pd.to_datetime(stock_data_bs.columns).year 
+                            st.subheader(stocks)  
+                            st.write(stock_data_bs)
+                        
+
+                #-------------------------------------------------
+                # Other Financials
+                #-------------------------------------------------    
+                if 'Other Financials' in tb_output:
+                    dev_expander_fi = st.expander("Other financials",expanded=False)
+                    with dev_expander_fi:
+                        for stocks in sel_stock:                                     
+                            try:                                 
+                                stock_data_fi = yf.Ticker(stocks).financials
+                            except Exception as e:
+                                st.error(f"Error fetching data: {e}")    
+                            stock_data_fi.columns = pd.to_datetime(stock_data_fi.columns).year 
+                            st.subheader(stocks)  
+                            st.write(stock_data_fi)                       
+                        
+                    
+                #-------------------------------------------------------    
+                # Show additional stock information - basic info       
+                #------------------------------------------------------- 
+                if len(tkpi_output)>0:
+                    st.subheader('Stock performance indicators')
+                    if 'Profitability' in tkpi_output:
+                        dev_expander_profitability = st.expander("Profitability",expanded=False)
+                        with dev_expander_profitability:                           
+                            profitability_data = ["Return on Investment(ROI) [%]", "Return on Equity (ROE) [%]", "Total Revenue [billion]", "EBITDA-Margin [%]", "EBIT-Margin [%]"]
+                            fc.kpi_output(sel_stock, profitability_data, fc.kpi_profitability)
+
+                    if 'Debt Capital' in tkpi_output:
+                        dev_expander_debt_capital = st.expander("Debt Capital",expanded=False)
+                        with dev_expander_debt_capital:                       
+                            debt_capital_data = ["NetDebt/EBITDA", "EBITA/Interest", "Current Ratio", "Days Payable Outstanding [days]"]
+                            fc.kpi_output(sel_stock, debt_capital_data, fc.kpi_debt_capital)
+                    
+                    if 'Equity Capital' in tkpi_output:
+                        dev_expander_equity_capital = st.expander("Equity Capital",expanded=False)
+                        with dev_expander_equity_capital:                       
+                            equity_capital_data = ["Revenue per Share", "Forward EPS", "Forward Annual Divident Rate"]
+                            fc.kpi_output(sel_stock, equity_capital_data, fc.kpi_equity_capital)
+                    
+                    if 'Valuation' in tkpi_output:
+                        dev_expander_valuation = st.expander("Valuation",expanded=False)
+                        with dev_expander_valuation:                       
+                            valuation_data = ["Forward P/E", "PEG Ratio (5yr expected)", "P/B Ratio", "Enterprise Value EV [in billion]","EV/Revenue", "EV/EBITDA"]
+                            fc.kpi_output(sel_stock, valuation_data, fc.kpi_valuation)
+                    
+                    if 'Capital Procurement' in tkpi_output:
+                        dev_expander_Capital_Procurement = st.expander("Capital Procurement",expanded=False)
+                        with dev_expander_Capital_Procurement:                       
+                            capital_procurement_data = ["Self-Financing Ratio", "Equity Ratio"]
+                            fc.kpi_output(sel_stock, capital_procurement_data, fc.kpi_capital_procurement)
+                    
+                    if 'Capital Allocation' in tkpi_output:
+                        dev_expander_Capital_Allocation = st.expander("Capital Allocation",expanded=False)
+                        with dev_expander_Capital_Allocation:                       
+                            capital_allocation_data = ["CapEx/Revenue", "Reserch&Dev/Revenue", "Cash Conversion Cycle [days]"]
+                            fc.kpi_output(sel_stock, capital_allocation_data, fc.kpi_capital_allocation)
+                    
+                    if 'Procurement Market' in tkpi_output:
+                        dev_expander_Procurement_Market = st.expander("Procurement Market",expanded=False)
+                        with dev_expander_Procurement_Market:                       
+                            procurement_market_data = ["Labour Productivity [in T per employee]", "Asset turnover [%]"]
+                            fc.kpi_output(sel_stock, procurement_market_data, fc.kpi_procurement_market)
+                    
+
+                    
+                    
+                    
 
     #---------------------------------------------               
     # Tweet Data Analysis
@@ -1395,4 +1446,5 @@ def app():
                         #Display the table with 'text', 'pos', 'neu', and 'neg' columns
                         st.write("")
                         st.dataframe(sent_twitter[['tweet_text', 'text','pos', 'neu', 'neg']])
-                     
+
+    

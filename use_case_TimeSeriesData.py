@@ -251,7 +251,7 @@ def app():
         #---------------------------------
         # DATA PROCESSING       
         #---------------------------------
-        df=el.data_processing(df_name,df, n_rows,n_cols,sett_hints, user_precision,in_wid_change)
+        (df,sb_DM_dTrans_ohe, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_cent, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat, sb_DM_dTrans_mult, sb_DM_dTrans_div )=el.data_processing(df_name,df, n_rows,n_cols,sett_hints, user_precision,in_wid_change)
         
                  
     

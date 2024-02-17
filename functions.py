@@ -43,6 +43,7 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.stemmers import Stemmer 
 from sumy.utils import get_stop_words
 import mediawiki
+import yfinance as yf
 from bs4 import BeautifulSoup
 import requests
 import regex as re
@@ -1482,7 +1483,6 @@ def t5_summary(text,model,tokenizer):
 
 #------------------------------------------------------------------------------------------
 # Function for getting a cosine similarity between user_query and Wiki page
-#  
 
 def get_topic_index(query, model, results, user_language):
     
@@ -1528,10 +1528,180 @@ def get_topic_index(query, model, results, user_language):
     # Return the paragraph with highest similarity to query
     return bestmatch_index, match_unit[match_index]
 
+#------------------------------------------------------------------------------------------
+#Function for loading ticker data
+def load_ticker_data(ticker):
+    fi = yf.Ticker(ticker).financials  
+    fi.columns = pd.to_datetime(fi.columns).year    
+    
+    bs = yf.Ticker(ticker).balance_sheet
+    bs.columns = pd.to_datetime(bs.columns).year  
+    
+    cf = yf.Ticker(ticker).cashflow
+    cf.columns = pd.to_datetime(cf.columns).year  
+    return fi, bs, cf
 
+def calculate_kpi(kpi_function, fi, bs, cf, selected_year, ticker):
+    # Call the specified KPI calculation function
+    return kpi_function(fi, bs, cf, selected_year, ticker)
 
+def kpi_output(sel_stock, kpi_data, kpi_function):    
+    for ticker in sel_stock:                                
+        fi, bs, cf = load_ticker_data(ticker)
+        all_years=fi.columns                             
+        kpi_dataframe=pd.DataFrame(index=kpi_data, columns=fi.columns)
+        for year in all_years:            
+            kpi_dataframe[year] = calculate_kpi(kpi_function, fi, bs, cf, year,ticker)
+        
+        if kpi_function in [kpi_valuation, kpi_equity_capital]:
+            kpi_dataframe=kpi_dataframe[[year]]
+            kpi_dataframe.rename(columns={year: ticker}, inplace=True)
+            st.write(kpi_dataframe)
+        else:  
+            st.write(ticker)                                 
+            st.write(kpi_dataframe) 
 
+    return(kpi_dataframe)   
 
+def kpi_profitability(fi,bs,cf, selected_year, ticker):   
+    
+    try:
+        roi = fi.at['EBIT', selected_year] / bs.at['Total Assets', selected_year] * 100
+    except (KeyError, ZeroDivisionError):
+        roi = np.nan  
+    try:
+        roe = fi.at['EBIT', selected_year] / bs.at['Stockholders Equity', selected_year] * 100
+    except (KeyError, ZeroDivisionError):
+        roe = np.nan
+    try:
+        revenues = fi.at['Total Revenue', selected_year] / 1000000000
+    except (KeyError, ZeroDivisionError):
+        revenues = np.nan
+    try:
+        ebitda_margin = (fi.at['EBIT', selected_year] + cf.at['Depreciation And Amortization', selected_year]) / fi.at['Total Revenue', selected_year] *100
+    except (KeyError, ZeroDivisionError):
+        ebitda_margin = np.nan
+    try:
+        ebit_margin = fi.at['EBIT', selected_year] / fi.at['Total Revenue', selected_year] * 100
+    except (KeyError, ZeroDivisionError):
+        ebit_margin = np.nan    
+    
+    return roi, roe, revenues, ebitda_margin, ebit_margin
+
+#debt capital
+def kpi_debt_capital(fi,bs,cf, selected_year,ticker): 
+     
+    try:
+        netdebt_ebitda = (bs.at['Total Debt', selected_year] - bs.at['Cash And Cash Equivalents', selected_year]) / (fi.at['EBITDA', selected_year])
+    except (KeyError, ZeroDivisionError):
+        netdebt_ebitda = np.nan
+         
+    try:
+        ebita_interest = (fi.at['EBITDA', selected_year]) / fi.at['Interest Expense', selected_year]  
+    except (KeyError, ZeroDivisionError):
+        ebita_interest = np.nan
+   
+    try:
+        current_ratio = bs.at['Current Assets', selected_year] / bs.at['Current Liabilities', selected_year] 
+    except (KeyError, ZeroDivisionError):
+        current_ratio = np.nan
+     
+    try:
+        dpo = bs.at['Accounts Payable', selected_year] * 365 / fi.at['Cost Of Revenue', selected_year]
+    except (KeyError, ZeroDivisionError):
+        dpo = np.nan
+           
+    return netdebt_ebitda, ebita_interest, current_ratio, dpo
+
+#equity capital
+def kpi_equity_capital(fi,bs,cf, selected_year,ticker):    
+    try:
+        revenuepershare = yf.Ticker(ticker).info['revenuePerShare']
+    except (KeyError, ZeroDivisionError):
+        revenuepershare = np.nan    
+    try:
+        eps = yf.Ticker(ticker).info['forwardEps']
+    except (KeyError, ZeroDivisionError):
+        eps = np.nan    
+    try:
+        dividendrate = yf.Ticker(ticker).info['dividendRate']
+    except (KeyError, ZeroDivisionError):
+        dividendrate = np.nan    
+    return revenuepershare, eps, dividendrate
+
+#valuation
+def kpi_valuation(fi,bs,cf, selected_year,ticker):     
+    try:
+        forwardPE = yf.Ticker(ticker).info['forwardPE']
+    except (KeyError, ZeroDivisionError):
+        forwardPE = np.nan
+    try:
+        pegratio = yf.Ticker(ticker).info['pegRatio']
+    except (KeyError, ZeroDivisionError):
+        pegratio = np.nan
+    try:
+        pricetobook = yf.Ticker(ticker).info['priceToBook']
+    except (KeyError, ZeroDivisionError):
+        pricetobook = np.nan
+    try:
+        ev = yf.Ticker(ticker).info['enterpriseValue'] / 1000000000
+    except (KeyError, ZeroDivisionError):
+        ev = np.nan
+    try:
+        evtorevenue = yf.Ticker(ticker).info['enterpriseToRevenue']
+    except (KeyError, ZeroDivisionError):
+        evtorevenue = np.nan
+    try:
+        evtoebitda = yf.Ticker(ticker).info['enterpriseToEbitda']
+    except (KeyError, ZeroDivisionError):
+        evtoebitda = np.nan
+    return forwardPE, pegratio, pricetobook, ev, evtorevenue, evtoebitda
+    
+#def stock_history(fi,bs,cf, selected_year):   
+#    history = data.history(period=str(stock_period))
+
+#capital procurement
+def kpi_capital_procurement(fi,bs,cf, selected_year, ticker):      
+    try:
+        selffinancingratio = cf.at['Operating Cash Flow', selected_year]/ cf.at['Investing Cash Flow', selected_year] * -1
+    except (KeyError, ZeroDivisionError):
+        selffinancingratio = np.nan
+    try:
+        equityratio = bs.at['Stockholders Equity', selected_year] / bs.at['Total Assets', selected_year] * 100
+    except (KeyError, ZeroDivisionError):
+        equityratio = np.nan            
+    return selffinancingratio, equityratio
+
+#capital allocation
+def kpi_capital_allocation(fi,bs,cf, selected_year, ticker):   
+    try:
+        capexrevenueratio = cf.at['Capital Expenditure', selected_year] * -1 / fi.at['Total Revenue', selected_year] 
+    except (KeyError, ZeroDivisionError):
+        capexrevenueratio = np.nan
+    try:
+        RDrevenueratio = fi.at['Research And Development', selected_year] / fi.at['Total Revenue', selected_year]
+    except (KeyError, ZeroDivisionError):
+        RDrevenueratio = np.nan
+    try:        
+        dio=bs.at['Inventory', selected_year] * 365 / fi.at['Cost Of Revenue', selected_year]
+        dso=bs.at['Accounts Receivable', selected_year] * 365 / fi.at['Total Revenue', selected_year]
+        dpo = bs.at['Accounts Payable', selected_year] * 365 / fi.at['Cost Of Revenue', selected_year]
+        ccc = dio+dso-dpo
+    except (KeyError, ZeroDivisionError):
+        ccc = np.nan
+    return capexrevenueratio, RDrevenueratio, ccc
+
+#procurement market
+def kpi_procurement_market(fi,bs,cf, selected_year,ticker):       
+    try:
+        labour_productivity = fi.at['Total Revenue', fi.columns[0]] / 1000 / yf.Ticker(ticker).info['fullTimeEmployees'] 
+    except (KeyError, ZeroDivisionError):
+        labour_productivity = np.nan
+    try:
+        asset_turnover = fi.at['Total Revenue', selected_year] / bs.at['Total Assets', selected_year] * 100
+    except (KeyError, ZeroDivisionError):
+        asset_turnover = np.nan
+    return labour_productivity, asset_turnover
 
 
 
