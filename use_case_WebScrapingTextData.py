@@ -972,25 +972,22 @@ def app():
             st.info("Select at least one ticker")
         else: 
             run_yahoo = st.button("Press to start stock data analysis...")
-            if run_yahoo:                     
-                
-                #-----------------------------------
-                #check if the ticker exists 
-                #-----------------------------------                
-                if len(second_stock)>0:
-                    stock_data2 = yf.Ticker(second_stock)  
-                    if len(stock_data2.info)<=1:
-                        err_msg="Error: Ticker symbol '" + second_stock +  "' may not exist. Double-check that you've entered the ticker symbol accurately"
-                        second_stock="-"                                               
-                        st.error(err_msg)
-                    else:
-                        sel_stock.append(second_stock)
-                   
-                else:                                     
-                    second_stock="-"                    
-                    
+            if run_yahoo:                 
                 st.session_state['run_yahoo']=run_yahoo
-      
+        #-----------------------------------
+        #check if the ticker exists 
+        #-----------------------------------                
+        if len(second_stock)>0:
+            stock_data2 = yf.Ticker(second_stock)  
+            if len(stock_data2.info)<=1:
+                err_msg="Error: Ticker symbol '" + second_stock +  "' may not exist. Double-check that you've entered the ticker symbol accurately"
+                second_stock="-"                                               
+                st.error(err_msg)
+            else:
+                sel_stock.append(second_stock)
+           
+        else:                                     
+            second_stock="-"  
        #------------------------------------------------------------------
        # Output
        #---------------------------------------------------------------                  
@@ -1039,14 +1036,12 @@ def app():
                         for stocks in sel_stock:                                     
                             try:                                 
                                 stock_data_cf = yf.Ticker(stocks).cashflow
+                                stock_data_cf.columns = pd.to_datetime(stock_data_cf.columns).year 
+                                st.subheader(stocks) 
+                                st.write(stock_data_cf)
                             except Exception as e:
                                 st.error(f"Error fetching data: {e}")    
-                        
-                            stock_data_cf.columns = pd.to_datetime(stock_data_cf.columns).year 
-                            st.subheader(stocks)  
-                            st.write(stock_data_cf)
-
-                       
+                  
                 
                 #-------------------------------------------------
                 # Balance Sheet
@@ -1057,13 +1052,12 @@ def app():
                         for stocks in sel_stock:                                     
                             try:                                 
                                 stock_data_bs = yf.Ticker(stocks).balance_sheet
+                                stock_data_bs.columns = pd.to_datetime(stock_data_bs.columns).year 
+                                st.subheader(stocks)  
+                                st.write(stock_data_bs)
                             except Exception as e:
                                 st.error(f"Error fetching data: {e}")    
-                            stock_data_bs.columns = pd.to_datetime(stock_data_bs.columns).year 
-                            st.subheader(stocks)  
-                            st.write(stock_data_bs)
-                        
-
+        
                 #-------------------------------------------------
                 # Other Financials
                 #-------------------------------------------------    
@@ -1073,11 +1067,12 @@ def app():
                         for stocks in sel_stock:                                     
                             try:                                 
                                 stock_data_fi = yf.Ticker(stocks).financials
+                                stock_data_fi.columns = pd.to_datetime(stock_data_fi.columns).year 
+                                st.subheader(stocks)  
+                                st.write(stock_data_fi)   
                             except Exception as e:
                                 st.error(f"Error fetching data: {e}")    
-                            stock_data_fi.columns = pd.to_datetime(stock_data_fi.columns).year 
-                            st.subheader(stocks)  
-                            st.write(stock_data_fi)                       
+                                                
                         
                     
                 #-------------------------------------------------------    
