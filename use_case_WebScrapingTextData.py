@@ -972,8 +972,10 @@ def app():
             st.info("Select at least one ticker")
         else: 
             run_yahoo = st.button("Press to start stock data analysis...")
-            if run_yahoo:                 
+            if run_yahoo:                   
                 st.session_state['run_yahoo']=run_yahoo
+
+
         #-----------------------------------
         #check if the ticker exists 
         #-----------------------------------                
@@ -985,9 +987,9 @@ def app():
                 st.error(err_msg)
             else:
                 sel_stock.append(second_stock)
-           
+                   
         else:                                     
-            second_stock="-"  
+            second_stock="-"      
        #------------------------------------------------------------------
        # Output
        #---------------------------------------------------------------                  
@@ -995,7 +997,6 @@ def app():
             st.subheader('Stock data info')
             dev_expander_perf = st.expander("Daily data", expanded=True)
             with dev_expander_perf:
-                
                 #get data for a selected ticker symbol:
                 for stocks in sel_stock:                        
                     stock_data = yf.Ticker(stocks)
@@ -1037,13 +1038,12 @@ def app():
                             try:                                 
                                 stock_data_cf = yf.Ticker(stocks).cashflow
                                 stock_data_cf.columns = pd.to_datetime(stock_data_cf.columns).year 
-                                st.subheader(stocks) 
+                                st.subheader(stocks)  
                                 st.write(stock_data_cf)
                             except Exception as e:
                                 st.error(f"Error fetching data: {e}")    
-                  
-                
-                #-------------------------------------------------
+                                                    
+              #-------------------------------------------------
                 # Balance Sheet
                 #-------------------------------------------------                        
                 if 'Balance Sheet' in tb_output:
@@ -1057,7 +1057,9 @@ def app():
                                 st.write(stock_data_bs)
                             except Exception as e:
                                 st.error(f"Error fetching data: {e}")    
-        
+                            
+                        
+
                 #-------------------------------------------------
                 # Other Financials
                 #-------------------------------------------------    
@@ -1069,10 +1071,10 @@ def app():
                                 stock_data_fi = yf.Ticker(stocks).financials
                                 stock_data_fi.columns = pd.to_datetime(stock_data_fi.columns).year 
                                 st.subheader(stocks)  
-                                st.write(stock_data_fi)   
+                                st.write(stock_data_fi) 
                             except Exception as e:
                                 st.error(f"Error fetching data: {e}")    
-                                                
+                                                  
                         
                     
                 #-------------------------------------------------------    
@@ -1121,6 +1123,9 @@ def app():
                         with dev_expander_Procurement_Market:                       
                             procurement_market_data = ["Labour Productivity [in T per employee]", "Asset turnover [%]"]
                             fc.kpi_output(sel_stock, procurement_market_data, fc.kpi_procurement_market)
+                    
+
+                    
                     
 
                     
