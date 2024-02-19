@@ -54,7 +54,7 @@ change_header_style = """
     div[data-testid="stToolbar"] { display: none !important; }
     </style>
     """
-#st.markdown(change_header_style, unsafe_allow_html=True)
+st.markdown(change_header_style, unsafe_allow_html=True)
 
 change_footer_style = """
 <style>
