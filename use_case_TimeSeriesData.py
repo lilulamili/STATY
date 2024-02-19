@@ -34,7 +34,7 @@ def app():
     st.runtime.legacy_caching.clear_cache()
 
     # Hide traceback in error messages (comment out for de-bugging)
-    sys.tracebacklimit = 0
+    #sys.tracebacklimit = 0
 
     # workaround for Firefox bug- hide the scrollbar while keeping the scrolling functionality
     st.markdown("""
@@ -230,7 +230,7 @@ def app():
                 excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                 df_summary["Variable types"].to_excel(excel_file, sheet_name="variable_info")
                 df_summary["ALL"].to_excel(excel_file, sheet_name="summary_statistics")
-                excel_file.save()
+                excel_file.close()
                 excel_file = output.getvalue()
                 b64 = base64.b64encode(excel_file)
                 dl_file_name = "Summary statistics__" + df_name + ".xlsx"
@@ -960,7 +960,7 @@ def app():
                     ts_results_df_info.to_excel(excel_file, sheet_name="ts_results_info")
                     ts_results_df_coef.to_excel(excel_file, sheet_name="ts_results_coef")
                     ts_results_df_tests.to_excel(excel_file, sheet_name="ts_results_tests")
-                    excel_file.save()
+                    excel_file.close()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
                     dl_file_name = "time series__" + df_name + ts_var + ts_time + ".xlsx"

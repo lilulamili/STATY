@@ -245,7 +245,9 @@ def app():
         #st.write("Disclaimer: STATY and the related tools and data are provided for educational purposes only. Note, the project is still under development, and some features may not yet work properly! \n  Licensed under the [Apache License, Version 2.0] (https://www.apache.org/licenses/LICENSE-2.0.html).")
     
     staty_expander=st.expander('STATY - get more info')
+    
     with staty_expander:
+        
         st.write("")
         st.markdown("**Background and motivation**")
         st.markdown("The digital transformation has a significant impact on the competencies in the working world of tomorrow. The need for data literacy and critical data awareness has become obvious and calls for an effective response in higher education of natural and social sciences. However, active usage of data tools in undergraduate and graduate programs requires that both students and teachers have either good programming skills, or that they have to familiarize themselves with sometimes cumbersome software solutions. Students with excellent programming skills are an exception, few gain some programming skills at the cost of understanding the methodology, while the majority of students leave universities without basic data literacy skills.")

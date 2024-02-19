@@ -23,7 +23,7 @@ def app():
     st.runtime.legacy_caching.clear_cache()
 
     # Hide traceback in error messages (comment out for de-bugging)
-    sys.tracebacklimit = 0
+    #sys.tracebacklimit = 0
 
     # workaround for Firefox bug- hide the scrollbar while keeping the scrolling functionality
     st.markdown("""

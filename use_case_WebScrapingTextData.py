@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import functions as fc
 import os
+import sys
 from pypdf import PdfReader 
 import requests
 import streamlit.components.v1 as components
@@ -272,17 +273,17 @@ def app():
                         #Abstractive summary T5-base
                         progress += 1 # mask the slow process
                         sum_bar.progress(progress/progress_len)
-                        #if fc.is_localhost(): 
-                        if ab_sumar:    
-                            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-                            t5_model = AutoModelForSeq2SeqLM.from_pretrained('t5-base')
-                            t5_tokenizer = AutoTokenizer.from_pretrained('t5-base') 
-                            t5_summary=fc.t5_summary(user_text,t5_model,t5_tokenizer) 
-                            st.subheader("Abstractive summarization")                 
-                            T5_output = st.expander("T5-base", expanded = False)
-                            with T5_output:
-                                st.write("**Abstractive summarization using Google's [T5](https://huggingface.co/t5-base)**")
-                                st.write(t5_summary)
+                        if fc.is_localhost(): 
+                            if ab_sumar:    
+                                from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+                                t5_model = AutoModelForSeq2SeqLM.from_pretrained('t5-base')
+                                t5_tokenizer = AutoTokenizer.from_pretrained('t5-base') 
+                                t5_summary=fc.t5_summary(user_text,t5_model,t5_tokenizer) 
+                                st.subheader("Abstractive summarization")                 
+                                T5_output = st.expander("T5-base", expanded = False)
+                                with T5_output:
+                                    st.write("**Abstractive summarization using Google's [T5](https://huggingface.co/t5-base)**")
+                                    st.write(t5_summary)
                         
                         progress += 1
                         sum_bar.progress(progress/progress_len)
@@ -502,7 +503,7 @@ def app():
            
             # Basic text processing:    
             text_cv_fit=text_cv.fit_transform([user_text])
-            wordcount= pd.DataFrame(text_cv_fit.toarray().sum(axis=0), index=text_cv.get_feature_names(),columns=["Word count"])
+            wordcount= pd.DataFrame(text_cv_fit.toarray().sum(axis=0), index=text_cv.get_feature_names_out(),columns=["Word count"])
             word_sorted=wordcount.sort_values(by=["Word count"], ascending=False)
            
             text_prep_options=['lowercase',
@@ -547,8 +548,8 @@ def app():
                 if st.checkbox('Add additional stop words', value = False): 
                     user_stopwords=st.text_area('Please enter or copy additional stop words here', value='', height=200 )
                     if len(user_stopwords)>0:                                        
-                        added_stopwords=fc.get_stop_words(user_stopwords)
-                        word_stopwords=word_stopwords+added_stopwords
+                        added_stopwords=fc.get_stop_words(user_stopwords)                        
+                        word_stopwords=word_stopwords+added_stopwords.tolist()
             elif stopword_selection=="Specify stop words":
                 word_stopwords=[]
                 user_stopwords=st.text_area('Please enter or copy stop words here', value='', height=200 )
@@ -616,6 +617,7 @@ def app():
                     st.subheader('Word count') 
                     
                     #calculate word frequency - stop words exluded:
+                    
                     word_sorted=fc.cv_text(user_text, word_stopwords, 1,user_precision,number_remove)
                                                          
                     st.write("")
@@ -993,7 +995,6 @@ def app():
        #------------------------------------------------------------------
        # Output
        #---------------------------------------------------------------                  
-        
         if st.session_state['run_yahoo'] is not None:
             st.subheader('Stock data info')
             dev_expander_perf = st.expander("Daily data", expanded=True)
@@ -1124,9 +1125,6 @@ def app():
                         with dev_expander_Procurement_Market:                       
                             procurement_market_data = ["Labour Productivity [in T per employee]", "Asset turnover [%]"]
                             fc.kpi_output(sel_stock, procurement_market_data, fc.kpi_procurement_market)
-                    
-
-                    
                     
 
                     
@@ -1335,7 +1333,7 @@ def app():
                             G.build_d3dict(private=True)
 
                         with st.spinner("Writing html..."):
-                            savename = "interaction_network"
+                            savename = "interaction_network"+ "_" + interaction_type
                             htmlstring = G.write_html()
                         net_run=True                 
                            
@@ -1394,15 +1392,19 @@ def app():
                         
             #Display the network and the tweet-net explorer
             if net_run==True:                      
-                with st.expander(network_type, expanded=False):                                      
-
-                    st.download_button(
-                        "Download " +network_type,
-                        data=htmlstring,
-                        file_name=f"{savename}.html",
-                        mime="text/html"
-                    )
-                    components.html(htmlstring, width=2000, height=1024, scrolling=True)
+                st.header(network_type)                                 
+                st.write("Download the file and open it in a browser for further analysis!")    
+                st.download_button(
+                    "Download " +network_type + " "+ (interaction_type if network_type=='Interaction Network' else ""),
+                    data=htmlstring,
+                    file_name=f"{savename}.html",
+                    mime="text/html"
+                )
+                    
+                   
+                 
+                    #components.iframe(path_to_html, width=3000, height=2000, scrolling=True)
+                    #components.html(htmlstring, width=3000, height=2000, scrolling=True)
                 
                 # Sentiment Analysis
                 sent_twitter = twitter_objects[twitter_objects['lang'].isin(['en'])]

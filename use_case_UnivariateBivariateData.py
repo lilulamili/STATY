@@ -49,7 +49,7 @@ def app():
     st.runtime.legacy_caching.clear_cache()
 
     # Hide traceback in error messages (comment out for de-bugging)
-    sys.tracebacklimit = 0
+    #sys.tracebacklimit = 0
 
     # Show altair tooltip when full screen
     st.markdown('<style>#vg-tooltip-element{z-index: 1000051}</style>',unsafe_allow_html=True)
@@ -363,7 +363,10 @@ def app():
                     df_to_plot=df[[x_var]]
                 else: 
                     df_to_plot=df[[x_var,y_var]]
-                df_to_plot.loc[:,"Index"]=df.index                             
+                
+                df_to_plot = df.copy()
+                df_to_plot["Index"]=df.index 
+                                                         
                 fig = px.scatter(data_frame=df_to_plot, x=x_var, y=y_var,hover_data=[x_var, y_var, "Index"], color_discrete_sequence=['rgba(77, 121, 169, 0.7)'])
                 fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',}) 
                 fig.update_layout(xaxis=dict(title=x_var, titlefont_size=14, tickfont_size=14,),)
@@ -387,8 +390,9 @@ def app():
                 st.markdown("") 
                 st.markdown("") 
                                 
-                df_to_plot=df[[bx_var]]                
-                df_to_plot.loc[:,"Index"]=df.index                                         
+                df_to_plot=df[[bx_var]] 
+                df_to_plot = df.copy()               
+                df_to_plot["Index"]=df.index                                           
                 fig = go.Figure()
                 fig.add_trace(go.Box( 
                     y=df[bx_var],name=bx_var,
@@ -652,13 +656,13 @@ def app():
                     st.write("") 
                     st.write("")
 
-                    if run_anova:         
-                        
+                    if run_anova: 
                         # Boxplot
-                        anova_data['Index']=anova_data.index
+                        anova_data_to_plot=anova_data.copy()
+                        anova_data_to_plot['Index']=anova_data.index
                         fig = go.Figure()
                         fig.add_trace(go.Box(
-                            x=anova_data[clas_var],y=anova_data[target_var],customdata=anova_data['Index'],
+                            x=anova_data_to_plot[clas_var],y=anova_data_to_plot[target_var],customdata=anova_data_to_plot['Index'],
                             name='', boxpoints='all', jitter=0,
                             whiskerwidth=0.2, marker_color = 'indianred',
                             marker_size=2, line_width=1))
@@ -684,6 +688,7 @@ def app():
                             st.subheader("Histograms")
                             st.plotly_chart(fig1, use_container_width=True)
                         
+                        
                         # ANOVA calculation & plots
                         df_grouped=anova_data.groupby(clas_var)
                         overal_mean=(df_grouped.mean()*df_grouped.count()).sum()/df_grouped.count().sum()
@@ -703,7 +708,7 @@ def app():
                         anova_summary["count"]=df_grouped.count()
                         anova_summary["mean"]=df_grouped.mean()
                         anova_summary["variance"]=df_grouped.var()
-
+                        
                         st.subheader("Groups summary:")
                         st.table(anova_summary.style.format(precision=user_precision))
                         
@@ -1755,10 +1760,11 @@ def app():
                 excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                               
 
-                cont_extra=st.checkbox("Show marginal frequencies", value = False)        
+                
                 
                 if st.checkbox("Show data for contingency analysis", value = False):        
                     st.write(df)
+                cont_extra=st.checkbox("Analyse marginal frequencies", value = False)        
                 cont_data_output=st.checkbox("Include data for contingency analysis in the output file", value = False)
                 
                 #xls write

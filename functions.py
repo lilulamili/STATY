@@ -1216,7 +1216,7 @@ def get_stop_words(user_stopwords):
     
     stopwords_cv = CountVectorizer()
     stopwords_cv_fit=stopwords_cv.fit_transform([user_stopwords])                    
-    added_stop_words=stopwords_cv.get_feature_names()
+    added_stop_words=stopwords_cv.get_feature_names_out()
 
     return added_stop_words
 
@@ -1284,11 +1284,11 @@ def cv_text(user_text, word_stopwords, ngram_level,user_precision,number_remove)
     if ngram_level>1:
         if number_remove==True:
             user_text=''.join(c for c in user_text if not c.isdigit())
-
-    cv = CountVectorizer(analyzer='word', stop_words=set(word_stopwords), ngram_range=(ngram_level, ngram_level))
-  
+    word_stopwords=list(word_stopwords)
+    #cv = CountVectorizer(analyzer='word', stop_words=set(word_stopwords), ngram_range=(ngram_level, ngram_level))
+    cv = CountVectorizer(analyzer='word', stop_words=word_stopwords, ngram_range=(ngram_level, ngram_level))
     cv_fit=cv.fit_transform([user_text])
-    cv_output= pd.DataFrame(cv_fit.toarray().sum(axis=0), index=cv.get_feature_names(),columns=["Word count"])
+    cv_output= pd.DataFrame(cv_fit.toarray().sum(axis=0), index=cv.get_feature_names_out(),columns=["Word count"])
     cv_output["Rel. freq."]=100*cv_output["Word count"]/cv_output["Word count"].sum() 
     cv_output["Rel. freq."]=cv_output["Rel. freq."].round(user_precision)
     

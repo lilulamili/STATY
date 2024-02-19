@@ -22,7 +22,8 @@ from sklearn.neural_network import MLPRegressor, MLPClassifier
 from sklearn.metrics import make_scorer, mean_squared_error, r2_score, mean_absolute_error, explained_variance_score, roc_auc_score, max_error, log_loss, average_precision_score, precision_recall_curve, auc, roc_curve, confusion_matrix, recall_score, precision_score, f1_score, accuracy_score, balanced_accuracy_score, cohen_kappa_score, classification_report
 from sklearn.model_selection import cross_val_score, GridSearchCV, RandomizedSearchCV
 from sklearn.base import BaseEstimator, RegressorMixin, ClassifierMixin
-from sklearn.inspection import plot_partial_dependence, partial_dependence, permutation_importance
+#from sklearn.inspection import plot_partial_dependence, partial_dependence, permutation_importance
+from sklearn.inspection import PartialDependenceDisplay, partial_dependence, permutation_importance
 from skopt import BayesSearchCV
 from skopt.space import Real, Categorical, Integer 
 from skopt.utils import use_named_args
@@ -1824,7 +1825,7 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             # Information
             rf_reg_inf.loc["Base estimator"] = full_model_rf_sk.base_estimator_
             rf_reg_inf.loc["Estimators"] = len(full_model_rf_sk.estimators_)
-            rf_reg_inf.loc["Features"] = full_model_rf_sk.n_features_
+            rf_reg_inf.loc["Features"] = full_model_rf_sk.n_features_in_
             rf_reg_inf.loc["OOB score"] = full_model_rf_sk.oob_score_
             # Feature importances (RF method)
             rf_featImp = full_model_rf_sk.feature_importances_
@@ -1841,7 +1842,9 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             # Partial dependence
             rf_pd = {}
             rf_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
-            rf_partDep = plot_partial_dependence(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            #rf_partDep = plot_partial_dependence(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            rf_partDep = PartialDependenceDisplay.from_estimator(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+
             for varPd in expl_var:
                 rf_pd[varPd] = rf_partDep[expl_var.index(varPd)]
                 rf_pd_min_max.loc[varPd]["min"] = rf_partDep[expl_var.index(varPd)]["average"].min()
@@ -1894,9 +1897,9 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
 
             # Extract essential results from model
             # Information
-            brt_reg_inf.loc["Classes"] = full_model_brt_sk.n_classes_
+            #brt_reg_inf.loc["Classes"] = full_model_brt_sk.n_classes_
             brt_reg_inf.loc["Estimators"] = full_model_brt_sk.n_estimators_
-            brt_reg_inf.loc["Features"] = full_model_brt_sk.n_features_
+            brt_reg_inf.loc["Features"] = full_model_brt_sk.n_features_in_
             brt_reg_inf.loc["Loss function"] = full_model_brt_sk.loss
             # Feature importances (BRT method)
             brt_featImp = full_model_brt_sk.feature_importances_
@@ -1913,9 +1916,11 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             # Partial dependence
             brt_pd = {}
             brt_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
-            brt_partDep = plot_partial_dependence(full_model_brt_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            #brt_partDep = plot_partial_dependence(full_model_brt_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            brt_partDep = PartialDependenceDisplay.from_estimator(full_model_brt_sk, X_data, features=expl_var, percentiles=(0, 1), method="brute").pd_results
+                        
             for varPd in expl_var:                              
-                brt_pd[varPd] = brt_partDep[expl_var.index(varPd)] #st.sidebar.write(brt_partDep[expl_var.index(varPd)])
+                brt_pd[varPd] = brt_partDep[expl_var.index(varPd)] 
                 brt_pd_min_max.loc[varPd]["min"] = brt_partDep[expl_var.index(varPd)]["average"].min()
                 brt_pd_min_max.loc[varPd]["max"] = brt_partDep[expl_var.index(varPd)]["average"].max()              
             #######
@@ -1994,7 +1999,8 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             # Partial dependence
             ann_pd = {}
             ann_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
-            ann_partDep = plot_partial_dependence(full_model_ann_sk, X = X_data_ann, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            #ann_partDep = plot_partial_dependence(full_model_ann_sk, X = X_data_ann, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            ann_partDep = PartialDependenceDisplay.from_estimator(full_model_ann_sk, X = X_data_ann, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
             for varPd in expl_var:
                 ann_pd[varPd] = ann_partDep[expl_var.index(varPd)]
                 ann_pd_min_max.loc[varPd]["min"] = ann_partDep[expl_var.index(varPd)]["average"].min()
@@ -2509,7 +2515,7 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             # Information
             rf_reg_inf.loc["Base estimator"] = full_model_rf_sk.base_estimator_
             rf_reg_inf.loc["Estimators"] = len(full_model_rf_sk.estimators_)
-            rf_reg_inf.loc["Features"] = full_model_rf_sk.n_features_
+            rf_reg_inf.loc["Features"] = full_model_rf_sk.n_features_in_
             rf_reg_inf.loc["OOB score"] = full_model_rf_sk.oob_score_
             # Feature importances (RF method)
             rf_featImp = full_model_rf_sk.feature_importances_
@@ -2526,7 +2532,10 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             # Partial dependence
             rf_pd = {}
             rf_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
-            rf_partDep = plot_partial_dependence(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            #rf_partDep = plot_partial_dependence(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+            rf_partDep = PartialDependenceDisplay.from_estimator(full_model_rf_sk, X = X_data, features = expl_var, percentiles =(0, 1), method = "brute").pd_results
+
+            
             for varPd in expl_var:
                 rf_pd[varPd] = rf_partDep[expl_var.index(varPd)]
                 rf_pd_min_max.loc[varPd]["min"] = rf_partDep[expl_var.index(varPd)]["average"].min()
@@ -2608,7 +2617,7 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             # Information
             brt_reg_inf.loc["Classes"] = full_model_brt_sk.n_classes_
             brt_reg_inf.loc["Estimators"] = full_model_brt_sk.n_estimators_
-            brt_reg_inf.loc["Features"] = full_model_brt_sk.n_features_
+            brt_reg_inf.loc["Features"] = full_model_brt_sk.n_features_in_
             brt_reg_inf.loc["Loss function"] = full_model_brt_sk.loss
             # Feature importances (BRT method)
             brt_featImp = full_model_brt_sk.feature_importances_
@@ -2635,7 +2644,9 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             # Partial dependence
             brt_pd = {}
             brt_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
-            brt_partDep = plot_partial_dependence(full_model_brt_sk, X = X_data, features = expl_var, percentiles = (0, 1), method = "brute", response_method = "predict_proba").pd_results
+            #brt_partDep = plot_partial_dependence(full_model_brt_sk, X = X_data, features = expl_var, percentiles = (0, 1), method = "brute", response_method = "predict_proba").pd_results
+            brt_partDep = PartialDependenceDisplay.from_estimator(full_model_brt_sk, X = X_data, features = expl_var, percentiles = (0, 1), method = "brute", response_method = "predict_proba").pd_results
+
             for varPd in expl_var:
                 brt_pd[varPd] = brt_partDep[expl_var.index(varPd)]
                 brt_pd_min_max.loc[varPd]["min"] = brt_partDep[expl_var.index(varPd)]["average"].min()
@@ -2757,7 +2768,9 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             # Partial dependence
             ann_pd = {}
             ann_pd_min_max = pd.DataFrame(index = expl_var, columns = ["min", "max"])
-            ann_partDep = plot_partial_dependence(full_model_ann_sk, X = X_data_ann, features = expl_var, percentiles = (0, 1), method = "brute", response_method = "predict_proba").pd_results
+            #ann_partDep = plot_partial_dependence(full_model_ann_sk, X = X_data_ann, features = expl_var, percentiles = (0, 1), method = "brute", response_method = "predict_proba").pd_results
+            ann_partDep = PartialDependenceDisplay.from_estimator(full_model_ann_sk, X = X_data_ann, features = expl_var, percentiles = (0, 1), method = "brute", response_method = "predict_proba").pd_results
+
             for varPd in expl_var:
                 ann_pd[varPd] = ann_partDep[expl_var.index(varPd)]
                 ann_pd_min_max.loc[varPd]["min"] = ann_partDep[expl_var.index(varPd)]["average"].min()
@@ -2861,7 +2874,7 @@ def model_full(data, data_new, algorithms, MLR_model, MLR_finalPara, LR_finalPar
             # Information
             rf_reg_inf.loc["Base estimator"] = full_model_rf_sk.base_estimator_
             rf_reg_inf.loc["Estimators"] = len(full_model_rf_sk.estimators_)
-            rf_reg_inf.loc["Features"] = full_model_rf_sk.n_features_
+            rf_reg_inf.loc["Features"] = full_model_rf_sk.n_features_in_
             rf_reg_inf.loc["OOB score"] = full_model_rf_sk.oob_score_
             # Feature importances (RF method)
             rf_featImp = full_model_rf_sk.feature_importances_
