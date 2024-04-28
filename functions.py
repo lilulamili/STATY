@@ -31,6 +31,7 @@ from pysummarization.nlpbase.auto_abstractor import AutoAbstractor
 from pysummarization.tokenizabledoc.simple_tokenizer import SimpleTokenizer
 from pysummarization.web_scraping import WebScraping
 from pysummarization.abstractabledoc.top_n_rank_abstractor import TopNRankAbstractor
+"""
 import sumy
 from sumy.parsers.html import HtmlParser 
 from sumy.nlp.tokenizers import Tokenizer 
@@ -44,6 +45,7 @@ from sumy.summarizers.kl import KLSummarizer
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.stemmers import Stemmer 
 from sumy.utils import get_stop_words
+"""
 import mediawiki
 import yfinance as yf
 from bs4 import BeautifulSoup
@@ -1453,7 +1455,7 @@ def pdf_read(pdf_reader):
 
 #------------------------------------------------------------------------------------------
 #FUNCTION for extractive summary of a web-page using SUMY's LSA
-
+""" 
 def sumy_htmlsummary(text,  url):            
         
     # Tokenize the content using the Linguistic Studies Analyzer (LSA) 
@@ -1469,10 +1471,10 @@ def sumy_htmlsummary(text,  url):
         summary += str(sentence)
    
     return(summary)
-
+"""
 #------------------------------------------------------------------------------------------
 #FUNCTION for extractive summary of a plain text using all summarization methods within sumy
-
+"""
 def sumy_summary(text,extr_method, extr_length,user_language):            
 # summarization methods: "Luhn",  "Edmunson", "LSA",  "LexRank", "TextRank", "SumBasic","KL-Sum"      
    
@@ -1485,14 +1487,12 @@ def sumy_summary(text,extr_method, extr_length,user_language):
     if extr_method=="LSA":
         summarizer = Summarizer(stemmer) 
     if extr_method=="LexRank" :
-        summarizer = LexRankSummarizer(stemmer)    
-        """ 
+        summarizer = LexRankSummarizer(stemmer)     
     if extr_method=="Edmunson":
         summarizer = EdmundsonSummarizer(stemmer)
         summarizer.bonus_words = ("summarization", "text")
         summarizer.stigma_words = ("example", "tool")
         summarizer.null_words = get_stop_words(lang_used)
-        """ 
     if extr_method=="Luhn":
         summarizer = LuhnSummarizer(stemmer)      
     if extr_method=="TextRank":
@@ -1510,7 +1510,7 @@ def sumy_summary(text,extr_method, extr_length,user_language):
         summary += str(sentence)
 
     return(summary)
- 
+""" 
  
 
 #------------------------------------------------------------------------------------------

@@ -194,7 +194,7 @@ def app():
                     st.write("No information could be found on your query")
             
     
-    
+    """
     #------------------------------------------------------------
     # Text Summarization
     # -----------------------------------------------------------  
@@ -362,6 +362,7 @@ def app():
 
                         
                         st.success('Text summarization completed!')
+     """                   
     #---------------------------------------------
     #  PLOS ONE paper access and summarization
     #---------------------------------------------  
@@ -415,7 +416,7 @@ def app():
                 progress += 1
                 ra_bar.progress(progress/3)
 
-                summy_summary=fc.sumy_htmlsummary(paper_text,paper_url)
+                #summy_summary=fc.sumy_htmlsummary(paper_text,paper_url)
                 progress += 1
                 ra_bar.progress(progress/3)
 
@@ -426,8 +427,8 @@ def app():
                 st.success('Paper summarization completed!')
 
                 #provide the output
-                st.subheader("Extractive summarization using [sumy](https://pypi.org/project/sumy/)")
-                st.write(summy_summary)
+                #st.subheader("Extractive summarization using [sumy](https://pypi.org/project/sumy/)")
+                #st.write(summy_summary)
                 if fc.is_localhost(): 
                     st.subheader("Abstractive summarization using Google's [T5](https://huggingface.co/t5-base)")
                     st.write(t5_summary)
