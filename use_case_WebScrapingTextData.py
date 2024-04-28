@@ -311,7 +311,7 @@ def app():
                                     #provide the output
                                     st.write("**Extractive summarization using LexRank within [sumy](https://pypi.org/project/sumy/)**")
                                     st.write(summy_summary)
-                            """
+                            
                             if "Edmunson" in extr_methods:
                                 summy_summary=fc.sumy_summary(user_text,"Edmunson", extr_length,user_language)
                                 progress += 1
@@ -321,7 +321,7 @@ def app():
                                     #provide the output
                                     st.write("**Extractive summarization using Edmunson within [sumy](https://pypi.org/project/sumy/)**")
                                     st.write(summy_summary)
-                            """
+                           
                             if "Luhn" in extr_methods:
                                 summy_summary=fc.sumy_summary(user_text,"Luhn", extr_length,user_language)
                                 progress += 1
