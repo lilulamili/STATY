@@ -30,6 +30,7 @@ from difflib import SequenceMatcher
 import nltk
 nltk.download('punkt')
 nltk.download('vader_lexicon')
+nltk.download('wordnet')
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from sentence_transformers import SentenceTransformer
 from streamlit_js_eval import streamlit_js_eval
@@ -125,7 +126,7 @@ def app():
     
     st.header('**Web scraping and text data**')
     tw_options = {'Text Analysis':'Text Data',
-                'Text Summarization':'Text Summarization',                  
+                #'Text Summarization':'Text Summarization',                  
                 'Wikipedia-based Question Answering':'Wikipedia-based Question Answering',
                 'PLOS ONE Paper Summarizer':'PLOS ONE Paper Summarizer',
                 'Yfinance Stock Data Explorer':'Yfinance Stock Data Explorer',
@@ -240,7 +241,7 @@ def app():
             st.subheader('**Extractive summarization**') 
             a4, a5 = st.columns(2)
             with a4:   
-                extr_methods = st.multiselect("Select summarization methods ", ["Luhn",  "Edmunson", "LSA",  "LexRank", "TextRank", "SumBasic","KL-Sum"], ["LSA","SumBasic"], on_change=tx_sum_change)
+                extr_methods = st.multiselect("Select summarization methods ", ["Luhn",   "LSA",  "LexRank", "TextRank", "SumBasic","KL-Sum"], ["LSA","SumBasic"], on_change=tx_sum_change)
             with a5:
                 extr_length=st.number_input('Specify summary length (no. sentences in the summary)',min_value=1, max_value=no_sentences,value=min(5,no_sentences))
             
@@ -310,7 +311,7 @@ def app():
                                     #provide the output
                                     st.write("**Extractive summarization using LexRank within [sumy](https://pypi.org/project/sumy/)**")
                                     st.write(summy_summary)
-
+                            """
                             if "Edmunson" in extr_methods:
                                 summy_summary=fc.sumy_summary(user_text,"Edmunson", extr_length,user_language)
                                 progress += 1
@@ -320,6 +321,7 @@ def app():
                                     #provide the output
                                     st.write("**Extractive summarization using Edmunson within [sumy](https://pypi.org/project/sumy/)**")
                                     st.write(summy_summary)
+                            """
                             if "Luhn" in extr_methods:
                                 summy_summary=fc.sumy_summary(user_text,"Luhn", extr_length,user_language)
                                 progress += 1
@@ -503,9 +505,12 @@ def app():
            
             # Basic text processing:    
             text_cv_fit=text_cv.fit_transform([user_text])
+            
+            
             wordcount= pd.DataFrame(text_cv_fit.toarray().sum(axis=0), index=text_cv.get_feature_names_out(),columns=["Word count"])
             word_sorted=wordcount.sort_values(by=["Word count"], ascending=False)
-           
+            
+
             text_prep_options=['lowercase',
                                 'remove whitespaces',
                                 'remove abbreviations',
@@ -521,10 +526,13 @@ def app():
                                 'remove html tags', 
                                 'remove emails']                    
             text_prep_ops=st.multiselect('Select text pre-processing options',text_prep_options,text_prep_selection)
+            
             number_remove= False # don't remove within cv_text function
-                                 
+            
+            root_selection=st.selectbox("Select additional NLP options",['-',"stemming (Porter)","stemming (snowball)","lemmatization"], index=0,help="Stemming and Lemmatization reduce words to their base form for better analysis. Stemming chops off affixes while Lemmatization considers context. For example, the lemma of 'better' is 'good'.  \n  If selected, they will be considered for NLP metrics, but not for sentiment analysis or n-grams.")                    
+            
             #Stop words handling:
-            stopword_selection=st.selectbox("Select stop word option",["No stop words (use all words)","Select stop words", "Use a built-in list of stop words in German", "Use a built-in list of stop words in English", "Specify stop words"], index=3, key=st.session_state['key'])
+            stopword_selection=st.selectbox("Select stop word option",["No stop words (use all words)","Select stop words", "Use a built-in list of stop words in German", "Use a built-in list of stop words in English", "Specify stop words"], index=3)
             
             if stopword_selection=="No stop words (use all words)":
                 word_stopwords=[] 
@@ -575,6 +583,8 @@ def app():
             if st.checkbox('Show a word count', value = False): 
                 st.write(word_sorted)  
             
+            sent_analysis= st.checkbox('Perform sentiment analysis', value = False) 
+               
              
             a4,a5=st.columns(2)
             with a4:
@@ -604,10 +614,14 @@ def app():
                 st.info("Text processing progress")
                 text_bar = st.progress(0.0)
                 progress = 0
-
+                info_line=st.empty()
+                info_line.text("Getting started...")
+                st.markdown("")
+                
                 #Text preprocessing
-                user_text=fc.text_preprocessing(user_text,text_prep_ops,user_language)
-                                
+                user_text,user_text_basic=fc.text_preprocessing(user_text,text_prep_ops,root_selection,user_language)
+                #user_text_basic - text after stemming or lemmatization   
+                #user_text - text before stemming or lemmatization            
                 #---------------------------------------------------------------------------------
                 # Basic NLP metrics and visualisations
                 #---------------------------------------------------------------------------------
@@ -615,10 +629,9 @@ def app():
                 with wfreq_output:
                     # Word frequency
                     st.subheader('Word count') 
-                    
-                    #calculate word frequency - stop words exluded:
-                    
-                    word_sorted=fc.cv_text(user_text, word_stopwords, 1,user_precision,number_remove)
+                                        
+                    #calculate word frequency - stop words exluded:                    
+                    word_sorted=fc.cv_text(user_text_basic, word_stopwords, 1,user_precision,number_remove)
                                                          
                     st.write("")
                     st.write("Number of words: ", word_sorted["Word count"].sum())
@@ -693,11 +706,11 @@ def app():
                         st.info("A comparision of frequencies of short and long words")
 
                     # bigram distribution
-                    cv2_output=fc.cv_text(user_text, word_stopwords, 2,user_precision,number_remove)
+                    cv2_output=fc.cv_text(user_text_basic, word_stopwords, 2,user_precision,number_remove)
                                        
 
                     # trigram distribution
-                    cv3_output=fc.cv_text(user_text, word_stopwords, 3,user_precision,number_remove)
+                    cv3_output=fc.cv_text(user_text_basic, word_stopwords, 3,user_precision,number_remove)
                                 
 
                     a4,a5=st.columns(2)
@@ -728,7 +741,7 @@ def app():
                         #Draw WordCloud
                         wordcloud = WordCloud(background_color="white",
                             contour_color="white",max_words=100,stopwords=word_stopwords,
-                            width=600,height=400,color_func=random_color_func).generate(user_text)  
+                            width=600,height=400,color_func=random_color_func).generate(user_text_basic)  
                         fig_text, ax = plt.subplots()
                         ax=plt.imshow(wordcloud, interpolation='bilinear')
                         plt.axis("off")
@@ -738,7 +751,7 @@ def app():
                     
                     progress += 1
                     text_bar.progress(progress/3)
-
+                    info_line.text("Basic NLP metrics done...")
                                         
                      # Download link
                     st.write("")  
@@ -766,61 +779,62 @@ def app():
                 # Sentiment analysis per sentence
                 #---------------------------------------------------------------------------------
                     sentences = re.findall(r"([^.]*\.)" ,user_text) 
-                    if user_language=="en":
-                        sa_table = pd.DataFrame(index = range(0, len(sentences)), columns=["Sentence", "neg","neu","pos","compound"]) 
-                        for i in range(0,len(sentences)):    
-                            sid = SentimentIntensityAnalyzer()
-                            sentence=sentences[i]                      
-                            ss = sid.polarity_scores(sentence)                       
-                            sa_table.loc[i]["Sentence"]=sentence
-                                                      
-                            sa_table.loc[i]["neg"]=ss["neg"]
-                            sa_table.loc[i]["neu"]=ss["neu"]
-                            sa_table.loc[i]["pos"]=ss["pos"]
-                            sa_table.loc[i]["compound"]=ss["compound"]
-                           
-                            st.session_state['sentiment']=sa_table
-                        
-                    elif user_language=="de": 
-
-                        if fc.is_localhost():                       
-                            from germansentiment import SentimentModel
-                            sa_table = pd.DataFrame(index = range(0, len(sentences)), columns=["Sentence", "pos","neg","neu"]) 
-                            
-                            model = SentimentModel() 
-                            for i in range(0,len(sentences)):                           
-                                sentence=sentences[i] 
-                                classes, probs = model.predict_sentiment([sentence], output_probabilities = True)                    
+                    if sent_analysis:
+                        if user_language=="en":
+                            sa_table = pd.DataFrame(index = range(0, len(sentences)), columns=["Sentence", "neg","neu","pos","compound"]) 
+                            for i in range(0,len(sentences)):    
+                                sid = SentimentIntensityAnalyzer()
+                                sentence=sentences[i]                      
+                                ss = sid.polarity_scores(sentence)                       
                                 sa_table.loc[i]["Sentence"]=sentence
-                                sa_table.loc[i]["pos"]=probs[0][0][1]
-                                sa_table.loc[i]["neg"]=probs[0][1][1]
-                                sa_table.loc[i]["neu"]=probs[0][2][1]
+                                                        
+                                sa_table.loc[i]["neg"]=ss["neg"]
+                                sa_table.loc[i]["neu"]=ss["neu"]
+                                sa_table.loc[i]["pos"]=ss["pos"]
+                                sa_table.loc[i]["compound"]=ss["compound"]
+                            
                                 st.session_state['sentiment']=sa_table
-                             
-                if st.session_state['sentiment'] is not None and user_language in ["de", "en"]:
-                    sentiment_output = st.expander("Sentiment Analysis", expanded = False)
-                    with sentiment_output:
-                        if user_language=="de" and fc.is_localhost()==False: 
-                            st.info("German sentiment analysis can be performed on localhost:8501 due to file size restrictions on the cloud!")        
-                        else:
-                            st.subheader('Sentiment Analysis')
-                            st.write(sa_table.style.format(precision=user_precision))  
-                            # Download link
-                            st.write("")  
-                            output = BytesIO()
-                            excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
-                            sa_table.to_excel(excel_file, sheet_name="sentiment",index=True) 
-                                                
-                            excel_file.close()
-                            excel_file = output.getvalue()
-                            b64 = base64.b64encode(excel_file)
-                            dl_file_name = "SentimentAnalysis.xlsx"
-                            st.markdown(
-                                f"""
-                            <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download sentiment results</a>
-                            """,
-                            unsafe_allow_html=True)
-                            st.write("")            
+                            
+                        elif user_language=="de": 
+
+                            if fc.is_localhost():                       
+                                from germansentiment import SentimentModel
+                                sa_table = pd.DataFrame(index = range(0, len(sentences)), columns=["Sentence", "pos","neg","neu"]) 
+                                
+                                model = SentimentModel() 
+                                for i in range(0,len(sentences)):                           
+                                    sentence=sentences[i] 
+                                    classes, probs = model.predict_sentiment([sentence], output_probabilities = True)                    
+                                    sa_table.loc[i]["Sentence"]=sentence
+                                    sa_table.loc[i]["pos"]=probs[0][0][1]
+                                    sa_table.loc[i]["neg"]=probs[0][1][1]
+                                    sa_table.loc[i]["neu"]=probs[0][2][1]
+                                    st.session_state['sentiment']=sa_table
+                if sent_analysis:                               
+                    if st.session_state['sentiment'] is not None and user_language in ["de", "en"]:
+                        sentiment_output = st.expander("Sentiment Analysis", expanded = False)
+                        with sentiment_output:
+                            if user_language=="de" and fc.is_localhost()==False: 
+                                st.info("German sentiment analysis can be performed on localhost:8501 due to file size restrictions on the cloud!")        
+                            else:
+                                st.subheader('Sentiment Analysis')
+                                st.write(sa_table.style.format(precision=user_precision))  
+                                # Download link
+                                st.write("")  
+                                output = BytesIO()
+                                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                                sa_table.to_excel(excel_file, sheet_name="sentiment",index=True) 
+                                                    
+                                excel_file.close()
+                                excel_file = output.getvalue()
+                                b64 = base64.b64encode(excel_file)
+                                dl_file_name = "SentimentAnalysis.xlsx"
+                                st.markdown(
+                                    f"""
+                                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download sentiment results</a>
+                                """,
+                                unsafe_allow_html=True)
+                                st.write("")            
                 #---------------------------------------------------------------------------------
                 # Sentences with specific words
                 #---------------------------------------------------------------------------------
@@ -859,8 +873,9 @@ def app():
                                 
                 progress += 1
                 text_bar.progress(progress/3)
+                info_line.text("Sentences analysis done...")
                 
-                
+
                 #---------------------------------------------------------------------------------
                 # User specific n-grams
                 #---------------------------------------------------------------------------------
@@ -909,7 +924,7 @@ def app():
                 
                 progress += 1
                 text_bar.progress(progress/3)
-                
+                info_line.text("Text analysis completed!")
  
     #---------------------------------------------               
     # Stock data access via yfinance
@@ -1426,8 +1441,10 @@ def app():
                         text = re.sub(r'@\w+', '', text)
                         return text
 
-                    # Apply preprocessing to the 'text' column                                   
-                    sent_twitter['tweet_text'] = sent_twitter['text'].apply(preprocess_text)
+                    # Apply preprocessing to the 'text' column 
+                    sent_twitter_copy = sent_twitter.copy()                                  
+                    sent_twitter_copy['tweet_text'] = sent_twitter['text'].apply(preprocess_text)
+                    sent_twitter=sent_twitter_copy
                     
                     # Sentiment analysis using VADER
                     analyzer = SentimentIntensityAnalyzer()
@@ -1438,16 +1455,18 @@ def app():
                         return sentiment
                     
                     # Apply sentiment analysis to the 'text' column
-                    sent_twitter['sentiment_scores'] = sent_twitter['tweet_text'].apply(get_sentiment_scores)
-
+                    sent_twitter_copy = sent_twitter.copy()  
+                    sent_twitter_copy['sentiment_scores'] = sent_twitter['tweet_text'].apply(get_sentiment_scores)
+                    sent_twitter=sent_twitter_copy
+                    
                     # Apply sentiment analysis to the 'text' column
-                    sent_twitter['pos'] = sent_twitter['sentiment_scores'].apply(lambda x: x['pos'])
-                    sent_twitter['neu'] = sent_twitter['sentiment_scores'].apply(lambda x: x['neu'])
-                    sent_twitter['neg'] = sent_twitter['sentiment_scores'].apply(lambda x: x['neg'])
+                    sent_twitter_copy['pos'] = sent_twitter['sentiment_scores'].apply(lambda x: x['pos'])
+                    sent_twitter_copy['neu'] = sent_twitter['sentiment_scores'].apply(lambda x: x['neu'])
+                    sent_twitter_copy['neg'] = sent_twitter['sentiment_scores'].apply(lambda x: x['neg'])
                         
                     with st.expander("Sentiment Analysis", expanded=False):                        
                         #Display the table with 'text', 'pos', 'neu', and 'neg' columns
                         st.write("")
-                        st.dataframe(sent_twitter[['tweet_text', 'text','pos', 'neu', 'neg']])
+                        st.dataframe(sent_twitter_copy[['tweet_text', 'text','pos', 'neu', 'neg']])
 
     

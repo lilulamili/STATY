@@ -19,6 +19,8 @@ import streamlit as st
 from random import randint
 from io import BytesIO
 import nltk
+from nltk.stem import PorterStemmer,SnowballStemmer,WordNetLemmatizer 
+from nltk.tokenize import word_tokenize
 nltk.download('punkt') 
 from pypdf import PdfReader 
 from docx import Document
@@ -1223,7 +1225,7 @@ def get_stop_words(user_stopwords):
 #------------------------------------------------------------------------------------------
 #FUNCTION FOR TEXT PROCESSING
 
-def text_preprocessing(user_text,text_prep_ops,user_language):
+def text_preprocessing(user_text,text_prep_ops,root_selection,user_language):
    
     if 'lowercase' in text_prep_ops:
         user_text=user_text.lower()
@@ -1272,8 +1274,51 @@ def text_preprocessing(user_text,text_prep_ops,user_language):
         #(?:15\d{2}|1[6-9]\d{2}|2\d{3}|3(?:(?:0[0-9])|[01][0-9])\d{1}|3500) matches a year between 1500 and 3000.
         #(?!\d) is a negative lookahead that ensures that the match is not followed by any digit.
         #\d+(?:st|nd|rd|th)?\b matches any sequence of digits followed by an optional suffix ("st", "nd", "rd", or "th") and a word boundary.
-                                                          
-    return user_text                        
+    
+    # stemming' or 'lemmatization'
+    # initialise user_text_basic (text after stemming and lematization)
+    # sentiment analysis will be done on text before  stemming or lematization   
+    user_text_basic=user_text
+    
+    if 'stemming (Porter)' or 'stemming (snowball)' or 'lemmatization' in root_selection:                                                
+        #remove special chracters
+        user_text_basic=re.sub('[^a-zA-Z0-9 \n\.]', '', user_text_basic)
+        # remove numbers in squared brackets
+        user_text_basic=re.sub(r'\[\d+\]', '', user_text_basic)  
+        #remove punctuation  
+        user_text_basic = re.sub(r'[.,;!?]', '', user_text_basic)
+        
+        # Tokenize the text to extract words
+        words = word_tokenize(user_text_basic)
+
+        if 'stemming (Porter)' in root_selection: 
+            # Initialize PorterStemmer
+            porter = PorterStemmer()        
+            # Stem each word in the tokenized text
+            stemmed_words = [porter.stem(word) for word in words]        
+            # Join the stemmed words back into a single string
+            user_text_basic = ' '.join(stemmed_words)  
+        
+        if 'stemming (snowball)' in root_selection: 
+            # Initialize PorterStemmer
+            snowball_languages = {"ar": "arabic",   "da": "danish",    "nl": "dutch",    "en": "english",    "fi": "finnish",    "fr": "french",  "de":"german",    "hu": "hungarian",    "it": "italian",    "no": "norwegian",    "pt": "portuguese",    "ro": "romanian",    "ru": "russian",   "es": "spanish",    "sv": "swedish"}
+
+            snowball = SnowballStemmer(language=snowball_languages[user_language])         
+            # Stem each word in the tokenized text
+            stemmed_words = [snowball.stem(word) for word in words]        
+            # Join the stemmed words back into a single string
+            user_text_basic = ' '.join(stemmed_words)            
+          
+        
+        if 'lemmatization' in root_selection: 
+            # Initialize lemmatizer       
+            lemmatizer = WordNetLemmatizer()            
+            # Lemmatize each word in the tokenized text
+            lemmatizer_words = [lemmatizer.lemmatize(word) for word in words]
+            # Join the words back into a single string
+            user_text_basic = ' '.join(lemmatizer_words)  
+
+    return user_text, user_text_basic                        
 
 
 #------------------------------------------------------------------------------------------
@@ -1440,12 +1485,14 @@ def sumy_summary(text,extr_method, extr_length,user_language):
     if extr_method=="LSA":
         summarizer = Summarizer(stemmer) 
     if extr_method=="LexRank" :
-        summarizer = LexRankSummarizer(stemmer)     
+        summarizer = LexRankSummarizer(stemmer)    
+        """ 
     if extr_method=="Edmunson":
         summarizer = EdmundsonSummarizer(stemmer)
         summarizer.bonus_words = ("summarization", "text")
         summarizer.stigma_words = ("example", "tool")
         summarizer.null_words = get_stop_words(lang_used)
+        """ 
     if extr_method=="Luhn":
         summarizer = LuhnSummarizer(stemmer)      
     if extr_method=="TextRank":
