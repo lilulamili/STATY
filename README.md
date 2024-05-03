@@ -1,7 +1,8 @@
 # STATY
 **STATY - learn, do and create data stories**
 
-STATY provides a user-friendly interface for performing various classical statistical and machine learning methods on a user-specific data. STATY is an ongoing educational project designed with the aim of improving data literacy among undergraduate and graduate students.
+STATY provides a user-friendly interface for performing various classical statistical and machine learning methods on a user-specific data.   
+STATY is an ongoing educational project designed with the aim of improving data literacy among undergraduate and graduate students.
 
 
 ## Getting started with source code 
