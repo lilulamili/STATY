@@ -57,4 +57,4 @@ STATY is an ongoing educational project designed with the aim of improving data 
 
 **8. Run STATY**   
    Type the following command in the terminal: `streamlit run staty.py`  
-   The app will open in your default browser `http://localhost:8075/`
+   The app will open in your default browser `http://localhost:8501/`
