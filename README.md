@@ -25,10 +25,8 @@ STATY is an ongoing educational project designed with the aim of improving data 
        Install Visual Studio Code by pressing the big blue button from: https://code.visualstudio.com/
 
 **3. Download 'STATY'**   
-  Download 'STATY' as a ZIP file from https://github.com/lilulamili/STATY to a folder on your PC. Click the zip file and extract it.  
-  > [!TIP]
-> To download STATY, press the green button `<> Code` and select `Download ZIP`. 
-      
+  To download STATY, press the green button `<> Code` above and select `Download ZIP`. 
+       
 **4. Get 'STATY' ready**  
    Open VSCode. Go to the `File` menu, select `Open Folder`, and then navigate to the project folder you just created (the one where the file are).  
    `„Do you trust the Author of this Folder” – click “yes”`
