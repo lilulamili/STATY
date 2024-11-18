@@ -37,7 +37,7 @@ tqdm==4.65.0
 wordcloud==1.9.2
 xlsxwriter==3.1.2
 yfinance==0.2.36
-huggingface_hub==0.20.3
+huggingface_hub===0.23.7
 
 
 
