@@ -1738,7 +1738,7 @@ def app():
                             st.table( {'min': [min(df[cont_numerical[0]])], 'max': [max(df[cont_numerical[0]])]})
                             low0=st.number_input(str(cont_numerical[0]) + ': 1st class should start at?')
                             up0=st.number_input(str(cont_numerical[0]) + ': Max limit for your classes?')
-                            noclass0= st.number_input(str(cont_numerical[0]) + ': Max number of classes? (Fully empty classes will be ignored!)')
+                            noclass0= st.number_input(str(cont_numerical[0]) + ': Max number of classes? (Fully empty classes will be ignored!)',step=1)
                                         
                     else:           
                         st.info("Please try data reclassification outside of Staty as the sort of classification you might need is not yet implemented!")    
@@ -1825,19 +1825,20 @@ def app():
                     cont_rel.to_excel(excel_file, sheet_name="relative frequencies")
 
                     if cont_extra:
-                        st.subheader('Contingency table with marginal frequencies ('+ str(ub_sel_var[0])+')')
+                        
+                        st.subheader('Contingency table with marginal frequencies ('+ str(cont_df.columns[0])+')')
                         bivarite_table_marg0 =bivarite_table.iloc[:,:].div(bivarite_table.Total, axis=0)
                         st.table(bivarite_table_marg0.style.format(precision=user_precision))
 
                         #xls output:
-                        bivarite_table_marg0.to_excel(excel_file, sheet_name="marginal"+ ub_sel_var[0][:min(len(ub_sel_var[0]),15)])
+                        bivarite_table_marg0.to_excel(excel_file, sheet_name="marginal"+ str(cont_df.columns[0]))
 
-                        st.subheader('Contingency table with marginal frequencies ('+ str(ub_sel_var[1])+')')
+                        st.subheader('Contingency table with marginal frequencies ('+ str(cont_df.columns[1])+')')
                         bivarite_table_marg1 =bivarite_table.div(bivarite_table.iloc[-1])
                         st.table(bivarite_table_marg1.style.format(precision=user_precision))
 
                         #xls output:
-                        bivarite_table_marg1.to_excel(excel_file, sheet_name="marginal"+ ub_sel_var[1][:min(len(ub_sel_var[1]),15)])
+                        bivarite_table_marg1.to_excel(excel_file, sheet_name="marginal"+ str(cont_df.columns[1]))
 
                         # draw a bar plot with the results
                         colors = px.colors.qualitative.Pastel2
@@ -1911,7 +1912,7 @@ def app():
                     excel_file.close()
                     excel_file = output.getvalue()
                     b64 = base64.b64encode(excel_file)
-                    dl_file_name = "Contingency_" + df_name +"_" + ub_sel_var[0] +ub_sel_var[1]+ ".xlsx"
+                    dl_file_name = "Contingency_" + df_name +"_" + str(cont_df.columns[0]) +str(cont_df.columns[1])+ ".xlsx"
                     st.markdown(
                         f"""
                     <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download contingency results</a>
