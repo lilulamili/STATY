@@ -544,7 +544,8 @@ def app():
                     ax.bar(names, abs_freq,tick_label=names)
                     
                     #write frequency analysis table
-                    df_freqanal = pd.DataFrame(names,columns=['Class'])
+                    df_freqanal = pd.DataFrame(index=names,columns=['Class'])
+                    
                     df_freqanal.index =names
                     df_freqanal['Abs. freq.']= abs_freq
                     
