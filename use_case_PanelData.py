@@ -1604,9 +1604,10 @@ def app():
                                     obs = df[response_var]
                                     reg_stats = pd.DataFrame(index = ["R²", "R² (between)", "R² (within)", "R² (overall)", "Log-likelihood", "SST", "SST (overall)"], columns = ["Value"])
                                     reg_stats.loc["R²"] = panel_model_fit._r2
-                                    reg_stats.loc["R² (between)"] = panel_model_fit._c2b**2
-                                    reg_stats.loc["R² (within)"] = panel_model_fit._c2w**2
-                                    reg_stats.loc["R² (overall)"] = panel_model_fit._c2o**2
+                                    reg_stats.loc["R² (between)"] = panel_model_fit._c2b #**2 (c2b is corr_squared_between)
+                                    
+                                    reg_stats.loc["R² (within)"] = panel_model_fit._c2w #**2 c2w is corr_squared_within)
+                                    reg_stats.loc["R² (overall)"] = panel_model_fit._c2o#**2 c2o is corr_squared_overall)
                                     reg_stats.loc["Log-likelihood"] = panel_model_fit._loglik
                                     reg_stats.loc["SST"] = panel_model_fit.total_ss
                                     reg_stats.loc["SST (overall)"] = ((obs-obs.mean())**2).sum()
