@@ -490,7 +490,8 @@ def app():
                                 column=multi_var_sel
                         ).interactive()
                         st.altair_chart(scatter_matrix, use_container_width=True)
-                             
+
+                
     #------------------------------------------------------------------------------------------
 
     # REGRESSION
@@ -1267,6 +1268,58 @@ def app():
                                             """,
                                             unsafe_allow_html=True)
                                         st.write("")
+                                
+                                if st.checkbox("Show correlation matrix", value = False):        
+                                    
+                                    st.markdown("**Correlation Matrix & 2D-Histogram**")
+                                    # Define variable selector
+                                    var_sel_cor = alt.selection_single(fields=['variable', 'variable2'], clear=False, 
+                                                        init={'variable': response_var, 'variable2': response_var})
+                                    # Calculate correlation data
+                                    corr_data = df[[response_var] + expl_var].corr().stack().reset_index().rename(columns={0: "correlation", 'level_0': "variable", 'level_1': "variable2"})
+                                    corr_data["correlation_label"] = corr_data["correlation"].map('{:.2f}'.format)
+                                    # Basic plot
+                                    base = alt.Chart(corr_data).encode(
+                                        x = alt.X('variable2:O', sort = None, axis = alt.Axis(title = None, labelFontSize = 12)),
+                                        y = alt.Y('variable:O',  sort = None, axis = alt.Axis(title = None, labelFontSize = 12))
+                                    )
+                                    # Correlation values to insert
+                                    text = base.mark_text().encode(
+                                        text='correlation_label',
+                                        color = alt.condition(
+                                            alt.datum.correlation > 0.5, 
+                                            alt.value('white'),
+                                            alt.value('black')
+                                        )
+                                    )
+                                    # Correlation plot
+                                    corr_plot = base.mark_rect().encode(
+                                        color = alt.condition(var_sel_cor, alt.value('#86c29c'), 'correlation:Q', legend = alt.Legend(title = "Bravais-Pearson correlation coefficient", orient = "top", gradientLength = 350), scale = alt.Scale(scheme='redblue', reverse = True, domain = [-1,1]))
+                                    ).add_selection(var_sel_cor)
+                                    # Calculate values for 2d histogram
+                                    value_columns = df[[response_var] + expl_var]
+                                    df_2dbinned = pd.concat([fc.compute_2d_histogram(var1, var2, df) for var1 in value_columns for var2 in value_columns])
+                                    # 2d binned histogram plot
+                                    scat_plot = alt.Chart(df_2dbinned).transform_filter(
+                                        var_sel_cor
+                                    ).mark_rect().encode(
+                                        alt.X('value2:N', sort = alt.EncodingSortField(field='raw_left_value2'), axis = alt.Axis(title = "Horizontal variable", labelFontSize = 12)), 
+                                        alt.Y('value:N', axis = alt.Axis(title = "Vertical variable", labelFontSize = 12), sort = alt.EncodingSortField(field='raw_left_value', order = 'descending')),
+                                        alt.Color('count:Q', scale = alt.Scale(scheme='reds'),  legend = alt.Legend(title = "Count", orient = "top", gradientLength = 350))
+                                    )
+                                    # Combine all plots
+                                    correlation_plot = alt.vconcat((corr_plot + text).properties(width = 400, height = 400), scat_plot.properties(width = 400, height = 400)).resolve_scale(color = 'independent')
+                                    corr_plot1 = (corr_plot + text).properties(width = 400, height = 400)
+                                    correlation_plot = correlation_plot.properties(padding = {"left": 50, "top": 5, "right": 5, "bottom": 50})
+                                    # hist_2d_plot = scat_plot.properties(height = 350)
+                                    if response_var_type == "continuous":
+                                        st.altair_chart(correlation_plot, use_container_width = True)
+                                    if response_var_type == "binary":
+                                        st.altair_chart(correlation_plot, use_container_width = True)
+                                    if sett_hints:
+                                        st.info(str(fc.learning_hints("mod_cor")))
+                                    st.write("")
+
 
                                 # Show machine learning summary
                                 if st.checkbox('Show a summary of machine learning settings', value = False): 
@@ -1762,6 +1815,7 @@ def app():
                             st.write("") 
                             # Partial dependence plots
                             st.write("Partial dependence plots:")    
+                           
                             fm_gam_figs3_col1, fm_gam_figs3_col2 = st.columns(2)
                             for pd_var in expl_var:
                                 pd_data_gam = pd.DataFrame(columns = [pd_var])
@@ -1838,12 +1892,16 @@ def app():
                             if sett_hints:
                                 st.info(str(fc.learning_hints("mod_md_GAM_obsResVsFit")))
 
-                            # Download link for GAM output
+                            # Download link for GAM output                            
                             output = BytesIO()
                             excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
                             model_full_results["GAM information"].to_excel(excel_file, sheet_name="regression_information")
                             model_full_results["GAM statistics"].to_excel(excel_file, sheet_name="regression_statistics")
                             model_full_results["GAM feature significance"].to_excel(excel_file, sheet_name="feature_significance")
+                            pd.concat(
+                                model_full_results["GAM partial dependence"], names=["Variable"]
+                                ).reset_index(level=0).to_excel(
+                                excel_file, sheet_name="partial_dependence", index=False)
                             gam_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
                             excel_file.close()
                             excel_file = output.getvalue()
@@ -1988,7 +2046,20 @@ def app():
                             rf_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             rf_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
                             rf_featImp_table.to_excel(excel_file, sheet_name="feature_importance")
+                            pd.concat(
+                                {
+                                    var: pd.DataFrame({
+                                        "grid_values": res["grid_values"][0],
+                                        "average": res["average"][0],
+                                    })
+                                    for var, res in model_full_results["RF partial dependence"].items()
+                                },
+                                names=["Variable"],
+                            ).reset_index(level=0).to_excel(
+                                excel_file, sheet_name="partial_dependence", index=False
+                            )
                             excel_file.close()
+                            
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
                             dl_file_name = "RF full model output__" + df_name + ".xlsx"
@@ -2141,6 +2212,18 @@ def app():
                             brt_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             brt_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
                             brt_featImp_table.to_excel(excel_file, sheet_name="feature_importance")
+                            pd.concat(
+                                    {
+                                        var: pd.DataFrame({
+                                            "grid_values": res["grid_values"][0],
+                                            "average": res["average"][0],
+                                        })
+                                        for var, res in model_full_results["BRT partial dependence"].items()
+                                    },
+                                    names=["Variable"],
+                                ).reset_index(level=0).to_excel(
+                                    excel_file, sheet_name="partial_dependence", index=False
+                                )
                             excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
@@ -2376,6 +2459,18 @@ def app():
                             model_full_results["ANN information"].to_excel(excel_file, sheet_name="regression_information")
                             ann_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             ann_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
+                            pd.concat(
+                                        {
+                                            var: pd.DataFrame({
+                                                "grid_values": res["grid_values"][0],
+                                                "average": res["average"][0],
+                                            })
+                                            for var, res in model_full_results["ANN partial dependence"].items()
+                                        },
+                                        names=["Variable"],
+                                    ).reset_index(level=0).to_excel(
+                                        excel_file, sheet_name="partial_dependence", index=False
+                                    )
                             excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
@@ -2721,6 +2816,16 @@ def app():
                             model_full_results["LR statistics"].to_excel(excel_file, sheet_name="regression_statistics")
                             model_full_results["LR coefficients"].to_excel(excel_file, sheet_name="coefficients")
                             lr_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
+                            pd.concat(
+                                [
+                                    df[[var, "prediction"]]
+                                    .sort_values(by=var)
+                                    .rename(columns={"prediction": f"{var} (probability)"})
+                                    .reset_index(drop=True)
+                                    for var, df in model_full_results["LR partial probabilities"].items()
+                                ],
+                                axis=1,
+                            ).to_excel(excel_file, sheet_name="partial_probabilities", index=False)
                             excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
@@ -2869,6 +2974,10 @@ def app():
                             model_full_results["GAM statistics"].to_excel(excel_file, sheet_name="regression_statistics")
                             model_full_results["GAM feature significance"].to_excel(excel_file, sheet_name="feature_significance")
                             gam_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
+                            pd.concat(
+                                    model_full_results["GAM partial dependence"], names=["Variable"]
+                                    ).reset_index(level=0).to_excel(
+                                    excel_file, sheet_name="partial_dependence", index=False)
                             excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
@@ -3016,6 +3125,18 @@ def app():
                             rf_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             rf_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
                             rf_featImp_table.to_excel(excel_file, sheet_name="feature_importance")
+                            pd.concat(
+                                            {
+                                                var: pd.DataFrame({
+                                                    "grid_values": res["grid_values"][0],
+                                                    "average": res["average"][0],
+                                                })
+                                                for var, res in model_full_results["RF partial dependence"].items()
+                                            },
+                                            names=["Variable"],
+                                        ).reset_index(level=0).to_excel(
+                                            excel_file, sheet_name="partial_dependence", index=False
+                                        )
                             excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
@@ -3177,6 +3298,18 @@ def app():
                             brt_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             brt_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
                             brt_featImp_table.to_excel(excel_file, sheet_name="feature_importance")
+                            pd.concat(
+                                        {
+                                            var: pd.DataFrame({
+                                                "grid_values": res["grid_values"][0],
+                                                "average": res["average"][0],
+                                            })
+                                            for var, res in model_full_results["BRT partial dependence"].items()
+                                        },
+                                        names=["Variable"],
+                                    ).reset_index(level=0).to_excel(
+                                        excel_file, sheet_name="partial_dependence", index=False
+                                    )
                             excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
@@ -3420,6 +3553,18 @@ def app():
                             model_full_results["ANN information"].to_excel(excel_file, sheet_name="regression_information")
                             ann_error_est.to_excel(excel_file, sheet_name="regression_statistics")
                             ann_varImp_table.to_excel(excel_file, sheet_name="variable_importance")
+                            pd.concat(
+                                        {
+                                            var: pd.DataFrame({
+                                                "grid_values": res["grid_values"][0],
+                                                "average": res["average"][0],
+                                            })
+                                            for var, res in model_full_results["ANN partial dependence"].items()
+                                        },
+                                        names=["Variable"],
+                                    ).reset_index(level=0).to_excel(
+                                        excel_file, sheet_name="partial_dependence", index=False
+                                    )
                             excel_file.close()
                             excel_file = output.getvalue()
                             b64 = base64.b64encode(excel_file)
