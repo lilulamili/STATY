@@ -240,6 +240,9 @@ def data_processing(df_name,df, n_rows,n_cols,sett_hints, user_precision,in_wid_
             sb_DM_dTrans_square = st.multiselect("Select columns for squaring ", transform_options, on_change=in_wid_change)
             if sb_DM_dTrans_square is not None: 
                 df = fc.var_transform_square(df, sb_DM_dTrans_square)
+            sb_DM_dTrans_lag = st.multiselect("Select columns to lag 1 period ", transform_options, on_change=in_wid_change)
+            if sb_DM_dTrans_lag is not None: 
+                df = fc.var_transform_lag(df, sb_DM_dTrans_lag)      
             sb_DM_dTrans_cent = st.multiselect("Select columns for centering ", transform_options, on_change=in_wid_change)
             if sb_DM_dTrans_cent is not None: 
                 df = fc.var_transform_cent(df, sb_DM_dTrans_cent)
@@ -444,6 +447,15 @@ def data_processing(df_name,df, n_rows,n_cols,sett_hints, user_precision,in_wid_
                 st.write("-",len(sb_DM_dTrans_square), " column was squared:", sb_DM_dTrans_square[0])
             elif len(sb_DM_dTrans_square) == 0:
                 st.write("- No column was squared!")
+            # lag-1            
+            if len(sb_DM_dTrans_lag) > 1:
+                st.write("-", len(sb_DM_dTrans_lag), " columns were lagged:", ', '.join(sb_DM_dTrans_lag))
+            elif len(sb_DM_dTrans_lag) == 1:
+                st.write("-",len(sb_DM_dTrans_lag), " column was lagged:", sb_DM_dTrans_lag[0])
+            elif len(sb_DM_dTrans_lag) == 0:
+                st.write("- No column was lagged!")
+            # standardize
+
             # centering
             if len(sb_DM_dTrans_cent) > 1:
                 st.write("-", len(sb_DM_dTrans_cent), " columns were centered:", ', '.join(sb_DM_dTrans_cent))
@@ -570,4 +582,4 @@ def data_processing(df_name,df, n_rows,n_cols,sett_hints, user_precision,in_wid_
      
     #------------------------------------------------------------------------------------------
         
-    return(df,sb_DM_dTrans_ohe, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_square, sb_DM_dTrans_cent, sb_DM_dTrans_stand, sb_DM_dTrans_norm, sb_DM_dTrans_numCat, sb_DM_dTrans_mult, sb_DM_dTrans_div )
+    return(df,sb_DM_dTrans_ohe, sb_DM_dTrans_log, sb_DM_dTrans_sqrt, sb_DM_dTrans_lag,sb_DM_dTrans_square, sb_DM_dTrans_cent, sb_DM_dTrans_stand, sb_DM_dTrans_norm,  sb_DM_dTrans_numCat, sb_DM_dTrans_mult, sb_DM_dTrans_div )

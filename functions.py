@@ -838,6 +838,26 @@ def var_transform_square(data, var_list):
     return data
 
 #---------------------------------------------------------------------------------------------
+#FUNCTION FOR TRANSFORMING VARIABLE TO LAG VARIABLE
+def var_transform_lag(data, var_list):
+    for i in var_list:
+
+        if pd.api.types.is_numeric_dtype(data[i]):
+
+            new_var_name = "lag_" + i
+
+            # Create lagged variable (shift observations by position)
+            lagged_values = data[i].shift(1).to_numpy()
+
+            # Explicitly ensure first observation is NA
+            if len(lagged_values) > 0:
+                lagged_values[0] = np.nan
+
+            data[new_var_name] = lagged_values
+
+    return data
+
+#---------------------------------------------------------------------------------------------
 #FUNCTION FOR TRANSFORMING VARIABLE TO CENT_VARIABLE
 
 def var_transform_cent(data, var_list):
