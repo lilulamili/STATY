@@ -20,7 +20,7 @@ from random import randint
 from io import BytesIO
 import nltk
 from nltk.stem import PorterStemmer,SnowballStemmer,WordNetLemmatizer 
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import word_tokenize, sent_tokenize
 nltk.download('punkt') 
 from pypdf import PdfReader 
 from docx import Document
@@ -1245,6 +1245,15 @@ def get_stop_words(user_stopwords):
     return added_stop_words
 
 #------------------------------------------------------------------------------------------
+# FUNCTION FOR SENTENCE SPLIT
+def split_sentences(user_text, language="en"):
+    lang = {"en": "english", "de": "german"}.get(language, "english")
+    sentences = []
+    for block in re.split(r"\n+", user_text):   # optional: treat line breaks as boundaries
+        sentences.extend(nltk.sent_tokenize(block, language=lang))
+    return [s.strip() for s in sentences if re.search(r"\w", s)]
+
+#------------------------------------------------------------------------------------------
 #FUNCTION FOR TEXT PROCESSING
 
 def text_preprocessing(user_text,text_prep_ops,root_selection,user_language):
@@ -1279,7 +1288,8 @@ def text_preprocessing(user_text,text_prep_ops,root_selection,user_language):
                 
     if 'remove symbols' in text_prep_ops:
         #remove special chracters
-        user_text=re.sub('[^a-zA-Z0-9 \n\.]', '', user_text)
+        #user_text=re.sub('[^a-zA-Z0-9 \n\.]', '', user_text)
+        user_text = re.sub(r'[^\w \n\.]', '', user_text)
         # remove numbers in squared brackets
         user_text=re.sub(r'\[\d+\]', '', user_text)       
             
@@ -1301,10 +1311,12 @@ def text_preprocessing(user_text,text_prep_ops,root_selection,user_language):
     # initialise user_text_basic (text after stemming and lematization)
     # sentiment analysis will be done on text before  stemming or lematization   
     user_text_basic=user_text
-    
-    if 'stemming (Porter)' or 'stemming (snowball)' or 'lemmatization' in root_selection:                                                
+
+    if any(x in root_selection for x in ['stemming (Porter)', 'stemming (snowball)', 'lemmatization']):
+    #if 'stemming (Porter)' or 'stemming (snowball)' or 'lemmatization' in root_selection:                                                
         #remove special chracters
-        user_text_basic=re.sub('[^a-zA-Z0-9 \n\.]', '', user_text_basic)
+        #user_text_basic=re.sub('[^a-zA-Z0-9 \n\.]', '', user_text_basic)
+        user_text_basic = re.sub(r'[^\w \n\.]', '', user_text_basic)
         # remove numbers in squared brackets
         user_text_basic=re.sub(r'\[\d+\]', '', user_text_basic)  
         #remove punctuation  

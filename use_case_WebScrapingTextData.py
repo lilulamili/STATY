@@ -6,6 +6,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import matplotlib
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import functions as fc
@@ -20,6 +21,8 @@ from wordcloud import WordCloud
 import bs4
 from bs4 import BeautifulSoup
 from langdetect import detect
+import unicodedata
+
 
 import mediawiki
 import re
@@ -636,7 +639,7 @@ def app():
                                                          
                     st.write("")
                     st.write("Number of words: ", word_sorted["Word count"].sum())
-                    st.write("Number of sentences", len(re.findall(r"([^.]*\.)" ,user_text)))
+                    st.write("Number of sentences", len(fc.split_sentences(user_text, user_language)))
                     
                     if len(word_stopwords)>0:
                         st.warning("All analyses are based on text with stop words removed!") 
@@ -738,11 +741,14 @@ def app():
                         st.info("Top " + str(min(len(cv2_output),10)) + " trigrams relative frequency")  
                    
                     # Word Cloud 
-                    if draw_WordCloud==True:                    
+                    if draw_WordCloud==True: 
+                        
+                        fp = os.path.join(matplotlib.get_data_path(), "fonts", "ttf", "DejaVuSans.ttf")                 
                         #Draw WordCloud
                         wordcloud = WordCloud(background_color="white",
                             contour_color="white",max_words=100,stopwords=word_stopwords,
-                            width=600,height=400,color_func=random_color_func).generate(user_text_basic)  
+                            width=600,height=400,color_func=random_color_func, font_path=fp).generate(unicodedata.normalize("NFKC", user_text_basic)) 
+                        
                         fig_text, ax = plt.subplots()
                         ax=plt.imshow(wordcloud, interpolation='bilinear')
                         plt.axis("off")
@@ -779,7 +785,7 @@ def app():
                 #---------------------------------------------------------------------------------
                 # Sentiment analysis per sentence
                 #---------------------------------------------------------------------------------
-                    sentences = re.findall(r"([^.]*\.)" ,user_text) 
+                    sentences = fc.split_sentences(user_text, user_language)
                     if sent_analysis:
                         if user_language=="en":
                             sa_table = pd.DataFrame(index = range(0, len(sentences)), columns=["Sentence", "neg","neu","pos","compound"]) 
@@ -842,7 +848,7 @@ def app():
                 if len(find_words)>0:                   
                     # extract all sentences with specific words:                 
                     sentences_list=[]                  
-                    sentences = re.findall(r"([^.]*\.)" ,user_text) 
+                    sentences = fc.split_sentences(user_text, user_language)
                     
                     for sentence in sentences:
                         if all(word in sentence for word in find_words):                                
@@ -889,8 +895,8 @@ def app():
                 #text_cv_fit=text_cv.fit_transform([user_text])
                 #listToString='. '.join(text_cv.get_feature_names())
                 listToString='. '.join(text_cv.index)
-                sentences = re.findall(r"([^.]*\.)" ,listToString)  
-                            
+                sentences = fc.split_sentences(listToString, user_language)  
+                           
                 for sentence in sentences:
                     if all(word in sentence for word in find_words):  
                         sentence=re.sub('[.]', '', sentence)                                             
@@ -992,13 +998,14 @@ def app():
             run_yahoo = st.button("Press to start stock data analysis...")
             if run_yahoo:                   
                 st.session_state['run_yahoo']=run_yahoo
-
+                
 
         #-----------------------------------
         #check if the ticker exists 
         #-----------------------------------                
         if len(second_stock)>0:
             stock_data2 = yf.Ticker(second_stock)  
+            
             if len(stock_data2.info)<=1:
                 err_msg="Error: Ticker symbol '" + second_stock +  "' may not exist. Double-check that you've entered the ticker symbol accurately"
                 second_stock="-"                                               
@@ -1016,6 +1023,7 @@ def app():
             dev_expander_perf = st.expander("Daily data", expanded=True)
             with dev_expander_perf:
                 #get data for a selected ticker symbol:
+                
                 for stocks in sel_stock:                        
                     stock_data = yf.Ticker(stocks)
                     stock_df = stock_data.history(period='1d', start=start_date, end=end_date)
@@ -1029,17 +1037,48 @@ def app():
                 sel_stock_plot = st.multiselect("Select tickers", sel_stock,sel_stock[0])       
                 stock_para= st.selectbox('Select info to draw', stock_df.columns)
 
-                stock_dataToplot=None  
+                stock_dataToplot=None 
+                stock_df_mo_all=None 
                 for stocks in sel_stock_plot:                        
                     stock_data = yf.Ticker(stocks)
+                    
+                    #daily data
                     stock_df = stock_data.history(period='1d', start=start_date, end=end_date)
                     c1_data=stock_df[[stock_para]]
                     c1_data.rename(columns={c1_data.columns[0]: stocks}, inplace = True)
+                    
+                    #monthly data
+                    stock_df_mo = stock_data.history(interval='1mo', start=start_date, end=end_date)
+                    c1_data_mo=stock_df_mo[[stock_para]]
+                    c1_data_mo.rename(columns={c1_data_mo.columns[0]: stocks}, inplace = True)
+                                        
                     if stock_dataToplot is None:                        
                         stock_dataToplot=c1_data
+                        stock_df_mo_all=c1_data_mo
                     else:                        
                         stock_dataToplot=pd.concat([stock_dataToplot, c1_data], axis=1)
+                        stock_df_mo_all=pd.concat([stock_df_mo_all, c1_data_mo], axis=1)
                 st.line_chart(stock_dataToplot)
+
+                # Download link
+                st.write("")  
+                output = BytesIO()
+                excel_file = pd.ExcelWriter(output, engine="xlsxwriter")
+                stock_dataToplot['date'] = (stock_dataToplot.index).astype(str)
+                stock_dataToplot.to_excel(excel_file, sheet_name="DailyStockData",index=False) 
+                stock_df_mo_all['date'] = (stock_df_mo_all.index).astype(str)
+                stock_df_mo_all.to_excel(excel_file, sheet_name="MontlyStockData",index=False) 
+                    
+                excel_file.close()
+                excel_file = output.getvalue()
+                b64 = base64.b64encode(excel_file)
+                dl_file_name = "StockData.xlsx"
+                st.markdown(
+                    f"""
+                <a href="data:file/excel_file;base64,{b64.decode()}" id="button_dl" download="{dl_file_name}">Download data</a>
+                """,
+                unsafe_allow_html=True)
+                st.write("") 
 
            
             if add_data_show:     
